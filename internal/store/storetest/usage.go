@@ -183,6 +183,159 @@ var usageCases = []testCase{
 			}
 		}
 	}},
+	{"prompt_costs_cover_every_call_beyond_one_page", func(t *testing.T, e *env) {
+		g := e.gen
+		// 3 prompts of 400 calls: 1200 calls, more than the 500 of the largest page
+		// of the call list, which is what a client had to sample before.
+		var calls []core.CallRecord
+		for i := 0; i < 400; i++ {
+			for n, id := range []string{"big-a", "big-b", "big-c"} {
+				calls = append(calls, g.Call(WithPrompt(id), WithSession("s-"+id), WithCost(core.MicroUSD(10*(n+1))),
+					WithUsage(core.Usage{InputUncached: 1, CacheRead: 2, CacheWrite5m: 3, CacheWrite1h: 4, Output: 9})))
+			}
+		}
+		e.write(t, calls...)
+		got, err := e.PromptCosts(context.Background(), core.PromptCostQuery{Filter: usageWin, Limit: 50})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.PromptCount != 3 || got.CallsWithoutPrompt != 0 || len(got.Prompts) != 3 {
+			t.Fatalf("result %+v, want 3 prompts and no call without one", got)
+		}
+		for i, want := range []struct {
+			id   string
+			cost core.MicroUSD
+		}{{"big-c", 400 * 30}, {"big-b", 400 * 20}, {"big-a", 400 * 10}} {
+			p := got.Prompts[i]
+			if p.PromptID != want.id || p.Calls != 400 || p.Cost == nil || *p.Cost != want.cost || p.UnpricedCalls != 0 ||
+				p.TokensIn != 400*10 || p.SessionKey != "s-"+want.id || p.APIEquivalent {
+				t.Errorf("prompt %d = %+v, want %s with 400 calls and cost %d", i, p, want.id, want.cost)
+			}
+		}
+	}},
+	{"prompt_costs_sum_priced_calls_and_count_the_unpriced", func(t *testing.T, e *env) {
+		g := e.gen
+		e.write(t,
+			// Mixed: the known cost sums the two priced calls; one call is unpriced.
+			g.Call(WithPrompt("mixed"), WithCost(100)), g.Call(WithPrompt("mixed"), WithCost(50)), g.Call(WithPrompt("mixed"), WithoutCost()),
+			// Every call unpriced: the cost is unknown, not zero.
+			g.Call(WithPrompt("none"), WithoutCost()), g.Call(WithPrompt("none"), WithoutCost()), g.Call(WithPrompt("none"), WithoutCost()),
+			// A priced call of cost zero is known and is not an unpriced one.
+			g.Call(WithPrompt("free"), WithCost(0)),
+			// Same cost as "mixed" with fewer calls: "mixed" ranks first.
+			g.Call(WithPrompt("tie"), WithCost(150)),
+		)
+		got, err := e.PromptCosts(context.Background(), core.PromptCostQuery{Filter: usageWin, Limit: 10})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var ids []string
+		for _, p := range got.Prompts {
+			ids = append(ids, p.PromptID)
+		}
+		// Known cost first and highest first, ties by calls, then unknown cost.
+		if want := []string{"mixed", "tie", "free", "none"}; !slices.Equal(ids, want) {
+			t.Fatalf("order %v, want %v", ids, want)
+		}
+		by := map[string]core.PromptCost{}
+		for _, p := range got.Prompts {
+			by[p.PromptID] = p
+		}
+		if p := by["mixed"]; p.Calls != 3 || p.Cost == nil || *p.Cost != 150 || p.UnpricedCalls != 1 {
+			t.Errorf("mixed = %+v, want 3 calls, cost 150, 1 unpriced", p)
+		}
+		if p := by["none"]; p.Calls != 3 || p.Cost != nil || p.UnpricedCalls != 3 {
+			t.Errorf("none = %+v, want 3 calls, a nil cost, 3 unpriced", p)
+		}
+		if p := by["free"]; p.Cost == nil || *p.Cost != 0 || p.UnpricedCalls != 0 {
+			t.Errorf("free = %+v, want a known cost of zero", p)
+		}
+	}},
+	{"prompt_costs_count_calls_without_a_prompt_id", func(t *testing.T, e *env) {
+		g := e.gen
+		e.write(t,
+			g.Call(WithPrompt("p"), WithCost(5)),
+			g.Call(), g.Call(WithCost(7)), g.Call(WithPrompt("")),
+			g.Call(WithPrompt("other-key"), WithKey("bob")), g.Call(WithKey("bob")),
+		)
+		ctx := context.Background()
+		got, err := e.PromptCosts(ctx, core.PromptCostQuery{Filter: usageWin, Limit: 10})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.PromptCount != 2 || got.CallsWithoutPrompt != 4 {
+			t.Errorf("result %+v, want 2 prompts and 4 calls without a prompt id", got)
+		}
+		// The call filter applies to both counts.
+		f := usageWin
+		f.Keys = []string{"bob"}
+		if got, err = e.PromptCosts(ctx, core.PromptCostQuery{Filter: f, Limit: 10}); err != nil {
+			t.Fatal(err)
+		} else if got.PromptCount != 1 || got.CallsWithoutPrompt != 1 || len(got.Prompts) != 1 || got.Prompts[0].PromptID != "other-key" {
+			t.Errorf("filtered result %+v, want the one prompt and the one call of bob", got)
+		}
+		// A range with no calls is empty, not an error.
+		f = core.CallFilter{From: day0.Add(48 * time.Hour), To: day0.Add(49 * time.Hour)}
+		if got, err = e.PromptCosts(ctx, core.PromptCostQuery{Filter: f, Limit: 10}); err != nil ||
+			len(got.Prompts) != 0 || got.PromptCount != 0 || got.CallsWithoutPrompt != 0 {
+			t.Errorf("empty range: %+v, err %v", got, err)
+		}
+	}},
+	{"prompt_costs_limit_bounds_the_list_not_the_totals", func(t *testing.T, e *env) {
+		g := e.gen
+		for i := 1; i <= 5; i++ {
+			e.write(t, g.Call(WithPrompt(fmt.Sprintf("p%d", i)), WithCost(core.MicroUSD(i))))
+		}
+		e.write(t, g.Call())
+		got, err := e.PromptCosts(context.Background(), core.PromptCostQuery{Filter: usageWin, Limit: 2})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got.Prompts) != 2 || got.Prompts[0].PromptID != "p5" || got.Prompts[1].PromptID != "p4" ||
+			got.PromptCount != 5 || got.CallsWithoutPrompt != 1 {
+			t.Errorf("result %+v, want p5 and p4 of 5 prompts and 1 call without one", got)
+		}
+	}},
+	{"prompt_costs_mark_api_equivalent_cost_and_name_the_first_session", func(t *testing.T, e *env) {
+		g := e.gen
+		pass := WithAuthMode("client_passthrough")
+		e.write(t,
+			// A priced passthrough call makes the cost API-equivalent.
+			g.Call(WithPrompt("api"), WithCost(10), pass, WithSession("first")), g.Call(WithPrompt("api"), WithCost(5), WithSession("later")),
+			// An unpriced passthrough call has no cost to mark.
+			g.Call(WithPrompt("unpriced"), WithoutCost(), pass),
+			g.Call(WithPrompt("own"), WithCost(1)),
+		)
+		got, err := e.PromptCosts(context.Background(), core.PromptCostQuery{Filter: usageWin, Limit: 10})
+		if err != nil {
+			t.Fatal(err)
+		}
+		by := map[string]core.PromptCost{}
+		for _, p := range got.Prompts {
+			by[p.PromptID] = p
+		}
+		if !by["api"].APIEquivalent || by["unpriced"].APIEquivalent || by["own"].APIEquivalent {
+			t.Errorf("api_equivalent: api %v, unpriced %v, own %v; want true, false, false",
+				by["api"].APIEquivalent, by["unpriced"].APIEquivalent, by["own"].APIEquivalent)
+		}
+		if by["api"].SessionKey != "first" || by["api"].FirstTS.IsZero() || by["api"].FirstTS.Location() != time.UTC {
+			t.Errorf("api = %+v, want the session of its first call and a UTC first_ts", by["api"])
+		}
+		if !by["api"].FirstTS.Before(by["own"].FirstTS) {
+			t.Errorf("first_ts of api %v is not before own %v", by["api"].FirstTS, by["own"].FirstTS)
+		}
+	}},
+	{"prompt_costs_reject_a_bad_query", func(t *testing.T, e *env) {
+		for _, q := range []core.PromptCostQuery{
+			{Filter: core.CallFilter{}, Limit: 10},
+			{Filter: usageWin, Limit: 0},
+			{Filter: usageWin, Limit: -1},
+		} {
+			if _, err := e.PromptCosts(context.Background(), q); !errors.Is(err, core.ErrInvalidFilter) {
+				t.Errorf("PromptCosts(%+v) err = %v", q, err)
+			}
+		}
+	}},
 }
 
 // usageDataset returns calls over three UTC days that differ in every group

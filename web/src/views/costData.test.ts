@@ -1,6 +1,5 @@
 import { expect, test } from 'vitest'
 import { formatCostMicroUsd } from '../lib/format'
-import { call } from './callLogRows.test'
 import {
   MAX_SLOTS,
   chartRows,
@@ -8,7 +7,7 @@ import {
   costRows,
   costShare,
   knownCost,
-  promptCosts,
+  promptCoverage,
   sortByCost,
   taskRows,
   topSessions,
@@ -93,49 +92,10 @@ test('top sessions drop calls without a session and keep the limit', () => {
   expect(topSessions(rows, 2).map((r) => r.group)).toEqual(['s2', 's3'])
 })
 
-test('cost per prompt groups the calls by prompt id', () => {
-  const { prompts, withoutPrompt } = promptCosts(
-    [
-      call('1', { prompt_id: 'p1', session_key: 's1', cost_micro_usd: 100 }),
-      call('2', { prompt_id: 'p1', session_key: 's1', cost_micro_usd: 200, ts: '2026-11-01T09:00:00Z' }),
-      call('3', { prompt_id: 'p2', session_key: 's2', cost_micro_usd: 1_000 }),
-      call('4', { prompt_id: '', cost_micro_usd: 5 }),
-      call('5', { cost_micro_usd: 5 }),
-    ],
-    new Set(),
-  )
-  expect(withoutPrompt).toBe(2)
-  expect(prompts.map((p) => p.promptId)).toEqual(['p2', 'p1'])
-  expect(prompts[1]).toMatchObject({ calls: 2, cost: 300, firstTs: '2026-11-01T09:00:00Z', sessionKey: 's1' })
-})
-
-test('a prompt with only unpriced calls has an unknown cost and sorts last', () => {
-  const { prompts } = promptCosts(
-    [
-      call('1', { prompt_id: 'unpriced', cost_micro_usd: null }),
-      call('2', { prompt_id: 'unpriced', cost_micro_usd: null }),
-      call('3', { prompt_id: 'mixed', cost_micro_usd: null }),
-      call('4', { prompt_id: 'mixed', cost_micro_usd: 50 }),
-    ],
-    new Set(),
-  )
-  expect(prompts.map((p) => [p.promptId, p.cost, p.unpriced])).toEqual([
-    ['mixed', 50, 1],
-    ['unpriced', null, 2],
-  ])
-})
-
-test('a prompt is API-equivalent when a priced call went through a client_passthrough provider', () => {
-  const { prompts } = promptCosts(
-    [
-      call('1', { prompt_id: 'plan', provider: 'anthropic-plan', cost_micro_usd: 10 }),
-      call('2', { prompt_id: 'plan-unpriced', provider: 'anthropic-plan', cost_micro_usd: null }),
-      call('3', { prompt_id: 'api', provider: 'anthropic', cost_micro_usd: 10 }),
-    ],
-    new Set(['anthropic-plan']),
-  )
-  const by = Object.fromEntries(prompts.map((p) => [p.promptId, p.apiEquivalent]))
-  expect(by).toEqual({ plan: true, 'plan-unpriced': false, api: false })
+test('the prompt table says so when the range has more prompts than it lists', () => {
+  expect(promptCoverage(25, 25)).toBeUndefined()
+  expect(promptCoverage(3, 3)).toBeUndefined()
+  expect(promptCoverage(25, 1_030)).toBe('Showing the 25 most costly of 1,030 prompts; 1,005 more are not shown.')
 })
 
 test('the grain follows the length of the window and never gives too many points', () => {

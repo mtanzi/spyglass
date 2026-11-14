@@ -159,6 +159,34 @@ type UsageBucket struct {
 	LatencyP99 time.Duration
 }
 
+// PromptCost is the cost of the calls that share one prompt id. Unknown is not
+// zero: Cost sums the priced calls only and is nil when no call is priced, and
+// UnpricedCalls counts the calls it leaves out.
+type PromptCost struct {
+	PromptID      string
+	SessionKey    string    // of the first call of the prompt; empty when it has none
+	FirstTS       time.Time // UTC, the oldest call of the prompt
+	Calls         int
+	Cost          *MicroUSD
+	UnpricedCalls int
+	TokensIn      int64 // every input column; zero means not known
+	// APIEquivalent is true when a priced call went through a
+	// client_passthrough provider: part of the cost is what the API would
+	// bill, not what the person pays.
+	APIEquivalent bool
+}
+
+// PromptCosts is the answer to a PromptCostQuery. Prompts are the Limit most
+// costly ones: known cost first, highest first, then unknown cost, ties by
+// calls (most first) and prompt id. PromptCount is every prompt of the
+// matching calls, so a reader can say how many the list leaves out.
+// CallsWithoutPrompt counts the matching calls that carry no prompt id.
+type PromptCosts struct {
+	Prompts            []PromptCost
+	PromptCount        int
+	CallsWithoutPrompt int
+}
+
 // CacheHitRatio is cache_read over all input columns: input_uncached,
 // cache_read, cache_write_5m and cache_write_1h. ok is false when the bucket
 // has no input tokens, so the ratio is not known.

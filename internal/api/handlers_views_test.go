@@ -21,6 +21,7 @@ type viewSpy struct {
 	sessionFilter core.SessionFilter
 	toolFilter    core.ToolCallFilter
 	usageQuery    core.UsageQuery
+	promptQuery   core.PromptCostQuery
 	page          core.Page
 	sessionKey    string
 	calls         int
@@ -282,6 +283,51 @@ func TestGetUsage(t *testing.T) {
 	}
 }
 
+func (s *viewSpy) PromptCosts(ctx context.Context, q core.PromptCostQuery) (core.PromptCosts, error) {
+	s.promptQuery = q
+	s.calls++
+	return s.Reader.PromptCosts(ctx, q)
+}
+
+func TestGetPromptCosts(t *testing.T) {
+	cost := core.MicroUSD(1_500)
+	rd := &viewSpy{Reader: &coretest.Reader{Prompts: core.PromptCosts{
+		Prompts: []core.PromptCost{
+			{PromptID: "p1", SessionKey: "s1", FirstTS: testNow, Calls: 3, Cost: &cost, UnpricedCalls: 1, TokensIn: 40, APIEquivalent: true},
+			{PromptID: "p2", FirstTS: testNow, Calls: 1, UnpricedCalls: 1},
+		},
+		PromptCount: 7, CallsWithoutPrompt: 4,
+	}}}
+	rr := get(newTestMux(t, rd, config.View{}), "/admin/usage/prompts?limit=2&status=529")
+	if rr.Code != 200 {
+		t.Fatalf("status = %d\n%s", rr.Code, rr.Body)
+	}
+	body := decode[promptCostsJSON](t, rr)
+	if body.PromptCount != 7 || body.CallsWithoutPrompt != 4 || len(body.Prompts) != 2 {
+		t.Fatalf("body = %+v", body)
+	}
+	if p := body.Prompts[0]; p.PromptID != "p1" || p.SessionKey != "s1" || p.Calls != 3 || p.CostMicroUSD == nil || *p.CostMicroUSD != 1500 ||
+		p.UnpricedCalls != 1 || p.TokensIn != 40 || !p.APIEquivalent {
+		t.Errorf("prompt 0 = %+v", p)
+	}
+	if p := body.Prompts[1]; p.CostMicroUSD != nil || p.APIEquivalent {
+		t.Errorf("an all-unpriced prompt has a null cost, not zero: %+v", p)
+	}
+	if !strings.Contains(rr.Body.String(), `"cost_micro_usd":null`) {
+		t.Errorf("unknown cost must be null on the wire: %s", rr.Body)
+	}
+	q := rd.promptQuery
+	if q.Limit != 2 || len(q.Filter.Statuses) != 1 || !q.Filter.To.Equal(testNow) {
+		t.Errorf("query = %+v", q)
+	}
+
+	rd = &viewSpy{Reader: &coretest.Reader{}}
+	rr = get(newTestMux(t, rd, config.View{}), "/admin/usage/prompts")
+	if !strings.Contains(rr.Body.String(), `"prompts":[]`) || rd.promptQuery.Limit != DefaultLimit {
+		t.Errorf("defaults: %s, limit %d", rr.Body, rd.promptQuery.Limit)
+	}
+}
+
 func TestViewEndpointErrors(t *testing.T) {
 	boom := errors.New("pq: connection to 10.0.0.5 refused")
 	tests := []struct {
@@ -311,6 +357,12 @@ func TestViewEndpointErrors(t *testing.T) {
 		{"usage bad grain", &coretest.Reader{}, "/admin/usage?grain=week", 400, ErrInvalidParameter, "grain"},
 		{"usage store failure", &coretest.Reader{Err: boom}, "/admin/usage", 500, ErrInternal, ""},
 		{"usage no reader", nil, "/admin/usage", 503, ErrInternal, ""},
+		{"prompt costs bad limit", &coretest.Reader{}, "/admin/usage/prompts?limit=0", 400, ErrInvalidParameter, "limit"},
+		{"prompt costs limit above the maximum", &coretest.Reader{}, "/admin/usage/prompts?limit=501", 400, ErrInvalidParameter, "limit"},
+		{"prompt costs rejects a cursor", &coretest.Reader{}, "/admin/usage/prompts?cursor=x", 400, ErrInvalidParameter, "cursor"},
+		{"prompt costs rejects group_by", &coretest.Reader{}, "/admin/usage/prompts?group_by=key", 400, ErrInvalidParameter, "group_by"},
+		{"prompt costs store failure", &coretest.Reader{Err: boom}, "/admin/usage/prompts", 500, ErrInternal, ""},
+		{"prompt costs no reader", nil, "/admin/usage/prompts", 503, ErrInternal, ""},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

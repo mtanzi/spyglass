@@ -202,6 +202,9 @@ func WithPrevToolDurations(raw string) CallOpt {
 // WithAgentType sets the agent type only.
 func WithAgentType(typ string) CallOpt { return func(c *core.CallRecord) { c.AgentType = typ } }
 
+// WithAuthMode sets the auth mode of the provider: proxy_key or client_passthrough.
+func WithAuthMode(mode string) CallOpt { return func(c *core.CallRecord) { c.AuthMode = mode } }
+
 // WithPrompt sets the prompt id.
 func WithPrompt(id string) CallOpt { return func(c *core.CallRecord) { c.PromptID = id } }
 

@@ -5,8 +5,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { App } from '../App'
 import { createQueryClient } from '../queryClient'
 import { createAppRouter } from '../router'
-import { call } from './callLogRows.test'
-import type { CallSummary } from './callLogRows'
+import type { PromptCost } from './costData'
 import type { UsageBucket } from './dashboardData'
 import { bucket } from './dashboardFixtures.test-util'
 
@@ -24,8 +23,10 @@ const NOW = '2026-11-01T12:00:00Z'
 interface Fixture {
   overall: UsageBucket[]
   byGroup: Record<string, UsageBucket[]>
-  calls: CallSummary[]
-  nextCursor: string | null
+  prompts: PromptCost[]
+  /** Every prompt of the range, which can be more than the table lists. */
+  promptCount: number
+  callsWithoutPrompt: number
   authMode: string
   /** The usage per group of the calls through the provider named in the query. */
   byProvider: Record<string, UsageBucket[]>
@@ -34,6 +35,20 @@ interface Fixture {
 }
 
 const usage = { input_uncached: 60, cache_read: 40, cache_write_5m: 0, cache_write_1h: 0, output: 20, reasoning: 0 }
+
+function prompt(over: Partial<PromptCost>): PromptCost {
+  return {
+    prompt_id: 'p',
+    session_key: 's',
+    first_ts: '2026-11-01T09:00:00Z',
+    calls: 1,
+    cost_micro_usd: 1,
+    unpriced_calls: 0,
+    tokens_in: 0,
+    api_equivalent: false,
+    ...over,
+  }
+}
 
 const defaults: Fixture = {
   overall: [
@@ -58,13 +73,12 @@ const defaults: Fixture = {
     ],
     provider: [bucket({ group: 'anthropic', cost_micro_usd: 6_000_000 })],
   },
-  calls: [
-    call('c1', { prompt_id: 'prompt-aaaaaaaa-1', session_key: 's-big', cost_micro_usd: 900_000 }),
-    call('c2', { prompt_id: 'prompt-aaaaaaaa-1', session_key: 's-big', cost_micro_usd: 100_000 }),
-    call('c3', { prompt_id: 'prompt-bbbbbbbb-2', session_key: 's-small', cost_micro_usd: null }),
-    call('c4', { prompt_id: '', cost_micro_usd: 1 }),
+  prompts: [
+    prompt({ prompt_id: 'prompt-aaaaaaaa-1', session_key: 's-big', calls: 2, cost_micro_usd: 1_000_000 }),
+    prompt({ prompt_id: 'prompt-bbbbbbbb-2', session_key: 's-small', calls: 1, cost_micro_usd: null, unpriced_calls: 1 }),
   ],
-  nextCursor: null,
+  promptCount: 2,
+  callsWithoutPrompt: 1,
   authMode: 'proxy_key',
   byProvider: {},
 }
@@ -78,6 +92,9 @@ function stubApi(over: Partial<Fixture> = {}) {
       urls.push(url)
       const q = new URL(url, 'http://x').searchParams
       const json = (body: unknown) => new Response(JSON.stringify(body))
+      if (url.startsWith('/admin/usage/prompts')) {
+        return json({ prompts: f.prompts, prompt_count: f.promptCount, calls_without_prompt: f.callsWithoutPrompt })
+      }
       if (url.startsWith('/admin/usage')) {
         await f.gate
         const group = q.get('group_by')
@@ -92,9 +109,6 @@ function stubApi(over: Partial<Fixture> = {}) {
           pricing: [],
           keys: [],
         })
-      }
-      if (url.startsWith('/admin/calls')) {
-        return json({ calls: f.calls, next_cursor: f.nextCursor, count: f.calls.length, count_capped: false })
       }
       return new Response('{}', { status: 404 })
     }),
@@ -199,7 +213,7 @@ test('top sessions rank by cost and leave out calls without a session', async ()
   expect(within(rows[0]).getByRole('link', { name: 's-big' })).toBeTruthy()
 })
 
-test('cost per prompt groups calls; an unpriced prompt is unknown', async () => {
+test('cost per prompt lists the prompts of the server; an unpriced prompt is unknown', async () => {
   stubApi()
   await renderAt('/ui/cost')
   const table = await within(panel('Cost per prompt')).findByRole('table', { name: 'Cost per prompt' })
@@ -211,10 +225,19 @@ test('cost per prompt groups calls; an unpriced prompt is unknown', async () => 
   expect(within(panel('Cost per prompt')).getByText(/1 calls have no prompt id/)).toBeTruthy()
 })
 
-test('cost per prompt says when it reads only the newest calls', async () => {
-  stubApi({ nextCursor: 'more' })
+test('cost per prompt asks the server for the whole range and says when it lists only the most costly prompts', async () => {
+  const urls = stubApi({ promptCount: 1_030 })
   await renderAt('/ui/cost')
-  await within(panel('Cost per prompt')).findByText(/from the newest 4 of 4 calls/)
+  await within(panel('Cost per prompt')).findByText('Showing the 2 most costly of 1,030 prompts; 1,028 more are not shown.')
+  expect(urls.some((u) => u.startsWith('/admin/usage/prompts') && u.includes('limit=25'))).toBe(true)
+  expect(urls.some((u) => u.startsWith('/admin/calls'))).toBe(false)
+})
+
+test('cost per prompt claims no limit when the table lists every prompt', async () => {
+  stubApi()
+  await renderAt('/ui/cost')
+  await within(panel('Cost per prompt')).findByRole('table')
+  expect(within(panel('Cost per prompt')).queryByText(/most costly/)).toBeNull()
 })
 
 test('the cache hit ratio has a chart and a table fallback', async () => {
@@ -269,7 +292,7 @@ test('when no price matched any call the chart says cost is unknown', async () =
 })
 
 test('an empty range says so instead of drawing empty charts', async () => {
-  stubApi({ overall: [], byGroup: { model: [], key: [], session: [] }, calls: [] })
+  stubApi({ overall: [], byGroup: { model: [], key: [], session: [] }, prompts: [], promptCount: 0, callsWithoutPrompt: 0 })
   await renderAt('/ui/cost')
   await within(panel('Cost over time by model')).findByText(/No calls in the last 24h/)
   await within(panel('Cache hit ratio over time')).findByText(/no cache hit ratio/)
@@ -296,7 +319,7 @@ test('without a passthrough provider nothing is API-equivalent', async () => {
 test('a passthrough prompt is labelled API-equivalent', async () => {
   stubApi({
     authMode: 'client_passthrough',
-    calls: [call('c1', { prompt_id: 'p-plan', provider: 'anthropic', session_key: 's', cost_micro_usd: 250_000 })],
+    prompts: [prompt({ prompt_id: 'p-plan', session_key: 's', cost_micro_usd: 250_000, api_equivalent: true })],
   })
   await renderAt('/ui/cost')
   const table = await within(panel('Cost per prompt')).findByRole('table')
@@ -331,7 +354,7 @@ test('filters in the URL reach the API and can be cleared', async () => {
   const urls = stubApi()
   await renderAt('/ui/cost?key=fm%3Atask-a&range=7d')
   await waitFor(() => expect(urls.some((u) => u.startsWith('/admin/usage') && u.includes('key=fm%3Atask-a'))).toBe(true))
-  expect(urls.some((u) => u.startsWith('/admin/calls') && u.includes('key=fm%3Atask-a'))).toBe(true)
+  expect(urls.some((u) => u.startsWith('/admin/usage/prompts') && u.includes('key=fm%3Atask-a'))).toBe(true)
   expect(screen.getByLabelText('Active filters').textContent).toContain('key = fm:task-a')
   expect(screen.getByRole('link', { name: 'Clear filters' })).toBeTruthy()
 })

@@ -214,6 +214,25 @@ func (q UsageQuery) Validate() error {
 	return nil
 }
 
+// PromptCostQuery asks for the cost of each prompt over the calls matching the
+// filter. Limit bounds the prompts returned, highest cost first; the totals in
+// the result still cover every matching call.
+type PromptCostQuery struct {
+	Filter CallFilter
+	Limit  int
+}
+
+// Validate checks the time range and that Limit is at least one.
+func (q PromptCostQuery) Validate() error {
+	if err := q.Filter.Validate(); err != nil {
+		return err
+	}
+	if q.Limit < 1 {
+		return ErrInvalidFilter
+	}
+	return nil
+}
+
 // Page is keyset pagination on (ts, id), newest first, forward only.
 type Page struct {
 	After *Cursor // nil for the first page; items strictly older than the cursor

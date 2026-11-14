@@ -1,11 +1,10 @@
+import type { ResponseOf } from '../api/client'
 import type { CostGroup } from '../search/routes'
 import { inputTokens, slotCount } from './dashboardData'
 import type { Grain, UsageBucket, Window } from './dashboardData'
-import type { CallSummary } from './callLogRows'
-import { tokensIn } from './callLogRows'
 
 // Pure helpers of the cost and cache view (ADR 0035). Numbers come from
-// GET /admin/usage and GET /admin/calls. Unknown is not zero: a cost the API
+// GET /admin/usage and GET /admin/usage/prompts. Unknown is not zero: a cost the API
 // does not give is null and shows as "unknown".
 
 export const GROUP_LABELS: Record<CostGroup, string> = {
@@ -119,73 +118,18 @@ export function topSessions(rows: CostRow[], limit: number): CostRow[] {
   return sortByCost(rows.filter((r) => r.group !== '')).slice(0, limit)
 }
 
-export interface PromptRow {
-  promptId: string
-  sessionKey: string
-  firstTs: string
-  calls: number
-  /** Known cost; null when every call of the prompt is unpriced. */
-  cost: number | null
-  unpriced: number
-  tokensIn: number
-  /** At least one call went through a client_passthrough provider: the cost is API-equivalent. */
-  apiEquivalent: boolean
-}
-
-export interface PromptCosts {
-  prompts: PromptRow[]
-  /** Calls that carry no prompt id; they belong to no prompt. */
-  withoutPrompt: number
-}
+/** One prompt of GET /admin/usage/prompts: its calls, known cost and unpriced count. */
+export type PromptCost = ResponseOf<'/admin/usage/prompts'>['prompts'][number]
 
 /**
- * Cost per prompt from the calls of a page of GET /admin/calls: the calls that
- * share a prompt id, highest known cost first. The usage API cannot group by
- * prompt, so this covers the calls given and no more.
+ * The line under the prompt table. The server lists the most costly prompts
+ * only, so when the range has more, say how many are not shown instead of
+ * implying the table covers the range.
  */
-export function promptCosts(calls: CallSummary[], passthrough: Set<string>): PromptCosts {
-  const by = new Map<string, PromptRow & { known: number }>()
-  let withoutPrompt = 0
-  for (const c of calls) {
-    const id = c.prompt_id ?? ''
-    if (id === '') {
-      withoutPrompt++
-      continue
-    }
-    const row = by.get(id) ?? {
-      promptId: id,
-      sessionKey: c.session_key,
-      firstTs: c.ts,
-      calls: 0,
-      cost: null,
-      known: 0,
-      unpriced: 0,
-      tokensIn: 0,
-      apiEquivalent: false,
-    }
-    row.calls++
-    if (c.cost_micro_usd === null) row.unpriced++
-    else row.known += c.cost_micro_usd
-    row.tokensIn += tokensIn(c)
-    if (c.ts < row.firstTs) row.firstTs = c.ts
-    if (c.cost_micro_usd !== null && passthrough.has(c.provider)) row.apiEquivalent = true
-    by.set(id, row)
-  }
-  const prompts = [...by.values()].map(({ known, ...row }) => ({
-    ...row,
-    // Every call unpriced: the cost is unknown, not zero.
-    cost: row.unpriced === row.calls ? null : known,
-  }))
-  return {
-    prompts: [...prompts].sort(
-      (a, b) =>
-        (a.cost === null ? 1 : 0) - (b.cost === null ? 1 : 0) ||
-        (b.cost ?? 0) - (a.cost ?? 0) ||
-        b.calls - a.calls ||
-        a.promptId.localeCompare(b.promptId),
-    ),
-    withoutPrompt,
-  }
+export function promptCoverage(shown: number, total: number): string | undefined {
+  if (total <= shown) return undefined
+  const n = (v: number) => v.toLocaleString('en-US')
+  return `Showing the ${n(shown)} most costly of ${n(total)} prompts; ${n(total - shown)} more are not shown.`
 }
 
 /** One row of a chart's table fallback: the interval and one value per series. */

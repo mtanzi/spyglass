@@ -187,6 +187,12 @@ func TestResponsesConformToOpenAPI(t *testing.T) {
 		{"/admin/usage?group_by=model&grain=day&status=529&tool=Bash", "/admin/usage", 200},
 		{"/admin/usage?group_by=nope", "/admin/usage", 400},
 		{"/admin/usage?grain=week", "/admin/usage", 400},
+		{"/admin/usage/prompts", "/admin/usage/prompts", 200},
+		{"/admin/usage/prompts?limit=5&model=a&status=529&session=s", "/admin/usage/prompts", 200},
+		{"/admin/usage/prompts?limit=0", "/admin/usage/prompts", 400},
+		{"/admin/usage/prompts?limit=501", "/admin/usage/prompts", 400},
+		{"/admin/usage/prompts?cursor=zzz", "/admin/usage/prompts", 400},
+		{"/admin/usage/prompts?group_by=model", "/admin/usage/prompts", 400},
 		{"/admin/calls?nope=1", "/admin/calls", 400},
 		{"/admin/calls?cursor=zzz", "/admin/calls", 400},
 		{"/admin/calls/not-an-id", "/admin/calls/{id}", 400},
@@ -211,6 +217,7 @@ func TestResponsesConformToOpenAPI(t *testing.T) {
 		{"/admin/tool-calls", "/admin/tool-calls"},
 		{"/admin/tool-calls/summary", "/admin/tool-calls/summary"},
 		{"/admin/usage", "/admin/usage"},
+		{"/admin/usage/prompts", "/admin/usage/prompts"},
 	} {
 		rr := httptest.NewRecorder()
 		failing.ServeHTTP(rr, httptest.NewRequest("GET", sm.target, nil))
@@ -230,6 +237,7 @@ func TestSpecQueryParametersMatchParser(t *testing.T) {
 		"/admin/tool-calls":         knownToolCallParams,
 		"/admin/tool-calls/summary": knownToolSummaryParams,
 		"/admin/usage":              knownUsageParams,
+		"/admin/usage/prompts":      knownPromptCostParams,
 		"/admin/stream":             knownStreamParams,
 	} {
 		op := s.doc["paths"].(map[string]any)[path].(map[string]any)["get"].(map[string]any)
@@ -303,6 +311,7 @@ func TestSpecRoutesMatchMux(t *testing.T) {
 	want := []string{
 		"/admin/calls", "/admin/calls/{id}", "/admin/config", "/admin/openapi.json", "/admin/sessions",
 		"/admin/sessions/{key}", "/admin/stream", "/admin/tool-calls", "/admin/tool-calls/summary", "/admin/usage",
+		"/admin/usage/prompts",
 	}
 	for _, p := range want {
 		if _, ok := paths[p]; !ok {
