@@ -59,6 +59,36 @@ var knownUsageParams = func() map[string]bool {
 	return m
 }()
 
+// The prompt-cost query takes the call-log filter and a limit, and no cursor.
+var knownPromptCostParams = func() map[string]bool {
+	m := map[string]bool{}
+	for k := range knownCallParams {
+		if k != "cursor" {
+			m[k] = true
+		}
+	}
+	return m
+}()
+
+// parsePromptCostParams maps a query string onto a core.PromptCostQuery. limit
+// is optional, from 1 to MaxLimit, and defaults to DefaultLimit.
+func parsePromptCostParams(q url.Values, now time.Time) (core.PromptCostQuery, *apiError) {
+	var pq core.PromptCostQuery
+	var err *apiError
+	if pq.Filter, err = parseCallFilter(q, now, knownPromptCostParams); err != nil {
+		return pq, err
+	}
+	limit, err := intParam(q, "limit", 1, MaxLimit)
+	if err != nil {
+		return pq, err
+	}
+	pq.Limit = int(limit)
+	if _, set := q["limit"]; !set {
+		pq.Limit = DefaultLimit
+	}
+	return pq, nil
+}
+
 // sessionParams is a parsed GET /admin/sessions query.
 type sessionParams struct {
 	Filter core.SessionFilter

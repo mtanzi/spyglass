@@ -260,6 +260,7 @@ Served on the admin listener under `/admin/`, implemented by the `api` package. 
 | `GET /admin/tool-calls` | Tool-call explorer list; `?session=` filters to one session | G6 |
 | `GET /admin/tool-calls/summary` | Per-tool count, error rate, p50 and p95 duration, total time, split by agent type | G6 |
 | `GET /admin/usage` | Time series computed from raw rows, `group_by` and `grain` | G7 |
+| `GET /admin/usage/prompts` | Cost per prompt over every matching call, most costly first, with `limit` ([ADR 0057](../adrs/0057-cost-per-prompt-endpoint.md)) | |
 | `GET /admin/stream` | SSE live tail of finished calls, with the call-log filters | G13 |
 | `GET /admin/config` | Read-only view of providers and pricing from the config file, and the key names with their `disabled` flag (never a hash) | |
 

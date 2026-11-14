@@ -322,6 +322,49 @@ paths:
           $ref: "#/components/responses/Error"
         "500":
           $ref: "#/components/responses/Error"
+  /admin/usage/prompts:
+    get:
+      operationId: getPromptCosts
+      summary: Cost per prompt
+      description: |
+        Cost of the calls that share a prompt id, computed over every call that
+        matches the call-log filters, not over one page of calls. A call with no
+        prompt id belongs to no prompt and is counted in `calls_without_prompt`.
+        At most `limit` prompts are returned, known cost first, highest first,
+        then unknown cost; `prompt_count` is the number of prompts there are, so
+        a client can say when the list is shorter than the whole.
+      parameters:
+        - $ref: "#/components/parameters/From"
+        - $ref: "#/components/parameters/To"
+        - $ref: "#/components/parameters/Key"
+        - $ref: "#/components/parameters/Client"
+        - $ref: "#/components/parameters/Provider"
+        - $ref: "#/components/parameters/Model"
+        - $ref: "#/components/parameters/Endpoint"
+        - $ref: "#/components/parameters/Streamed"
+        - $ref: "#/components/parameters/Status"
+        - $ref: "#/components/parameters/ErrorClass"
+        - $ref: "#/components/parameters/Session"
+        - $ref: "#/components/parameters/Agent"
+        - $ref: "#/components/parameters/AgentType"
+        - $ref: "#/components/parameters/Prompt"
+        - $ref: "#/components/parameters/RequestClass"
+        - $ref: "#/components/parameters/Tool"
+        - $ref: "#/components/parameters/ToolError"
+        - $ref: "#/components/parameters/LatencyMsGte"
+        - $ref: "#/components/parameters/CostMicroUsdGte"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: The prompts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptCosts"
+        "400":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
   /admin/config:
     get:
       operationId: getConfig
@@ -958,6 +1001,33 @@ components:
           type: array
           description: Ordered by start, then group.
           items: { $ref: "#/components/schemas/UsageBucket" }
+    PromptCost:
+      type: object
+      description: |
+        The calls that share one prompt id. Unknown is not zero: the cost sums the
+        priced calls, and `unpriced_calls` counts the calls it leaves out.
+      required: [prompt_id, session_key, calls, cost_micro_usd, unpriced_calls, api_equivalent]
+      properties:
+        prompt_id: { type: string }
+        session_key: { type: string, description: "Session of the first call of the prompt. Empty when that call has none." }
+        calls: { type: integer }
+        cost_micro_usd:
+          type: [integer, "null"]
+          description: Sum over the calls with a known cost. Null when no call of the prompt is priced.
+        unpriced_calls: { type: integer, description: "Calls with no cost, left out of cost_micro_usd." }
+        api_equivalent:
+          type: boolean
+          description: A priced call went through a client_passthrough provider, so part of the cost is what the API would bill, not what the person pays.
+    PromptCosts:
+      type: object
+      required: [prompts, prompt_count, calls_without_prompt]
+      properties:
+        prompts:
+          type: array
+          description: At most `limit` prompts. Known cost first, highest first, then unknown cost; ties by calls, then prompt id.
+          items: { $ref: "#/components/schemas/PromptCost" }
+        prompt_count: { type: integer, description: "Every prompt of the matching calls, including those past `limit`." }
+        calls_without_prompt: { type: integer, description: "Matching calls that carry no prompt id." }
     ConfigView:
       type: object
       required: [providers, pricing, keys]

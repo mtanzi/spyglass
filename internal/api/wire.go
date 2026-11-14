@@ -318,6 +318,21 @@ type usageBucketJSON struct {
 	CacheHitRatio  *float64  `json:"cache_hit_ratio"`
 }
 
+type promptCostJSON struct {
+	PromptID      string `json:"prompt_id"`
+	SessionKey    string `json:"session_key"`
+	Calls         int    `json:"calls"`
+	CostMicroUSD  *int64 `json:"cost_micro_usd"`
+	UnpricedCalls int    `json:"unpriced_calls"`
+	APIEquivalent bool   `json:"api_equivalent"`
+}
+
+type promptCostsJSON struct {
+	Prompts            []promptCostJSON `json:"prompts"`
+	PromptCount        int              `json:"prompt_count"`
+	CallsWithoutPrompt int              `json:"calls_without_prompt"`
+}
+
 type usageSeriesJSON struct {
 	GroupBy *core.UsageGroup  `json:"group_by"`
 	Grain   core.Grain        `json:"grain"`

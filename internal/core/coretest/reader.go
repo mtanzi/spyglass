@@ -19,6 +19,7 @@ type Reader struct {
 	ToolCalls  []core.ToolCall
 	ToolStats  []core.ToolStat
 	Buckets    []core.UsageBucket
+	Prompts    core.PromptCosts
 	Next       *core.Cursor
 	Err        error
 }
@@ -69,4 +70,8 @@ func (r *Reader) ToolSummary(context.Context, core.ToolCallFilter) ([]core.ToolS
 
 func (r *Reader) Usage(context.Context, core.UsageQuery) ([]core.UsageBucket, error) {
 	return r.Buckets, r.Err
+}
+
+func (r *Reader) PromptCosts(context.Context, core.PromptCostQuery) (core.PromptCosts, error) {
+	return r.Prompts, r.Err
 }

@@ -23,7 +23,7 @@ import {
   costRows,
   costShare,
   knownCost,
-  promptCosts,
+  promptCoverage,
   sortByCost,
   taskRows,
   topSessions,
@@ -35,8 +35,6 @@ import { shortId } from './sessionTree'
 
 const TOP_SESSIONS = 10
 const PROMPT_ROWS = 25
-/** The calls endpoint allows 500 per page. The prompt table reads one page. */
-const PROMPT_SAMPLE = 500
 const GROUP_ROWS = 50
 
 type UsageOptions = ReturnType<typeof readQueryOptions<'/admin/usage'>>
@@ -242,7 +240,8 @@ export function CostView() {
   const apiEquivalentRows = useApiEquivalentGroups(passthroughBy(group))
   const apiEquivalentSessions = useApiEquivalentGroups(passthroughBy('session'))
   const apiEquivalentKeys = useApiEquivalentGroups(passthroughBy('key'))
-  const calls = useQuery(readQueryOptions('/admin/calls', { query: { ...filters, ...window, limit: PROMPT_SAMPLE } }))
+  // The server ranks every prompt of the range and returns the most costly ones.
+  const prompts = useQuery(readQueryOptions('/admin/usage/prompts', { query: { ...filters, ...window, limit: PROMPT_ROWS } }))
 
   const sum = useMemo(() => (overall.data ? totals(overall.data.buckets) : undefined), [overall.data])
   const stack = useMemo(() => stackByGroup(series.data?.buckets ?? [], slots, 'cost'), [series.data, slots])
@@ -255,7 +254,6 @@ export function CostView() {
       : apiEquivalent >= sum.cost
         ? 'API-equivalent'
         : `incl. ${formatCostMicroUsd(apiEquivalent)} API-equivalent`
-  const prompts = useMemo(() => promptCosts(calls.data?.calls ?? [], passthrough), [calls.data, passthrough])
 
   const setSearch = (patch: Partial<CostSearch>) => {
     if ('range' in patch || 'from' in patch || 'to' in patch) setNow(new Date())
@@ -474,19 +472,15 @@ export function CostView() {
         <Panel
           id="prompts-title"
           title="Cost per prompt"
-          note={
-            calls.data
-              ? calls.data.next_cursor !== null
-                ? `from the newest ${formatCount(calls.data.calls.length)} of ${formatCount(calls.data.count)}${calls.data.count_capped ? '+' : ''} calls`
-                : `from ${formatCount(calls.data.calls.length)} calls`
-              : undefined
-          }
+          note={prompts.data ? `${formatCount(prompts.data.prompts.length)} of ${formatCount(prompts.data.prompt_count)} prompts` : undefined}
         >
-          <QueryState query={calls} label="Loading calls">
+          <QueryState query={prompts} label="Loading prompts">
             {() => {
-              if (prompts.prompts.length === 0) {
+              const data = prompts.data
+              if (!data || data.prompts.length === 0) {
                 return <EmptyState>No calls with a prompt id in {rangeText}.</EmptyState>
               }
+              const coverage = promptCoverage(data.prompts.length, data.prompt_count)
               return (
                 <>
                   <div className="table-frame">
@@ -501,36 +495,34 @@ export function CostView() {
                         </tr>
                       </thead>
                       <tbody>
-                        {prompts.prompts.slice(0, PROMPT_ROWS).map((p) => (
-                          <tr key={p.promptId}>
+                        {data.prompts.map((p) => (
+                          <tr key={p.prompt_id}>
                             <th scope="row" className="cell-clip">
-                              <Link to="/calls" search={{ prompt: [p.promptId] }} className="mono" title={p.promptId}>
-                                {shortId(p.promptId)}
+                              <Link to="/calls" search={{ prompt: [p.prompt_id] }} className="mono" title={p.prompt_id}>
+                                {shortId(p.prompt_id)}
                               </Link>
                             </th>
                             <td className="cell-clip">
-                              {p.sessionKey === '' ? (
-                                <Tag text={formatText(p.sessionKey)} />
+                              {p.session_key === '' ? (
+                                <Tag text={formatText(p.session_key)} />
                               ) : (
-                                <Link to="/sessions/$key" params={{ key: p.sessionKey }} search={{}} className="mono">
-                                  {p.sessionKey}
+                                <Link to="/sessions/$key" params={{ key: p.session_key }} search={{}} className="mono">
+                                  {p.session_key}
                                 </Link>
                               )}
                             </td>
                             <td className="num">{formatCount(p.calls)}</td>
                             <td className="num">
-                              <CostCell cost={p.cost} unpriced={p.unpriced} apiEquivalent={p.apiEquivalent} />
+                              <CostCell cost={p.cost_micro_usd} unpriced={p.unpriced_calls} apiEquivalent={p.api_equivalent} />
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                  {prompts.prompts.length > PROMPT_ROWS && (
-                    <p className="notice">{`${formatCount(prompts.prompts.length - PROMPT_ROWS)} more prompts not shown`}</p>
-                  )}
-                  {prompts.withoutPrompt > 0 && (
-                    <p className="notice">{`${formatCount(prompts.withoutPrompt)} calls have no prompt id and are not counted here.`}</p>
+                  {coverage && <p className="notice">{coverage}</p>}
+                  {data.calls_without_prompt > 0 && (
+                    <p className="notice">{`${formatCount(data.calls_without_prompt)} calls have no prompt id and are not counted here.`}</p>
                   )}
                 </>
               )

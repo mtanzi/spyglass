@@ -151,3 +151,37 @@ func (h *handlers) getUsage(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, out)
 }
+
+// getPromptCosts serves GET /admin/usage/prompts.
+func (h *handlers) getPromptCosts(w http.ResponseWriter, r *http.Request) {
+	if h.calls == nil {
+		notWired(w)
+		return
+	}
+	q, perr := parsePromptCostParams(r.URL.Query(), h.now())
+	if perr != nil {
+		writeError(w, perr)
+		return
+	}
+	res, err := h.calls.PromptCosts(r.Context(), q)
+	if err != nil {
+		readError(w, r, err, "usage")
+		return
+	}
+	out := promptCostsJSON{
+		Prompts: make([]promptCostJSON, 0, len(res.Prompts)), PromptCount: res.PromptCount,
+		CallsWithoutPrompt: res.CallsWithoutPrompt,
+	}
+	for _, p := range res.Prompts {
+		jp := promptCostJSON{
+			PromptID: p.PromptID, SessionKey: p.SessionKey, Calls: p.Calls,
+			UnpricedCalls: p.UnpricedCalls, APIEquivalent: p.APIEquivalent,
+		}
+		if p.Cost != nil {
+			c := int64(*p.Cost)
+			jp.CostMicroUSD = &c
+		}
+		out.Prompts = append(out.Prompts, jp)
+	}
+	writeJSON(w, http.StatusOK, out)
+}

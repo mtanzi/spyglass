@@ -34,4 +34,6 @@ type CallReader interface {
 	ListToolCalls(ctx context.Context, f ToolCallFilter, p Page) ([]ToolCall, *Cursor, error)
 	ToolSummary(ctx context.Context, f ToolCallFilter) ([]ToolStat, error)
 	Usage(ctx context.Context, q UsageQuery) ([]UsageBucket, error) // tokens, cost, latency percentiles
+	// PromptCosts ranks the prompts of the matching calls by cost (ADR 0057).
+	PromptCosts(ctx context.Context, q PromptCostQuery) (PromptCosts, error)
 }
