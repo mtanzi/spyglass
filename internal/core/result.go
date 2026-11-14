@@ -164,12 +164,10 @@ type UsageBucket struct {
 // UnpricedCalls counts the calls it leaves out.
 type PromptCost struct {
 	PromptID      string
-	SessionKey    string    // of the first call of the prompt; empty when it has none
-	FirstTS       time.Time // UTC, the oldest call of the prompt
+	SessionKey    string // of the first call of the prompt; empty when it has none
 	Calls         int
 	Cost          *MicroUSD
 	UnpricedCalls int
-	TokensIn      int64 // every input column; zero means not known
 	// APIEquivalent is true when a priced call went through a
 	// client_passthrough provider: part of the cost is what the API would
 	// bill, not what the person pays.

@@ -174,8 +174,8 @@ func (h *handlers) getPromptCosts(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, p := range res.Prompts {
 		jp := promptCostJSON{
-			PromptID: p.PromptID, SessionKey: p.SessionKey, FirstTS: p.FirstTS.UTC(), Calls: p.Calls,
-			UnpricedCalls: p.UnpricedCalls, TokensIn: p.TokensIn, APIEquivalent: p.APIEquivalent,
+			PromptID: p.PromptID, SessionKey: p.SessionKey, Calls: p.Calls,
+			UnpricedCalls: p.UnpricedCalls, APIEquivalent: p.APIEquivalent,
 		}
 		if p.Cost != nil {
 			c := int64(*p.Cost)

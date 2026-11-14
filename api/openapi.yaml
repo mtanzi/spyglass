@@ -1006,17 +1006,15 @@ components:
       description: |
         The calls that share one prompt id. Unknown is not zero: the cost sums the
         priced calls, and `unpriced_calls` counts the calls it leaves out.
-      required: [prompt_id, session_key, first_ts, calls, cost_micro_usd, unpriced_calls, tokens_in, api_equivalent]
+      required: [prompt_id, session_key, calls, cost_micro_usd, unpriced_calls, api_equivalent]
       properties:
         prompt_id: { type: string }
         session_key: { type: string, description: "Session of the first call of the prompt. Empty when that call has none." }
-        first_ts: { type: string, format: date-time, description: "Time of the first call of the prompt in the range." }
         calls: { type: integer }
         cost_micro_usd:
           type: [integer, "null"]
           description: Sum over the calls with a known cost. Null when no call of the prompt is priced.
         unpriced_calls: { type: integer, description: "Calls with no cost, left out of cost_micro_usd." }
-        tokens_in: { type: integer, description: "Every input column. Zero means not known." }
         api_equivalent:
           type: boolean
           description: A priced call went through a client_passthrough provider, so part of the cost is what the API would bill, not what the person pays.

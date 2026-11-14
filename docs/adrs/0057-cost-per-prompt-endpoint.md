@@ -12,14 +12,14 @@ The fix must give the same answer for any range, so the aggregate moves to the s
 
 Two shapes were considered:
 
-- **`group_by=prompt` on `GET /admin/usage`.** Rejected. The usage endpoint returns a time series: one bucket per group and time. A prompt table needs one row per prompt, and each row needs fields a bucket does not have: the session of the prompt, the time of its first call and an API-equivalent marker. Prompt ids are also unbounded in number, so a series with one bucket per prompt and time can be very large. The `group_by` whitelist is shared with the CLI and its tests.
+- **`group_by=prompt` on `GET /admin/usage`.** Rejected. The usage endpoint returns a time series: one bucket per group and time. A prompt table needs one row per prompt, and each row needs fields a bucket does not have: the session of the prompt and an API-equivalent marker. Prompt ids are also unbounded in number, so a series with one bucket per prompt and time can be very large. The `group_by` whitelist is shared with the CLI and its tests.
 - **A dedicated endpoint.** Chosen. It returns one row per prompt, ranked, with a limit.
 
 ## Decision
 
 - **`GET /admin/usage/prompts`** returns the cost of each prompt over every call that matches the call-log filters. It takes the same filter parameters as `GET /admin/calls` (`from`, `to`, `key`, `client`, `provider`, `model`, `endpoint`, `streamed`, `status`, `error_class`, `session`, `agent`, `agent_type`, `prompt`, `request_class`, `tool`, `tool_error`, `latency_ms_gte`, `cost_micro_usd_gte`) and `limit`. It takes no `cursor`, `group_by` or `grain`. `limit` is 1 to 500 and defaults to 50, as for the other lists.
 - **The response** has `prompts`, `prompt_count` and `calls_without_prompt`. `prompt_count` is the number of prompts in the range, including those past `limit`. `calls_without_prompt` is the number of matching calls whose prompt id is null or empty. Such a call belongs to no prompt.
-- **A prompt row** has `prompt_id`, `session_key` (the session of the prompt's first call, empty when it has none), `first_ts`, `calls`, `cost_micro_usd`, `unpriced_calls`, `tokens_in` and `api_equivalent`.
+- **A prompt row** has `prompt_id`, `session_key` (the session of the prompt's first call, empty when it has none), `calls`, `cost_micro_usd`, `unpriced_calls` and `api_equivalent`.
 - **Unknown is not zero** (ADR 0052), with the semantics of the usage buckets. `cost_micro_usd` sums the calls with a known cost only, `unpriced_calls` counts the calls it leaves out, and `cost_micro_usd` is null when no call of the prompt is priced. A priced call of cost 0 is known.
 - **`api_equivalent`** is true when at least one priced call of the prompt has `auth_mode = client_passthrough`. The calls table already records the auth mode of each call (ADR 0014, ADR 0047), so the server needs no provider list and the client no longer joins the config view to find it. An unpriced passthrough call sets nothing: it has no cost to mark.
 - **Order and bound.** Prompts with a known cost come first, highest first, then prompts with an unknown cost. Ties go to the prompt with more calls, then to the lower prompt id. The server returns the first `limit` prompts of that order. The result is bounded in size, and `prompt_count` says how many were left out, so a client never has to imply full coverage.

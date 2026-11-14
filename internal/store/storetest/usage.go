@@ -208,7 +208,7 @@ var usageCases = []testCase{
 		}{{"big-c", 400 * 30}, {"big-b", 400 * 20}, {"big-a", 400 * 10}} {
 			p := got.Prompts[i]
 			if p.PromptID != want.id || p.Calls != 400 || p.Cost == nil || *p.Cost != want.cost || p.UnpricedCalls != 0 ||
-				p.TokensIn != 400*10 || p.SessionKey != "s-"+want.id || p.APIEquivalent {
+				p.SessionKey != "s-"+want.id || p.APIEquivalent {
 				t.Errorf("prompt %d = %+v, want %s with 400 calls and cost %d", i, p, want.id, want.cost)
 			}
 		}
@@ -318,11 +318,8 @@ var usageCases = []testCase{
 			t.Errorf("api_equivalent: api %v, unpriced %v, own %v; want true, false, false",
 				by["api"].APIEquivalent, by["unpriced"].APIEquivalent, by["own"].APIEquivalent)
 		}
-		if by["api"].SessionKey != "first" || by["api"].FirstTS.IsZero() || by["api"].FirstTS.Location() != time.UTC {
-			t.Errorf("api = %+v, want the session of its first call and a UTC first_ts", by["api"])
-		}
-		if !by["api"].FirstTS.Before(by["own"].FirstTS) {
-			t.Errorf("first_ts of api %v is not before own %v", by["api"].FirstTS, by["own"].FirstTS)
+		if by["api"].SessionKey != "first" {
+			t.Errorf("api = %+v, want the session of its first call", by["api"])
 		}
 	}},
 	{"prompt_costs_reject_a_bad_query", func(t *testing.T, e *env) {

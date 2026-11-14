@@ -293,8 +293,8 @@ func TestGetPromptCosts(t *testing.T) {
 	cost := core.MicroUSD(1_500)
 	rd := &viewSpy{Reader: &coretest.Reader{Prompts: core.PromptCosts{
 		Prompts: []core.PromptCost{
-			{PromptID: "p1", SessionKey: "s1", FirstTS: testNow, Calls: 3, Cost: &cost, UnpricedCalls: 1, TokensIn: 40, APIEquivalent: true},
-			{PromptID: "p2", FirstTS: testNow, Calls: 1, UnpricedCalls: 1},
+			{PromptID: "p1", SessionKey: "s1", Calls: 3, Cost: &cost, UnpricedCalls: 1, APIEquivalent: true},
+			{PromptID: "p2", Calls: 1, UnpricedCalls: 1},
 		},
 		PromptCount: 7, CallsWithoutPrompt: 4,
 	}}}
@@ -307,7 +307,7 @@ func TestGetPromptCosts(t *testing.T) {
 		t.Fatalf("body = %+v", body)
 	}
 	if p := body.Prompts[0]; p.PromptID != "p1" || p.SessionKey != "s1" || p.Calls != 3 || p.CostMicroUSD == nil || *p.CostMicroUSD != 1500 ||
-		p.UnpricedCalls != 1 || p.TokensIn != 40 || !p.APIEquivalent {
+		p.UnpricedCalls != 1 || !p.APIEquivalent {
 		t.Errorf("prompt 0 = %+v", p)
 	}
 	if p := body.Prompts[1]; p.CostMicroUSD != nil || p.APIEquivalent {

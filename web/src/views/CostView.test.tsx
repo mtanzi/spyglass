@@ -40,11 +40,9 @@ function prompt(over: Partial<PromptCost>): PromptCost {
   return {
     prompt_id: 'p',
     session_key: 's',
-    first_ts: '2026-11-01T09:00:00Z',
     calls: 1,
     cost_micro_usd: 1,
     unpriced_calls: 0,
-    tokens_in: 0,
     api_equivalent: false,
     ...over,
   }

@@ -319,14 +319,12 @@ type usageBucketJSON struct {
 }
 
 type promptCostJSON struct {
-	PromptID      string    `json:"prompt_id"`
-	SessionKey    string    `json:"session_key"`
-	FirstTS       time.Time `json:"first_ts"`
-	Calls         int       `json:"calls"`
-	CostMicroUSD  *int64    `json:"cost_micro_usd"`
-	UnpricedCalls int       `json:"unpriced_calls"`
-	TokensIn      int64     `json:"tokens_in"`
-	APIEquivalent bool      `json:"api_equivalent"`
+	PromptID      string `json:"prompt_id"`
+	SessionKey    string `json:"session_key"`
+	Calls         int    `json:"calls"`
+	CostMicroUSD  *int64 `json:"cost_micro_usd"`
+	UnpricedCalls int    `json:"unpriced_calls"`
+	APIEquivalent bool   `json:"api_equivalent"`
 }
 
 type promptCostsJSON struct {

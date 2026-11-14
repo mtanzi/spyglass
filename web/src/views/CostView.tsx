@@ -480,6 +480,7 @@ export function CostView() {
               if (!data || data.prompts.length === 0) {
                 return <EmptyState>No calls with a prompt id in {rangeText}.</EmptyState>
               }
+              const coverage = promptCoverage(data.prompts.length, data.prompt_count)
               return (
                 <>
                   <div className="table-frame">
@@ -519,9 +520,7 @@ export function CostView() {
                       </tbody>
                     </table>
                   </div>
-                  {promptCoverage(data.prompts.length, data.prompt_count) && (
-                    <p className="notice">{promptCoverage(data.prompts.length, data.prompt_count)}</p>
-                  )}
+                  {coverage && <p className="notice">{coverage}</p>}
                   {data.calls_without_prompt > 0 && (
                     <p className="notice">{`${formatCount(data.calls_without_prompt)} calls have no prompt id and are not counted here.`}</p>
                   )}

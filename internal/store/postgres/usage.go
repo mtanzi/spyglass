@@ -125,12 +125,11 @@ func (s *Store) PromptCosts(ctx context.Context, q core.PromptCostQuery) (core.P
 	limit := w.arg(q.Limit)
 	rows, err := tx.Query(ctx, `WITH p AS (
 		SELECT c.prompt_id, (array_agg(coalesce(c.session_key, '') ORDER BY c.ts, c.id))[1] AS session_key,
-			min(c.ts) AS first_ts, count(*) AS calls, (sum(c.cost_usd) * 1000000)::bigint AS cost,
+			count(*) AS calls, (sum(c.cost_usd) * 1000000)::bigint AS cost,
 			count(*) FILTER (WHERE c.cost_usd IS NULL) AS unpriced,
-			(sum(c.input_uncached) + sum(c.cache_read) + sum(c.cache_write_5m) + sum(c.cache_write_1h))::bigint AS tokens_in,
 			coalesce(bool_or(c.auth_mode = 'client_passthrough' AND c.cost_usd IS NOT NULL), false) AS api_equivalent
 		FROM calls c WHERE `+where+` AND coalesce(c.prompt_id, '') <> '' GROUP BY c.prompt_id)
-		SELECT prompt_id, session_key, first_ts, calls, cost, unpriced, tokens_in, api_equivalent, count(*) OVER ()
+		SELECT prompt_id, session_key, calls, cost, unpriced, api_equivalent, count(*) OVER ()
 		FROM p ORDER BY (cost IS NULL), cost DESC, calls DESC, prompt_id LIMIT `+limit, w.args...)
 	if err != nil {
 		return fail(err)
@@ -142,11 +141,9 @@ func (s *Store) PromptCosts(ctx context.Context, q core.PromptCostQuery) (core.P
 			p    core.PromptCost
 			cost *int64
 		)
-		if err := r.Scan(&p.PromptID, &p.SessionKey, &p.FirstTS, &p.Calls, &cost, &p.UnpricedCalls, &p.TokensIn,
-			&p.APIEquivalent, &total); err != nil {
+		if err := r.Scan(&p.PromptID, &p.SessionKey, &p.Calls, &cost, &p.UnpricedCalls, &p.APIEquivalent, &total); err != nil {
 			return p, err
 		}
-		p.FirstTS = p.FirstTS.UTC()
 		if cost != nil {
 			c := core.MicroUSD(*cost)
 			p.Cost = &c

@@ -594,18 +594,11 @@ export interface components {
             prompt_id: string;
             /** @description Session of the first call of the prompt. Empty when that call has none. */
             session_key: string;
-            /**
-             * Format: date-time
-             * @description Time of the first call of the prompt in the range.
-             */
-            first_ts: string;
             calls: number;
             /** @description Sum over the calls with a known cost. Null when no call of the prompt is priced. */
             cost_micro_usd: number | null;
             /** @description Calls with no cost, left out of cost_micro_usd. */
             unpriced_calls: number;
-            /** @description Every input column. Zero means not known. */
-            tokens_in: number;
             /** @description A priced call went through a client_passthrough provider, so part of the cost is what the API would bill, not what the person pays. */
             api_equivalent: boolean;
         };

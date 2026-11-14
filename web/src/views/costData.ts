@@ -1,4 +1,5 @@
 import type { ResponseOf } from '../api/client'
+import { formatCount } from '../lib/format'
 import type { CostGroup } from '../search/routes'
 import { inputTokens, slotCount } from './dashboardData'
 import type { Grain, UsageBucket, Window } from './dashboardData'
@@ -128,8 +129,7 @@ export type PromptCost = ResponseOf<'/admin/usage/prompts'>['prompts'][number]
  */
 export function promptCoverage(shown: number, total: number): string | undefined {
   if (total <= shown) return undefined
-  const n = (v: number) => v.toLocaleString('en-US')
-  return `Showing the ${n(shown)} most costly of ${n(total)} prompts; ${n(total - shown)} more are not shown.`
+  return `Showing the ${formatCount(shown)} most costly of ${formatCount(total)} prompts; ${formatCount(total - shown)} more are not shown.`
 }
 
 /** One row of a chart's table fallback: the interval and one value per series. */
