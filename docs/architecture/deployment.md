@@ -74,7 +74,7 @@ A load balancer in front of replicas must not buffer responses, must keep idle c
 
 ## Configuration
 
-One YAML file, path from `--config` or `SPYGLASS_CONFIG`. Every scalar key can be overridden by an environment variable named `SPYGLASS_<SECTION>_<KEY>` (the `LLM_PROXY_` names of release 0.1.0 are read when the `SPYGLASS_` name is unset, with a deprecation warning, until 0.3.0; [ADR 0054](../adrs/0054-rename-to-spyglass.md)); a secret reference is overridden by its parts (`SPYGLASS_DATABASE_URL_ENV` or `SPYGLASS_DATABASE_URL_FILE`), and the lists (`providers`, `keys`, `pricing`) are not overridable. Secrets are never inlined; they are referenced by environment variable or file.
+One YAML file, path from `--config` or `SPYGLASS_CONFIG`. Every scalar key can be overridden by an environment variable named `SPYGLASS_<SECTION>_<KEY>` (the `LLM_PROXY_` names of release 0.1.0 are read when the `SPYGLASS_` name is unset, with a deprecation warning, until 0.4.0; [ADR 0054](../adrs/0054-rename-to-spyglass.md)); a secret reference is overridden by its parts (`SPYGLASS_DATABASE_URL_ENV` or `SPYGLASS_DATABASE_URL_FILE`), and the lists (`providers`, `keys`, `pricing`) are not overridable. Secrets are never inlined; they are referenced by environment variable or file.
 
 ```yaml
 listen:

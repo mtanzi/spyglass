@@ -56,7 +56,7 @@ You need Docker, Go and Node 22 (to build the UI), `curl` and `openssl`. Run the
    ```
 
    - `ANTHROPIC_BASE_URL` sends Claude Code's requests to the proxy.
-   - `ANTHROPIC_CUSTOM_HEADERS` adds the virtual key as the `x-spyglass-key` header. In this mode your own login occupies `Authorization`, so the key travels in its own header. One `Name: Value` pair per line. (Release 0.1.0 named this header `x-llm-proxy-key`; that name still works until 0.3.0, with a warning in the proxy log.)
+   - `ANTHROPIC_CUSTOM_HEADERS` adds the virtual key as the `x-spyglass-key` header. In this mode your own login occupies `Authorization`, so the key travels in its own header. One `Name: Value` pair per line. (Release 0.1.0 named this header `x-llm-proxy-key`; that name still works until 0.4.0, with a warning in the proxy log.)
    - `CLAUDE_CODE_GATEWAY_HINT_HEADERS=1` makes Claude Code send the hint headers that the session tree and tool durations need. They are off by default behind a custom base URL.
 
    **Do not set `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_API_KEY` or `apiKeyHelper`.** Any of them replaces your saved login, and the proxy would reject an `lp_` value there with `401`.
