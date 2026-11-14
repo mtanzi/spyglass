@@ -50,7 +50,7 @@ To run Spyglass without a Go and Node toolchain, use a published release. Releas
 **Binary.** Each release has one binary per platform (`linux` or `darwin`, on `amd64` or `arm64`) and a `SHA256SUMS` file. The binary has the UI embedded and still needs a Postgres database.
 
 ```sh
-VERSION=<version>   # for example 0.2.0
+VERSION=<version>   # for example 0.3.0
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')   # linux or darwin
 ARCH=$(uname -m | sed -e 's/x86_64/amd64/' -e 's/aarch64/arm64/')
 BASE=https://github.com/mtanzi/spyglass/releases/download/v$VERSION

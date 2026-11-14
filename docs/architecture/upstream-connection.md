@@ -78,7 +78,7 @@ For the Anthropic family. "Forward" means unchanged, byte for byte.
 |---|---|
 | `Authorization`, `x-api-key` | `proxy_key`: consumed as the virtual key, removed, and replaced by `x-api-key: <provider key>`. `client_passthrough`: forwarded, never logged, never stored; a value that starts with `lp_` is rejected with `401` |
 | `x-spyglass-key` | `client_passthrough`: consumed as the virtual key, never forwarded. `proxy_key`: rejected with `401` |
-| `x-llm-proxy-key` | The deprecated name of `x-spyglass-key` from release 0.1.0, handled the same way until 0.3.0. When both are sent, `x-spyglass-key` is used and both are removed. The first request that uses it logs one warning per process, without the key ([ADR 0054](../adrs/0054-rename-to-spyglass.md)) |
+| `x-llm-proxy-key` | The deprecated name of `x-spyglass-key` from release 0.1.0, handled the same way until 0.4.0. When both are sent, `x-spyglass-key` is used and both are removed. The first request that uses it logs one warning per process, without the key ([ADR 0054](../adrs/0054-rename-to-spyglass.md)) |
 | `anthropic-version`, `anthropic-beta`, every other `anthropic-*` | Forwarded. Treated as open lists, never allowlisted, as Anthropic's guide requires |
 | `x-claude-code-*` | Read for correlation ([backend.md](backend.md#correlation)) and forwarded |
 | `traceparent` | Recorded and forwarded |

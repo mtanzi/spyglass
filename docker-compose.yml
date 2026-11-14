@@ -43,7 +43,7 @@ services:
     environment:
       SPYGLASS_CONFIG: /etc/spyglass/config.yaml
       # Read only by the 0.1.0 image, so a rollback to it finds the config.
-      # Remove with the LLM_PROXY_* aliases in 0.3.0 (ADR 0054).
+      # Remove with the LLM_PROXY_* aliases in 0.4.0 (ADR 0054).
       LLM_PROXY_CONFIG: /etc/spyglass/config.yaml
     volumes:
       - ${SPYGLASS_CONFIG_FILE:-${LLM_PROXY_CONFIG_FILE:-./config.yaml}}:/etc/spyglass/config.yaml:ro

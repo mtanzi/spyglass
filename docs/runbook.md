@@ -88,7 +88,7 @@ A reload that finds a duplicate name, a duplicate hash or a malformed hash is re
 
 1. Read the release notes for migrations that need attention.
 2. [Back up](#backups).
-3. Pin the new version, pull and restart. In the shell or the `.env` file, set `SPYGLASS_IMAGE` to the new release, for example `SPYGLASS_IMAGE=ghcr.io/mtanzi/spyglass:0.2.0` (the version has no `v`; there is no `latest` tag). Then:
+3. Pin the new version, pull and restart. In the shell or the `.env` file, set `SPYGLASS_IMAGE` to the new release, for example `SPYGLASS_IMAGE=ghcr.io/mtanzi/spyglass:0.3.0` (the version has no `v`; there is no `latest` tag). Then:
 
    ```sh
    docker compose pull spyglass
@@ -108,7 +108,7 @@ A config-only change (pricing, provider key, keys) needs `SIGHUP`, not an upgrad
 
 Release 0.1.0 was named `llm-proxy`. Later releases are named `spyglass` ([ADR 0054](adrs/0054-rename-to-spyglass.md)). Your data stays where it is: the compose project is still named `llm-proxy`, so the Postgres volume `llm-proxy_pgdata`, the database `llmproxy` and its user keep their names. Follow [Upgrade and roll back](#upgrade-and-roll-back) with these changes:
 
-1. **Environment.** Rename the variables in your shell or `.env` file: `LLM_PROXY_IMAGE` to `SPYGLASS_IMAGE`, and the same for `_CONFIG_FILE`, `_SECRETS_DIR` and `_PORT`. Rename any `LLM_PROXY_*` override the binary reads, for example `LLM_PROXY_DATABASE_URL` to `SPYGLASS_DATABASE_URL`. In the same step, update every secret reference in `config.yaml` that names a renamed variable, for example `url: { env: LLM_PROXY_DATABASE_URL }` to `url: { env: SPYGLASS_DATABASE_URL }`. The fallback only maps a `SPYGLASS_` name to its `LLM_PROXY_` name, so a config that still names `LLM_PROXY_DATABASE_URL` fails at start after you rename the export. The old names still work when the new name is unset, and `serve` logs a warning that names each old variable it read. They stop working in 0.3.0.
+1. **Environment.** Rename the variables in your shell or `.env` file: `LLM_PROXY_IMAGE` to `SPYGLASS_IMAGE`, and the same for `_CONFIG_FILE`, `_SECRETS_DIR` and `_PORT`. Rename any `LLM_PROXY_*` override the binary reads, for example `LLM_PROXY_DATABASE_URL` to `SPYGLASS_DATABASE_URL`. In the same step, update every secret reference in `config.yaml` that names a renamed variable, for example `url: { env: LLM_PROXY_DATABASE_URL }` to `url: { env: SPYGLASS_DATABASE_URL }`. The fallback only maps a `SPYGLASS_` name to its `LLM_PROXY_` name, so a config that still names `LLM_PROXY_DATABASE_URL` fails at start after you rename the export. The old names still work when the new name is unset, and `serve` logs a warning that names each old variable it read. They stop working in 0.4.0.
 2. **Image.** The image is now `ghcr.io/mtanzi/spyglass`: set `SPYGLASS_IMAGE=ghcr.io/mtanzi/spyglass:<version>`.
 3. **Service name.** The compose service is now `spyglass`, so the 0.1.0 container (`llm-proxy-llm-proxy-1`) becomes an orphan that still holds port 8080. Stop it with the full drain time, then start the new service and remove the orphan:
 
@@ -118,7 +118,7 @@ Release 0.1.0 was named `llm-proxy`. Later releases are named `spyglass` ([ADR 0
    docker compose up -d --remove-orphans spyglass
    ```
 
-4. **Clients.** Send the virtual key in `x-spyglass-key`. In `~/.claude/settings.json` change `"ANTHROPIC_CUSTOM_HEADERS": "x-llm-proxy-key: lp_…"` to `"x-spyglass-key: lp_…"`. The old header still works until 0.3.0, with the same checks; the proxy logs one warning per process the first time a client sends it, without the key. When a request carries both headers, `x-spyglass-key` is used.
+4. **Clients.** Send the virtual key in `x-spyglass-key`. In `~/.claude/settings.json` change `"ANTHROPIC_CUSTOM_HEADERS": "x-llm-proxy-key: lp_…"` to `"x-spyglass-key: lp_…"`. The old header still works until 0.4.0, with the same checks; the proxy logs one warning per process the first time a client sends it, without the key. When a request carries both headers, `x-spyglass-key` is used.
 5. **Metrics.** Every metric is renamed from `llm_proxy_*` to `spyglass_*`, with no alias: update Prometheus queries, recording rules, alerts and dashboards. The old series stop at the upgrade.
 6. **Binary.** A release binary is now `spyglass-v<version>-<os>-<arch>`, and the command is `spyglass serve`.
 

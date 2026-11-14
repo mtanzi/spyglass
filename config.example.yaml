@@ -3,7 +3,7 @@
 # Path: --config or SPYGLASS_CONFIG. Any scalar key can be overridden by
 # SPYGLASS_<SECTION>_<KEY>, for example SPYGLASS_LOG_LEVEL=debug. The LLM_PROXY_
 # names of 0.1.0 are still read when the SPYGLASS_ name is unset, with a
-# deprecation warning, until 0.3.0 (ADR 0054).
+# deprecation warning, until 0.4.0 (ADR 0054).
 
 listen:
   data: ":8080"
