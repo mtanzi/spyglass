@@ -109,6 +109,7 @@ An ADR changes status when a decision is made. Record the outcome in the ADR and
 | [0055](0055-agent-facing-cli-axi-toon-output.md) | Agent-facing CLI with AXI (TOON) output | Completed | 0009, 0019, 0021, 0023, 0024, 0052, 0054, 0056 |
 | [0056](0056-session-unpriced-calls.md) | Unpriced calls per session | Completed | 0020, 0021, 0024, 0052 |
 | [0057](0057-cost-per-prompt-endpoint.md) | Cost per prompt endpoint | Completed | 0014, 0019, 0021, 0024, 0035, 0047, 0052 |
+| [0058](0058-align-web-ui-with-modern-web-guidance.md) | Align the web UI with the modern web guidance | Proposed | 0029, 0030, 0033, 0052, 0053 |
 
 ## Suggested implementation order
 
