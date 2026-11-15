@@ -1,6 +1,6 @@
 # ADR 0058: Align the web UI with the modern web guidance
 
-Status: Proposed
+Status: Accepted
 
 Date: 2026-11-15
 
