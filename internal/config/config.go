@@ -15,8 +15,7 @@ import (
 )
 
 // EnvConfigPath names the environment variable that holds the config file path
-// when --config is not given. The deprecated LLM_PROXY_CONFIG is read when it
-// is unset.
+// when --config is not given.
 const EnvConfigPath = EnvPrefix + "_CONFIG"
 
 // Provider kinds and auth modes.
@@ -157,11 +156,6 @@ type Options struct {
 	LookupEnv func(string) (string, bool)
 	ReadFile  func(string) ([]byte, error)
 
-	// Deprecated, when set, is called each time a deprecated LLM_PROXY_
-	// variable is read in place of its unset SPYGLASS_ name. It gets both
-	// names, never the value. The caller decides how often to warn.
-	Deprecated func(legacy, name string)
-
 	// BuildKeys builds the key index that travels with each Snapshot from the
 	// validated keys. The composition root passes keyring.New; config cannot
 	// import keyring. When nil, a Snapshot has no key index. A build error
@@ -180,12 +174,12 @@ func (o Options) withDefaults() Options {
 }
 
 // Path returns the config file path: the --config value when set, otherwise
-// SPYGLASS_CONFIG, otherwise the deprecated LLM_PROXY_CONFIG.
+// SPYGLASS_CONFIG.
 func Path(flagValue string, o Options) (string, error) {
 	if flagValue != "" {
 		return flagValue, nil
 	}
-	if v, ok := o.withDefaults().lookupEnv(EnvConfigPath); ok && v != "" {
+	if v, ok := o.withDefaults().LookupEnv(EnvConfigPath); ok && v != "" {
 		return v, nil
 	}
 	return "", fmt.Errorf("no config file: pass --config or set %s", EnvConfigPath)

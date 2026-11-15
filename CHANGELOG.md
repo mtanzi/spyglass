@@ -2,6 +2,15 @@
 
 Notable changes to Spyglass. Release 0.1.0 and earlier are described in their [GitHub release notes](https://github.com/mtanzi/spyglass/releases).
 
+## Unreleased
+
+### Breaking changes
+
+The aliases deprecated in 0.2.0 end ([ADR 0054](docs/adrs/0054-rename-to-spyglass.md), [#116](https://github.com/mtanzi/spyglass/issues/116)). Migrate before you upgrade; the steps are in the [runbook](docs/runbook.md#upgrading-from-llm-proxy-010).
+
+- **The `x-llm-proxy-key` header is no longer read.** A client that sends only this header now carries no virtual key and gets `401`. Send `x-spyglass-key`. The old header is still removed before the upstream request and is still redacted from logs and fixtures, so a key from an old client does not leak.
+- **The `LLM_PROXY_*` environment variables are no longer read**, including `LLM_PROXY_CONFIG` and the `_ENV` and `_FILE` forms of a secret reference, and the compose variables `LLM_PROXY_IMAGE`, `LLM_PROXY_CONFIG_FILE`, `LLM_PROXY_SECRETS_DIR` and `LLM_PROXY_PORT`. Use the `SPYGLASS_*` names. `serve` no longer logs the deprecation warnings. The compose file no longer sets `LLM_PROXY_CONFIG`, so a rollback to the 0.1.0 image needs it set by hand.
+
 ## 0.3.0 - 2026-11-14
 
 ### Added

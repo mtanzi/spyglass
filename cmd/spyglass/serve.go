@@ -69,10 +69,8 @@ func runServe(args []string, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "spyglass serve: unexpected argument %q\n", fs.Arg(0))
 		return 2
 	}
-	var envWarn envWarnings
 	opts := config.Options{
-		BuildKeys:  func(keys []core.Key) (config.KeyIndex, error) { return keyring.New(keys) },
-		Deprecated: envWarn.note,
+		BuildKeys: func(keys []core.Key) (config.KeyIndex, error) { return keyring.New(keys) },
 	}
 	path, err := config.Path(*cfgFlag, opts)
 	if err != nil {
@@ -88,7 +86,6 @@ func runServe(args []string, stderr io.Writer) int {
 
 	// Step 2: logging with redaction.
 	log := newLogger(cfg.Log, stderr)
-	envWarn.setLogger(log)
 
 	holder := config.NewHolder(path, opts, log)
 	if err := holder.Load(); err != nil {

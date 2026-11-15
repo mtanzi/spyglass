@@ -21,6 +21,8 @@ import (
 const maxCapture = 64 << 20
 
 // credentialHeaders never reach disk, not even in a raw capture.
+// x-llm-proxy-key is no longer read by the proxy (ADR 0054); it stays so a key
+// sent by an old client is still redacted.
 var credentialHeaders = map[string]bool{
 	"authorization": true, "x-api-key": true, "x-spyglass-key": true, "x-llm-proxy-key": true,
 	"proxy-authorization": true, "cookie": true, "set-cookie": true,

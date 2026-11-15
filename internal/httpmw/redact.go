@@ -15,7 +15,7 @@ var redactedHeaders = map[string]bool{
 	"Proxy-Authorization": true,
 	"X-Api-Key":           true,
 	"X-Spyglass-Key":      true,
-	"X-Llm-Proxy-Key":     true, // deprecated alias of X-Spyglass-Key (ADR 0054)
+	"X-Llm-Proxy-Key":     true, // no longer read (ADR 0054); stays so an old client's key is still redacted
 	"Cookie":              true,
 	"Set-Cookie":          true,
 }
