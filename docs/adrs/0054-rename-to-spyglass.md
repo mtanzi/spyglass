@@ -1,6 +1,6 @@
 # ADR 0054: Rename llm-proxy to Spyglass
 
-Status: Accepted
+Status: Completed
 
 Date: 2026-11-13
 
@@ -17,7 +17,7 @@ Two names for one thing confuse users and keep costing effort in docs. Few peopl
 - **Environment variables: `SPYGLASS_*`.** Each `SPYGLASS_` variable falls back to its `LLM_PROXY_` name when it is unset: `SPYGLASS_CONFIG`, every `SPYGLASS_<SECTION>_<KEY>` override, the `_ENV` and `_FILE` parts of a secret reference (read as one pair: when either `SPYGLASS_` part is set, the `LLM_PROXY_` parts are ignored), and a secret reference that names a `SPYGLASS_` variable, such as `{ env: SPYGLASS_DATABASE_URL }`. `serve` logs one warning per old variable it reads, with both names and never the value. The fallback goes one way only: a secret reference that still names an `LLM_PROXY_` variable is not mapped to its `SPYGLASS_` name, so the upgrade renames those references too. The compose variables (`SPYGLASS_IMAGE`, `SPYGLASS_CONFIG_FILE`, `SPYGLASS_SECRETS_DIR`, `SPYGLASS_PORT`) fall back the same way; compose cannot warn. The contributor test variables `SPYGLASS_TEST_DATABASE_URL` and `SPYGLASS_SIZING_ROWS` are renamed without a fallback: they are not part of any deployment.
 - **Metrics: `spyglass_*`, renamed outright.** No metric is emitted under both names. Dual emission would double the series for a short transition and still break every query once it ends. The release notes call the rename out as breaking.
 - **The aliases end in 0.4.0.** `x-llm-proxy-key` and the `LLM_PROXY_*` names are accepted through every 0.2.x release and removed in 0.4.0. The compose file's `LLM_PROXY_CONFIG` entry, kept so a rollback to the 0.1.0 image finds the config, goes with them.
-- **Status: the alias removal is done** ([#116](https://github.com/mtanzi/spyglass/issues/116), released in 0.4.0). `x-llm-proxy-key` is no longer read as a key, the `LLM_PROXY_*` fallback, `LegacyEnvName`, `Options.Deprecated` and the warnings are gone, and the compose file's `LLM_PROXY_*` fallbacks are removed. `x-llm-proxy-key` stays on the redaction lists and is still removed before the upstream request, so a key from an old client is never logged, recorded or forwarded.
+- **Status: the alias removal is done** ([#116](https://github.com/mtanzi/spyglass/issues/116), removed for 0.4.0). `x-llm-proxy-key` is no longer read as a key, the `LLM_PROXY_*` fallback, `LegacyEnvName`, `Options.Deprecated` and the warnings are gone, and the compose file's `LLM_PROXY_*` fallbacks are removed. `x-llm-proxy-key` stays on the redaction lists and is still removed before the upstream request, so a key from an old client is never logged, recorded or forwarded.
 - **Stored data keeps its names.** The compose project stays `llm-proxy`, because it prefixes the Postgres volume (`llm-proxy_pgdata`); a new project name would start an existing deployment on an empty database. The database and user stay `llmproxy` in the compose file and the examples, because Postgres creates them only on the first start of an empty volume. The virtual key prefix `lp_` stays: issued keys keep working.
 - **History is not rewritten.** Existing ADR bodies, the 0.1.0 release and its notes, the branding proposals and the design document's file name (`llm-proxy-design.md`, which completed ADRs cite by name) keep the old name.
 
