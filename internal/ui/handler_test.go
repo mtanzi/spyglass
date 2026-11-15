@@ -96,11 +96,14 @@ func TestOtherFileIsNoCache(t *testing.T) {
 	}
 }
 
+// wantCSP is the UI policy of ADR 0058, written out so a change to csp fails.
+const wantCSP = "default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+
 func TestCSPOnEveryResponse(t *testing.T) {
 	h := newHandler(testFS)
 	for _, target := range []string{"/ui/", "/ui/calls", "/ui/assets/index-abc123.js", "/ui/assets/gone.js"} {
 		rec := serve(t, h, http.MethodGet, target)
-		if got := rec.Header().Get("Content-Security-Policy"); got != "default-src 'self'" {
+		if got := rec.Header().Get("Content-Security-Policy"); got != wantCSP {
 			t.Errorf("GET %s: CSP %q", target, got)
 		}
 	}
@@ -142,7 +145,7 @@ func TestMountedHandlerServesAndSetsCSP(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status %d", rec.Code)
 	}
-	if rec.Header().Get("Content-Security-Policy") != "default-src 'self'" {
+	if rec.Header().Get("Content-Security-Policy") != wantCSP {
 		t.Errorf("CSP %q", rec.Header().Get("Content-Security-Policy"))
 	}
 	if !strings.Contains(rec.Body.String(), "<html") {

@@ -150,6 +150,68 @@ func TestPlanesServeTheirRoutes(t *testing.T) {
 	}
 }
 
+// adminSecurityHeaders is the admin-plane header set of ADR 0058.
+var adminSecurityHeaders = map[string]string{
+	"X-Content-Type-Options":       "nosniff",
+	"Referrer-Policy":              "no-referrer",
+	"Cross-Origin-Resource-Policy": "same-origin",
+	"Cross-Origin-Opener-Policy":   "same-origin",
+	"X-Frame-Options":              "DENY",
+	"Permissions-Policy":           httpmw.PermissionsPolicy,
+}
+
+// TestAdminPlaneSetsSecurityHeaders checks the headers on the UI, the admin
+// API, the probes and /metrics, and that the data plane sets none of them.
+func TestAdminPlaneSetsSecurityHeaders(t *testing.T) {
+	s, err := testServers(testConfig(), noSnapshots{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dataLn, adminLn := listen(t), listen(t)
+	go func() { _ = s.ServeData(dataLn) }()
+	go func() { _ = s.ServeAdmin(adminLn) }()
+	t.Cleanup(func() { _ = s.Data.Close(); _ = s.Admin.Close() })
+
+	get := func(base, path string) *http.Response {
+		t.Helper()
+		resp, err := http.Get("http://" + base + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+		return resp
+	}
+	admin := adminLn.Addr().String()
+	for _, path := range []string{"/ui/", "/ui/calls", "/admin/openapi.json", "/admin/calls", "/admin/nope", "/metrics", "/healthz", "/readyz"} {
+		resp := get(admin, path)
+		for k, want := range adminSecurityHeaders {
+			if got := resp.Header.Values(k); len(got) != 1 || got[0] != want {
+				t.Errorf("admin GET %s: %s = %q, want %q", path, k, got, want)
+			}
+		}
+	}
+	if resp := get(admin, "/metrics"); resp.StatusCode != http.StatusOK {
+		t.Errorf("admin GET /metrics = %d, want 200", resp.StatusCode)
+	}
+	if resp := get(admin, "/healthz"); resp.StatusCode != http.StatusOK {
+		t.Errorf("admin GET /healthz = %d, want 200", resp.StatusCode)
+	}
+
+	data := dataLn.Addr().String()
+	for _, path := range []string{"/healthz", "/readyz", "/v1/messages", "/api/hello"} {
+		resp := get(data, path)
+		for k := range adminSecurityHeaders {
+			if got := resp.Header.Get(k); got != "" {
+				t.Errorf("data GET %s: %s = %q, want none", path, k, got)
+			}
+		}
+		if got := resp.Header.Get("Content-Security-Policy"); got != "" {
+			t.Errorf("data GET %s: Content-Security-Policy = %q, want none", path, got)
+		}
+	}
+}
+
 func TestOversizeBodyRejected(t *testing.T) {
 	s, err := testServers(testConfig(), noSnapshots{}, nil)
 	if err != nil {

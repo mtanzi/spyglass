@@ -127,7 +127,7 @@ The hot path is one flow, so it is one package with one file per concern: auth, 
 - **One header check.** A presented `lp_` virtual key is never forwarded upstream. A request that carries a credential in the wrong place for the provider's mode is rejected with `401`: for a `client_passthrough` provider, an `lp_` value in `Authorization` or `x-api-key`; for a `proxy_key` provider, an `x-spyglass-key` header.
 - **Lookup** is an in-memory map from SHA-256 to key record, owned by `keyring`. `keyring` builds it from the keys of a config snapshot, and the map travels with that snapshot: `SIGHUP` builds a new snapshot and swaps it atomically, and a request in flight keeps the map it started with. The handler hashes the presented key and looks the hash up. The config loader rejects a snapshot with a duplicate name, a duplicate hash or a malformed hash, and the proxy keeps the previous snapshot and logs the error. Nothing about keys touches the store.
 - **Checks:** the key exists and is not disabled. A failure returns a protocol-correct Anthropic error body with a stable `type` per error class (gap review R3). Expiry, request-rate and concurrency limits and budgets are deferred ([Later versions](#later-versions)).
-- **Admin plane** has no auth in v1. The admin listener is loopback-only and `serve` refuses to start otherwise (see [Shape](#shape)). Admin sign-in is a later item ([Later versions](#later-versions)).
+- **Admin plane** has no auth in v1. The admin listener is loopback-only and `serve` refuses to start otherwise (see [Shape](#shape)). Admin sign-in is a later item ([Later versions](#later-versions)). Every admin-plane response carries the browser security headers of `httpmw.SecurityHeaders` (ADR 0058, [frontend.md](frontend.md#security)); the data plane sets none of them.
 
 #### Correlation
 
@@ -574,7 +574,8 @@ spyglass/
 │   │                       body read, ReverseProxy, tap, idle watchdog,
 │   │                       graceful drain. One package, one file per concern.
 │   ├── httpmw/             request-lifecycle steps both listeners share: recover, request id,
-│   │                       access log with header redaction, request-size limit
+│   │                       access log with header redaction, request-size limit;
+│   │                       admin-plane security headers
 │   ├── keyring/            immutable key map (SHA-256 to key) built from a config snapshot; lookup
 │   ├── recorder/           Finished events: live fan-out, bounded queue,
 │   │                       batch writer, retry, drop counting, shutdown flush
