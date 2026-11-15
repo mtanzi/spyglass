@@ -115,6 +115,15 @@ The UI is branded **Spyglass** ([ADR 0053](../adrs/0053-spyglass-brand-palettes-
 - **Colour roles.** Brass is the one accent: the current page, focus rings, links, the first chart series, the volume bars and the call bars in the waterfall. Teal is the second colour: the live dot, the ok badge and the second chart series. "Other" is a neutral grey. Error red is a status colour, and an error always has a glyph and text as well.
 - **Switching.** Dark is the default. The UI follows `prefers-color-scheme`, unless the toggle in the sidebar footer forces Light or Dark through `data-theme` on `<html>`. System clears the attribute. The browser remembers the choice in `localStorage` (`spyglass-theme`), and if storage fails the UI falls back to System. `public/theme-init.js` applies the stored choice before first paint. It is a file, not an inline script, because of the CSP.
 
+## Browser support
+
+The UI supports the current release of Chrome, Edge, Firefox and Safari on desktop ([ADR 0058](../adrs/0058-align-web-ui-with-modern-web-guidance.md)). Older releases and mobile browsers are not tested. The tiers below follow the [Baseline](https://web.dev/baseline) definitions.
+
+- **Widely available.** Use the feature without a fallback.
+- **Newly available.** Use the feature when the UI stays usable without it. Detect the feature, or rely on the browser ignoring what it does not know.
+- **Limited availability.** Use the feature only as progressive enhancement. The UI must not depend on it.
+- **No polyfills.** The UI does not load code to emulate a missing feature.
+
 ## Routing and URL state
 
 - **TanStack Router** with typed search parameters. Every filter, the time range, the cursor, the grouping toggle and the active tab are search parameters.
