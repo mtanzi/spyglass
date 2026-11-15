@@ -59,6 +59,7 @@ var leakPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`sk-ant-[A-Za-z0-9_-]{8,}`),
 	regexp.MustCompile(`(?i)bearer\s+[A-Za-z0-9._~+/=-]{8,}`),
 	regexp.MustCompile(`\blp_[A-Za-z0-9]{20,}`),
+	// x-llm-proxy-key stays so a key sent by an old client is still redacted.
 	regexp.MustCompile(`(?i)"?(authorization|x-api-key|x-spyglass-key|x-llm-proxy-key|cookie)"?\s*[:=]\s*"?[A-Za-z0-9]`),
 	regexp.MustCompile(`[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}`),
 	regexp.MustCompile(`/(Users|home)/[A-Za-z0-9._-]+/`),

@@ -25,7 +25,7 @@ import (
 // Header names the handler sets or removes.
 const (
 	headerProxyKey        = "X-Spyglass-Key"
-	headerLegacyProxyKey  = "X-Llm-Proxy-Key" // deprecated alias of headerProxyKey (ADR 0054)
+	headerLegacyProxyKey  = "X-Llm-Proxy-Key" // no longer read; still removed from the upstream request so an old client's key never leaves
 	headerAPIKey          = "X-Api-Key"
 	headerAuthorization   = "Authorization"
 	headerAcceptEncoding  = "Accept-Encoding"
@@ -72,7 +72,6 @@ type Handler struct {
 	tap        Tap
 	log        *slog.Logger
 	metrics    *Metrics
-	legacyKey  sync.Once    // warns once that a client sent x-llm-proxy-key
 	streams    atomic.Int64 // streaming requests being forwarded now
 	calls      atomic.Int64 // forwarded calls whose record is not yet sent
 }
@@ -151,12 +150,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		httpmw.WriteError(w, errResp)
 		return
-	}
-	if usesLegacyKeyHeader(r.Header) {
-		h.legacyKey.Do(func() {
-			h.log.Warn("a client sent the deprecated x-llm-proxy-key header; send x-spyglass-key instead",
-				"call_id", reqID, "key_name", keyName)
-		})
 	}
 	target, err := url.Parse(provider.BaseURL)
 	if err != nil {
@@ -248,9 +241,10 @@ func pickProvider(snap *config.Snapshot) (config.Provider, bool) {
 // rewrite points the outbound request at the provider and applies the
 // credential. Every header it does not name is forwarded unchanged, so
 // anthropic-version, anthropic-beta and the other anthropic-* headers keep
-// their values. A virtual key never goes upstream: x-spyglass-key and its
-// deprecated alias x-llm-proxy-key are removed in every mode. In proxy_key mode the client credential, which is the virtual
-// key, is replaced by the provider key. In client_passthrough mode the client's
+// their values. A virtual key never goes upstream: x-spyglass-key and the
+// x-llm-proxy-key of release 0.1.0 are removed in every mode, so a key sent by
+// an old client does not reach the upstream either. In proxy_key mode the
+// client credential, which is the virtual key, is replaced by the provider key. In client_passthrough mode the client's
 // own Authorization and x-api-key are forwarded as they came, and the proxy
 // holds and injects no credential of its own. Accept-Encoding is set to
 // identity in every mode, whatever the client sent.

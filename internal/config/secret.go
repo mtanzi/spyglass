@@ -115,7 +115,7 @@ func (r *Ref) resolve(path string, o Options) error {
 	}
 	var raw string
 	if r.Env != "" {
-		v, ok := o.lookupEnv(r.Env)
+		v, ok := o.LookupEnv(r.Env)
 		if !ok {
 			return fmt.Errorf("%s: environment variable %s is not set", path, r.Env)
 		}

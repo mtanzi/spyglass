@@ -2,7 +2,7 @@
 
 Spyglass shows you what your AI coding agents do with the model. It is a self-hosted, observe-only proxy for LLM APIs. Point Claude Code at it, and every call passes through to the Anthropic API unchanged. Spyglass records the facts about each call and shows them in a web UI. Prompts and responses are never stored.
 
-> **Renamed from llm-proxy.** Release 0.1.0 shipped as `llm-proxy`. From release 0.2.0 the binary, the Docker image (`ghcr.io/mtanzi/spyglass`), the key header (`x-spyglass-key`), the environment variables (`SPYGLASS_*`) and the metrics (`spyglass_*`) use the new name. The old header and the old `LLM_PROXY_*` variables still work for now, with a deprecation warning; the metrics are renamed with no alias. See [Upgrading from llm-proxy 0.1.0](docs/runbook.md#upgrading-from-llm-proxy-010) and [ADR 0054](docs/adrs/0054-rename-to-spyglass.md).
+> **Renamed from llm-proxy.** Release 0.1.0 shipped as `llm-proxy`. From release 0.2.0 the binary, the Docker image (`ghcr.io/mtanzi/spyglass`), the key header (`x-spyglass-key`), the environment variables (`SPYGLASS_*`) and the metrics (`spyglass_*`) use the new name. The old header and the old `LLM_PROXY_*` variables worked in 0.2.0 and 0.3.0, with a deprecation warning, and are no longer read since 0.4.0; the metrics were renamed with no alias. See [Upgrading from llm-proxy 0.1.0](docs/runbook.md#upgrading-from-llm-proxy-010) and [ADR 0054](docs/adrs/0054-rename-to-spyglass.md).
 
 ![Spyglass Overview page in the dark theme: headline numbers for calls, cost, tokens, error rate, cache hit and latency, activity by model, a live feed and recent sessions.](docs/images/overview-dark.png)
 

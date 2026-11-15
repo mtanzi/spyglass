@@ -98,17 +98,15 @@ func TestAuthenticateModes(t *testing.T) {
 		{"proxy_key with key header", config.AuthProxyKey, []string{"Authorization", "Bearer lp_good", "X-Spyglass-Key", "lp_good"}, "", "invalid x-api-key"},
 		{"proxy_key with empty key header", config.AuthProxyKey, []string{"Authorization", "Bearer lp_good", "X-Spyglass-Key", ""}, "", "invalid x-api-key"},
 		{"proxy_key bearer", config.AuthProxyKey, []string{"Authorization", "Bearer lp_good"}, "good", ""},
-		// The deprecated x-llm-proxy-key of 0.1.0 (ADR 0054) gets the same checks.
-		{"passthrough legacy key header", config.AuthClientPassthrough, []string{"X-Llm-Proxy-Key", "lp_good", "Authorization", "Bearer sk-ant-oat-client"}, "good", ""},
-		{"passthrough legacy disabled key", config.AuthClientPassthrough, []string{"X-Llm-Proxy-Key", "lp_off"}, "", "this API key is disabled"},
-		{"passthrough legacy unknown key", config.AuthClientPassthrough, []string{"X-Llm-Proxy-Key", "lp_nope"}, "", "invalid x-api-key"},
-		{"passthrough legacy empty key", config.AuthClientPassthrough, []string{"X-Llm-Proxy-Key", ""}, "", "invalid x-api-key"},
+		// The x-llm-proxy-key of 0.1.0 is no longer read (ADR 0054): a request
+		// that carries only it carries no virtual key.
+		{"passthrough legacy key header only", config.AuthClientPassthrough, []string{"X-Llm-Proxy-Key", "lp_good", "Authorization", "Bearer sk-ant-oat-client"}, "", "invalid x-api-key"},
+		{"passthrough legacy key header alone", config.AuthClientPassthrough, []string{"X-Llm-Proxy-Key", "lp_good"}, "", "invalid x-api-key"},
 		{"passthrough legacy lp_ in Authorization", config.AuthClientPassthrough, []string{"X-Llm-Proxy-Key", "lp_good", "Authorization", "Bearer lp_good"}, "", "invalid x-api-key"},
-		{"passthrough both headers, new one wins", config.AuthClientPassthrough, []string{"X-Spyglass-Key", "lp_good", "X-Llm-Proxy-Key", "lp_nope"}, "good", ""},
-		{"passthrough both headers, new unknown key wins", config.AuthClientPassthrough, []string{"X-Spyglass-Key", "lp_nope", "X-Llm-Proxy-Key", "lp_good"}, "", "invalid x-api-key"},
-		{"passthrough both headers, new empty key wins", config.AuthClientPassthrough, []string{"X-Spyglass-Key", "", "X-Llm-Proxy-Key", "lp_good"}, "", "invalid x-api-key"},
-		{"proxy_key with legacy key header", config.AuthProxyKey, []string{"Authorization", "Bearer lp_good", "X-Llm-Proxy-Key", "lp_good"}, "", "invalid x-api-key"},
-		{"proxy_key with empty legacy key header", config.AuthProxyKey, []string{"Authorization", "Bearer lp_good", "X-Llm-Proxy-Key", ""}, "", "invalid x-api-key"},
+		{"passthrough both headers, legacy ignored", config.AuthClientPassthrough, []string{"X-Spyglass-Key", "lp_good", "X-Llm-Proxy-Key", "lp_nope"}, "good", ""},
+		{"passthrough both headers, new unknown key is not rescued", config.AuthClientPassthrough, []string{"X-Spyglass-Key", "lp_nope", "X-Llm-Proxy-Key", "lp_good"}, "", "invalid x-api-key"},
+		{"proxy_key ignores legacy key header", config.AuthProxyKey, []string{"Authorization", "Bearer lp_good", "X-Llm-Proxy-Key", "lp_good"}, "good", ""},
+		{"proxy_key legacy key header is no credential", config.AuthProxyKey, []string{"X-Llm-Proxy-Key", "lp_good"}, "", "invalid x-api-key"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -127,27 +125,5 @@ func TestAuthenticateModes(t *testing.T) {
 				t.Fatalf("ok=%v status=%d body=%s; want 401 %q", ok, resp.Status, resp.Body, c.wantMsg)
 			}
 		})
-	}
-}
-
-func TestUsesLegacyKeyHeader(t *testing.T) {
-	cases := []struct {
-		name string
-		kv   []string
-		want bool
-	}{
-		{"none", nil, false},
-		{"new only", []string{"X-Spyglass-Key", "lp_a"}, false},
-		{"legacy only", []string{"X-Llm-Proxy-Key", "lp_a"}, true},
-		{"both", []string{"X-Spyglass-Key", "lp_a", "X-Llm-Proxy-Key", "lp_b"}, false},
-	}
-	for _, c := range cases {
-		h := http.Header{}
-		for i := 0; i < len(c.kv); i += 2 {
-			h.Set(c.kv[i], c.kv[i+1])
-		}
-		if got := usesLegacyKeyHeader(h); got != c.want {
-			t.Errorf("%s: usesLegacyKeyHeader = %v, want %v", c.name, got, c.want)
-		}
 	}
 }

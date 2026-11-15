@@ -39,7 +39,7 @@ You need Docker, Go and Node 22 (to build the UI), `curl` and `openssl`. Run the
    bin/spyglass serve --config config.yaml
    ```
 
-   If your `config.yaml` comes from release 0.1.0, it may say `url: { env: LLM_PROXY_DATABASE_URL }`. Change it to `url: { env: SPYGLASS_DATABASE_URL }` before you use this export: the old name in `config.yaml` is not mapped to the new one.
+   If your `config.yaml` comes from release 0.1.0, it may say `url: { env: LLM_PROXY_DATABASE_URL }`. Change it to `url: { env: SPYGLASS_DATABASE_URL }` before you use this export: the proxy no longer reads `LLM_PROXY_*` variables.
 
    Leave it running. In another terminal, `curl -s http://127.0.0.1:8080/readyz` prints `ok`.
 
@@ -56,7 +56,7 @@ You need Docker, Go and Node 22 (to build the UI), `curl` and `openssl`. Run the
    ```
 
    - `ANTHROPIC_BASE_URL` sends Claude Code's requests to the proxy.
-   - `ANTHROPIC_CUSTOM_HEADERS` adds the virtual key as the `x-spyglass-key` header. In this mode your own login occupies `Authorization`, so the key travels in its own header. One `Name: Value` pair per line. (Release 0.1.0 named this header `x-llm-proxy-key`; that name still works until 0.4.0, with a warning in the proxy log.)
+   - `ANTHROPIC_CUSTOM_HEADERS` adds the virtual key as the `x-spyglass-key` header. In this mode your own login occupies `Authorization`, so the key travels in its own header. One `Name: Value` pair per line. (Release 0.1.0 named this header `x-llm-proxy-key`; the proxy no longer reads that name, so a client that sends only it gets `401`.)
    - `CLAUDE_CODE_GATEWAY_HINT_HEADERS=1` makes Claude Code send the hint headers that the session tree and tool durations need. They are off by default behind a custom base URL.
 
    **Do not set `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_API_KEY` or `apiKeyHelper`.** Any of them replaces your saved login, and the proxy would reject an `lp_` value there with `401`.

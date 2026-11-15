@@ -9,8 +9,7 @@
 #   SPYGLASS_CONFIG_FILE  config file to mount (default: ./config.yaml)
 #   SPYGLASS_SECRETS_DIR  directory that holds the secret files (default: ./secrets)
 #   SPYGLASS_PORT         host port of the data plane (default: 8080)
-# The LLM_PROXY_* names of 0.1.0 still work when the SPYGLASS_* name is unset.
-# They are deprecated (ADR 0054).
+# The LLM_PROXY_* names of 0.1.0 are no longer read (ADR 0054).
 #
 # The project name stays llm-proxy: it prefixes the Postgres volume
 # (llm-proxy_pgdata), and a new name would start an existing deployment on an
@@ -34,7 +33,7 @@ services:
     restart: unless-stopped
 
   spyglass:
-    image: ${SPYGLASS_IMAGE:-${LLM_PROXY_IMAGE:-spyglass:local}}
+    image: ${SPYGLASS_IMAGE:-spyglass:local}
     build:
       context: .
       args:
@@ -42,17 +41,14 @@ services:
     command: ["serve"]
     environment:
       SPYGLASS_CONFIG: /etc/spyglass/config.yaml
-      # Read only by the 0.1.0 image, so a rollback to it finds the config.
-      # Remove with the LLM_PROXY_* aliases in 0.4.0 (ADR 0054).
-      LLM_PROXY_CONFIG: /etc/spyglass/config.yaml
     volumes:
-      - ${SPYGLASS_CONFIG_FILE:-${LLM_PROXY_CONFIG_FILE:-./config.yaml}}:/etc/spyglass/config.yaml:ro
+      - ${SPYGLASS_CONFIG_FILE:-./config.yaml}:/etc/spyglass/config.yaml:ro
     secrets: [database_url, anthropic_api_key]
     ports:
       # Data plane, on the host loopback only. Front it with Caddy or
       # `tailscale serve` for remote clients. The admin plane has no sign-in and
       # listens on loopback inside the container, so it is not published.
-      - "127.0.0.1:${SPYGLASS_PORT:-${LLM_PROXY_PORT:-8080}}:8080"
+      - "127.0.0.1:${SPYGLASS_PORT:-8080}:8080"
     depends_on:
       postgres: { condition: service_healthy }
     stop_grace_period: 10m # matches server.drain_timeout
@@ -62,6 +58,6 @@ volumes:
   pgdata:
 
 secrets:
-  pg_password:       { file: "${SPYGLASS_SECRETS_DIR:-${LLM_PROXY_SECRETS_DIR:-./secrets}}/pg_password" }
-  database_url:      { file: "${SPYGLASS_SECRETS_DIR:-${LLM_PROXY_SECRETS_DIR:-./secrets}}/database_url" }
-  anthropic_api_key: { file: "${SPYGLASS_SECRETS_DIR:-${LLM_PROXY_SECRETS_DIR:-./secrets}}/anthropic_api_key" }
+  pg_password:       { file: "${SPYGLASS_SECRETS_DIR:-./secrets}/pg_password" }
+  database_url:      { file: "${SPYGLASS_SECRETS_DIR:-./secrets}/database_url" }
+  anthropic_api_key: { file: "${SPYGLASS_SECRETS_DIR:-./secrets}/anthropic_api_key" }

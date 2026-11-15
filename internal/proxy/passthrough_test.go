@@ -76,30 +76,31 @@ func TestPassthroughKeyHeaderNeverReachesUpstream(t *testing.T) {
 	}
 }
 
-// The deprecated x-llm-proxy-key (ADR 0054) authenticates like x-spyglass-key,
-// never reaches the upstream, and is warned about once, without its value.
-func TestPassthroughLegacyKeyHeader(t *testing.T) {
+// The x-llm-proxy-key of 0.1.0 is no longer a key header (ADR 0054): a request
+// that carries only it is rejected, and it never reaches the upstream, so an
+// old client's key does not leak. With x-spyglass-key present it is ignored.
+func TestPassthroughLegacyKeyHeaderIsNotHonoured(t *testing.T) {
 	var logs syncBuffer
 	logger := slog.New(slog.NewJSONHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	got := make(chan seen, 3)
+	got := make(chan seen, 2)
 	e := newEnvMode(t, capture(got, nil), config.AuthClientPassthrough, logger)
+
 	legacy := []string{"Authorization", "Bearer " + oauthToken, "X-Llm-Proxy-Key", clientKey}
-	for range 2 {
-		resp := e.do(t, "POST", "/v1/messages", "{}", legacy...)
-		_ = readAll(t, resp.Body)
-		if resp.StatusCode != 200 {
-			t.Fatalf("status %d", resp.StatusCode)
-		}
-		up := <-got
-		if g := up.header.Values("X-Llm-Proxy-Key"); len(g) != 0 {
-			t.Errorf("x-llm-proxy-key reached upstream: %q", g)
-		}
-		if rec := e.rec.next(t); rec.KeyName != "alice" {
-			t.Errorf("record key %q, want alice", rec.KeyName)
-		}
+	resp := e.do(t, "POST", "/v1/messages", "{}", legacy...)
+	b := readAll(t, resp.Body)
+	if resp.StatusCode != 401 || !strings.Contains(b, `"authentication_error"`) {
+		t.Errorf("legacy header only: got %d %s, want 401", resp.StatusCode, b)
 	}
-	// Both headers: the new one is used, and neither reaches the upstream.
-	resp := e.do(t, "POST", "/v1/messages", "{}", append(passthroughAuth(), "X-Llm-Proxy-Key", "lp_nope")...)
+	select {
+	case <-got:
+		t.Error("a request with only the legacy header reached the upstream")
+	default:
+	}
+	if e.rec.count() != 0 {
+		t.Error("an auth failure was recorded as a call")
+	}
+
+	resp = e.do(t, "POST", "/v1/messages", "{}", append(passthroughAuth(), "X-Llm-Proxy-Key", "lp_nope")...)
 	_ = readAll(t, resp.Body)
 	if resp.StatusCode != 200 {
 		t.Fatalf("both headers: status %d", resp.StatusCode)
@@ -111,8 +112,8 @@ func TestPassthroughLegacyKeyHeader(t *testing.T) {
 	_ = e.rec.next(t)
 
 	out := logs.String()
-	if n := strings.Count(out, "x-llm-proxy-key header"); n != 1 {
-		t.Errorf("deprecation warnings = %d, want 1; logs:\n%s", n, out)
+	if strings.Contains(out, "x-llm-proxy-key") || strings.Contains(out, "deprecated") {
+		t.Errorf("logs still mention the legacy header:\n%s", out)
 	}
 	if strings.Contains(out, clientKey) || strings.Contains(out, "lp_nope") {
 		t.Errorf("logs carry a virtual key:\n%s", out)
@@ -141,8 +142,6 @@ func TestWrongPlaceCredentialIsRejected(t *testing.T) {
 			append(auth(), "X-Spyglass-Key", clientKey)},
 		{"proxy_key with only x-spyglass-key", config.AuthProxyKey,
 			[]string{"X-Spyglass-Key", clientKey}},
-		{"proxy_key with x-llm-proxy-key", config.AuthProxyKey,
-			append(auth(), "X-Llm-Proxy-Key", clientKey)},
 		{"passthrough virtual key in Authorization with legacy header", config.AuthClientPassthrough,
 			[]string{"X-Llm-Proxy-Key", clientKey, "Authorization", "Bearer " + clientKey}},
 		{"passthrough unknown legacy key header", config.AuthClientPassthrough,
