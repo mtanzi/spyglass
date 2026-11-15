@@ -4,12 +4,18 @@ Notable changes to Spyglass. Release 0.1.0 and earlier are described in their [G
 
 ## Unreleased
 
+## 0.4.0 - 2026-11-15
+
 ### Breaking changes
 
 The aliases deprecated in 0.2.0 end ([ADR 0054](docs/adrs/0054-rename-to-spyglass.md), [#116](https://github.com/mtanzi/spyglass/issues/116)). Migrate before you upgrade; the steps are in the [runbook](docs/runbook.md#upgrading-from-llm-proxy-010).
 
 - **The `x-llm-proxy-key` header is no longer read.** A client that sends only this header now carries no virtual key and gets `401`. Send `x-spyglass-key`. The old header is still removed before the upstream request and is still redacted from logs and fixtures, so a key from an old client does not leak.
 - **The `LLM_PROXY_*` environment variables are no longer read**, including `LLM_PROXY_CONFIG` and the `_ENV` and `_FILE` forms of a secret reference, and the compose variables `LLM_PROXY_IMAGE`, `LLM_PROXY_CONFIG_FILE`, `LLM_PROXY_SECRETS_DIR` and `LLM_PROXY_PORT`. Use the `SPYGLASS_*` names. `serve` no longer logs the deprecation warnings. The compose file no longer sets `LLM_PROXY_CONFIG`, so a rollback to the 0.1.0 image needs it set by hand.
+
+### Fixed
+
+- **Cost per prompt covers the whole range.** The cost view's prompt table grouped one page of 500 calls in the browser, so a range with more calls showed missing prompts and understated costs and call counts. The server now aggregates every call of the range by prompt id with the new `GET /admin/usage/prompts` ([ADR 0057](docs/adrs/0057-cost-per-prompt-endpoint.md)). The table shows the top 25 prompts by cost and says when the range has more.
 
 ## 0.3.0 - 2026-11-14
 
