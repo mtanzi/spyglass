@@ -88,7 +88,7 @@ A reload that finds a duplicate name, a duplicate hash or a malformed hash is re
 
 1. Read the release notes for migrations that need attention.
 2. [Back up](#backups).
-3. Pin the new version, pull and restart. In the shell or the `.env` file, set `SPYGLASS_IMAGE` to the new release, for example `SPYGLASS_IMAGE=ghcr.io/mtanzi/spyglass:0.3.0` (the version has no `v`; there is no `latest` tag). Then:
+3. Pin the new version, pull and restart. In the shell or the `.env` file, set `SPYGLASS_IMAGE` to the new release, for example `SPYGLASS_IMAGE=ghcr.io/mtanzi/spyglass:0.4.0` (the version has no `v`; there is no `latest` tag). Then:
 
    ```sh
    docker compose pull spyglass
