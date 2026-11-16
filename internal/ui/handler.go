@@ -21,7 +21,9 @@ const (
 
 	// csp allows only same-origin loads: no inline script, no third-party
 	// origin. The build emits no inline style, so default-src covers styles too.
-	csp = "default-src 'self'"
+	// It also blocks plugins, a <base> element, framing by any page and form
+	// posts to another origin (ADR 0058).
+	csp = "default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
 )
 
 // Mount registers the UI on mux at Prefix, behind the CSP header.

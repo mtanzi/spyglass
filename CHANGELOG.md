@@ -4,6 +4,10 @@ Notable changes to Spyglass. Release 0.1.0 and earlier are described in their [G
 
 ## Unreleased
 
+### Security
+
+- **Browser security headers on the admin plane** ([ADR 0058](docs/adrs/0058-align-web-ui-with-modern-web-guidance.md), [#121](https://github.com/mtanzi/spyglass/issues/121)). Every response of the admin listener (`/ui/*`, `/admin/*`, `/metrics`, `/healthz`, `/readyz`) now sends `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Cross-Origin-Resource-Policy: same-origin`, `Cross-Origin-Opener-Policy: same-origin`, `X-Frame-Options: DENY` and a `Permissions-Policy` that turns off camera, microphone, geolocation and similar features. The UI's Content Security Policy is now `default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`, so another page cannot frame the UI. The headers only change what a browser does: Prometheus, `curl` and the CLI see the same responses. The data plane is unchanged.
+
 ## 0.4.0 - 2026-11-15
 
 ### Breaking changes

@@ -164,7 +164,22 @@ Every payload is a small JSON object of numbers, names, ids and hashes, so there
 - Virtual keys work only on the data plane and are configured in the config file, not in the UI.
 - Every v1 admin endpoint is a read-only `GET`. The API sends no CORS headers, so other web pages cannot read it from a browser.
 - Admin sign-in, scopes, several admins and OIDC are later items ([backend.md](backend.md#gateway-features-decision-c1)).
-- **Content Security Policy** on `/ui/*`: `default-src 'self'`, no inline scripts, no third-party origins. Stored strings (tool names, model names, labels) are rendered as text, never as HTML, so a value that contains markup cannot run in the browser.
+
+## Security
+
+The admin plane has no sign-in, so the browser's own protections carry the weight ([ADR 0058](../adrs/0058-align-web-ui-with-modern-web-guidance.md)).
+
+- **Content Security Policy** on `/ui/*`: `default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`. The UI loads scripts and styles only from its own origin and runs no inline script. It loads no plugin, sets no `<base>`, cannot be framed by another page and posts no form to another origin. `internal/ui/handler.go` sets it.
+- **Security headers** on every admin-plane response: `/ui/*`, `/admin/*`, `/metrics`, `/healthz` and `/readyz`. One middleware, `httpmw.SecurityHeaders`, sets them, and `cmd/spyglass` applies it to the admin listener only. The data plane does not set them.
+  - `X-Content-Type-Options: nosniff`, so a JSON response never runs as a script.
+  - `Referrer-Policy: no-referrer`, so a link out of the UI does not leak the admin URL.
+  - `Cross-Origin-Resource-Policy: same-origin`, so another site cannot embed an admin response.
+  - `Cross-Origin-Opener-Policy: same-origin`. The UI opens no popups, so this costs nothing.
+  - `X-Frame-Options: DENY`, for browsers that do not read `frame-ancestors`.
+  - `Permissions-Policy`, which turns off camera, microphone, geolocation and similar device, sensor and payment features. The list is the `httpmw.PermissionsPolicy` constant.
+- These headers only change what a browser does. Prometheus, `curl`, the CLI and the probes get the same responses as before.
+- **Stored strings** (tool names, model names, labels) are rendered as text, never as HTML, so a value that contains markup cannot run in the browser.
+- A new directive or header must leave every view free of console violations in the supported browsers ([Browser support](#browser-support)).
 
 ## What the UI can show without bodies
 
