@@ -156,12 +156,12 @@ test('filters round trip through the URL search parameters', async () => {
 
   // Menu to URL.
   fireEvent.click(screen.getByRole('button', { name: /Filters \(4\)/ }))
-  fireEvent.change(screen.getByRole('textbox', { name: 'Client' }), { target: { value: 'cursor' } })
-  fireEvent.click(screen.getAllByRole('button', { name: 'Add' })[1])
+  fireEvent.change(screen.getByRole('textbox', { name: 'Client', hidden: true }), { target: { value: 'cursor' } })
+  fireEvent.click(screen.getAllByRole('button', { name: 'Add', hidden: true })[1])
   await waitFor(() => expect(search(router).client).toEqual(['cursor']))
   fireEvent.change(screen.getByLabelText('Tool error'), { target: { value: 'true' } })
   await waitFor(() => expect(search(router).tool_error).toBe(true))
-  fireEvent.click(screen.getByRole('button', { name: 'Remove Model claude-x' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Remove Model claude-x', hidden: true }))
   await waitFor(() => expect(search(router).model).toBeUndefined())
   expect(search(router)).toMatchObject({ client: ['cursor'], status: [429], streamed: true, tool_error: true })
   await waitFor(() => {

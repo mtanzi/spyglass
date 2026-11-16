@@ -135,7 +135,7 @@ test('filters round trip through the URL to both endpoints', async () => {
   await waitFor(() => expect(search(router).is_error).toBe(false))
   fireEvent.click(screen.getByRole('checkbox', { name: 'Unmatched only' }))
   await waitFor(() => expect(search(router).status).toEqual(['use_only', 'result_only']))
-  fireEvent.click(screen.getByRole('button', { name: 'Remove Tool name Read' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Remove Tool name Read', hidden: true }))
   await waitFor(() => expect(search(router).tool).toBeUndefined())
   await waitFor(() => {
     const p = new URL(listUrls(urls).at(-1)!, 'http://x').searchParams

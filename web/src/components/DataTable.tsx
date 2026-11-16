@@ -14,7 +14,7 @@ import {
 } from '@tanstack/react-table'
 import type { CellData, ColumnDef, RowData, TableFeatures, SortingState, ColumnVisibilityState } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { EmptyState, ErrorMessage, LoadingState } from './states'
 import { useRowNavigation } from './useRowNavigation'
 
@@ -111,6 +111,9 @@ export function DataTable<T extends RowData>({
   const sorting = controlled ? controlledSorting : localSorting
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
   const scrollRef = useRef<HTMLDivElement>(null)
+  const menuId = useId()
+  // An anchor name is a CSS dashed ident: useId output has colons, so drop them.
+  const menuAnchor = `--columns-${menuId.replace(/[^a-zA-Z0-9_-]/g, '')}`
 
   const table = useTable({
     features,
@@ -157,9 +160,18 @@ export function DataTable<T extends RowData>({
 
   return (
     <div className="data-table">
-      <details className="column-menu">
-        <summary>Columns</summary>
-        <div className="column-list">
+      <div className="column-menu">
+        <button type="button" popoverTarget={menuId} style={{ anchorName: menuAnchor }}>
+          Columns
+        </button>
+        <div
+          id={menuId}
+          className="column-list"
+          role="group"
+          aria-label="Columns"
+          popover="auto"
+          style={{ positionAnchor: menuAnchor }}
+        >
           {table.getAllLeafColumns().map((column) => (
             <label key={column.id}>
               <input
@@ -171,7 +183,7 @@ export function DataTable<T extends RowData>({
             </label>
           ))}
         </div>
-      </details>
+      </div>
       <div className="table-scroll">
         <div
           role="table"
