@@ -83,3 +83,15 @@ test('end of list does not ask for more when there is no next page', () => {
   render(<DataTable {...props} data={makeRows(3)} onEndReached={onEndReached} hasNextPage={false} />)
   expect(onEndReached).not.toHaveBeenCalled()
 })
+
+test('the column menu is a native popover with one checkbox per column', () => {
+  render(<DataTable {...props} data={makeRows(3)} />)
+  const button = screen.getByRole('button', { name: 'Columns' })
+  const panel = document.querySelector<HTMLElement>('.column-list')!
+  // The browser owns open state, light dismiss, Escape and focus return; jsdom has no popover engine.
+  expect(panel.getAttribute('popover')).toBe('auto')
+  expect(button.getAttribute('popovertarget')).toBe(panel.id)
+  expect(within(panel).getAllByRole('checkbox', { hidden: true }).length).toBe(columns.length)
+  fireEvent.click(within(panel).getAllByRole('checkbox', { hidden: true })[1])
+  expect(screen.queryByRole('columnheader', { name: /Number/ })).toBeNull()
+})

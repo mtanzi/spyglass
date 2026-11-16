@@ -124,6 +124,10 @@ The UI supports the current release of Chrome, Edge, Firefox and Safari on deskt
 - **Limited availability.** Use the feature only as progressive enhancement. The UI must not depend on it.
 - **No polyfills.** The UI does not load code to emulate a missing feature.
 
+## Overlays
+
+The filter panel (`FilterMenu.tsx`) and the column menu (`DataTable.tsx`) are native `popover="auto"` panels opened by a `popovertarget` button ([ADR 0058](../adrs/0058-align-web-ui-with-modern-web-guidance.md)). The browser puts them in the top layer and handles light dismiss, Escape and focus return, so the UI has no `pointerdown` listener, Escape handler or `z-index` for them. Where `anchor-name` is supported (`@supports (anchor-name: --a)`), each panel is placed under its button with CSS anchor positioning; the button and panel of one menu share an anchor name made from `useId`, so several menus on a page do not clash. Without anchor support the browser shows the popover in its default centred position, which stays usable. jsdom has no popover engine, so tests check the `popover` and `popovertarget` attributes and the anchor names; open, dismiss and placement are checked in a real browser.
+
 ## Routing and URL state
 
 - **TanStack Router** with typed search parameters. Every filter, the time range, the cursor, the grouping toggle and the active tab are search parameters.

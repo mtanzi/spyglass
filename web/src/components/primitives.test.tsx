@@ -61,7 +61,7 @@ test('filter menu fields add and remove values', () => {
   fireEvent.change(screen.getByLabelText('Model'), { target: { value: 'b' } })
   fireEvent.keyDown(screen.getByLabelText('Model'), { key: 'Enter' })
   expect(onList).toHaveBeenLastCalledWith(['a', 'b'])
-  fireEvent.click(screen.getByRole('button', { name: 'Remove Model a' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Remove Model a', hidden: true }))
   expect(onList).toHaveBeenLastCalledWith(undefined)
   fireEvent.change(screen.getByLabelText('Streamed'), { target: { value: 'false' } })
   expect(onBool).toHaveBeenLastCalledWith(false)
@@ -85,17 +85,20 @@ test('primitives have no accessibility violations', async () => {
   expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([])
 })
 
-test('filter menu closes on Escape and gives focus back to its button', () => {
+test('filter menu is a native popover opened by its button', () => {
   render(
     <FilterMenu activeCount={0}>
       <NumberFilter label="Latency at least" value={undefined} onChange={() => {}} />
     </FilterMenu>,
   )
   const button = screen.getByRole('button', { name: 'Filters' })
-  fireEvent.click(button)
-  expect(button.getAttribute('aria-expanded')).toBe('true')
-  fireEvent.keyDown(screen.getByLabelText('Latency at least'), { key: 'Escape' })
-  expect(button.getAttribute('aria-expanded')).toBe('false')
-  expect(document.getElementById(button.getAttribute('aria-controls')!)?.hidden).toBe(true)
-  expect(document.activeElement).toBe(button)
+  const panel = document.querySelector<HTMLElement>('.filter-panel')!
+  // The browser owns open state, light dismiss, Escape and focus return; jsdom has no popover engine.
+  expect(panel.getAttribute('popover')).toBe('auto')
+  expect(button.getAttribute('popovertarget')).toBe(panel.id)
+  expect(button.getAttribute('aria-expanded')).toBeNull()
+  // Button and panel share one anchor, and two menus do not share one.
+  const anchor = (button as HTMLElement).style.getPropertyValue('anchor-name')
+  expect(anchor).toMatch(/^--filters-/)
+  expect((panel as HTMLElement).style.getPropertyValue('position-anchor')).toBe(anchor)
 })

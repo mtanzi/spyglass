@@ -1,8 +1,10 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useId, useState } from 'react'
 
 /**
  * A button that opens a panel of filter fields. `activeCount` shows on the
- * button. Escape or a click outside closes the panel.
+ * button. The panel is a native `popover="auto"`: the browser puts it in the
+ * top layer, closes it on Escape or a click outside, and gives focus back to
+ * the button. CSS anchors it under the button where the browser supports that.
  */
 export function FilterMenu({
   activeCount = 0,
@@ -13,39 +15,17 @@ export function FilterMenu({
   onClear?: () => void
   children: React.ReactNode
 }) {
-  const [open, setOpen] = useState(false)
   const panelId = useId()
-  const rootRef = useRef<HTMLDivElement>(null)
-  const buttonRef = useRef<HTMLButtonElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const onPointerDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [open])
+  // An anchor name is a CSS dashed ident: useId output has colons, so drop them.
+  const anchor = `--filters-${panelId.replace(/[^a-zA-Z0-9_-]/g, '')}`
 
   return (
-    <div
-      className="filter-menu"
-      ref={rootRef}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape' && open) {
-          e.stopPropagation()
-          setOpen(false)
-          buttonRef.current?.focus()
-        }
-      }}
-    >
+    <div className="filter-menu">
       <button
-        ref={buttonRef}
         type="button"
         aria-label={activeCount > 0 ? `Filters (${activeCount})` : 'Filters'}
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={() => setOpen(!open)}
+        popoverTarget={panelId}
+        style={{ anchorName: anchor }}
       >
         Filters
         {activeCount > 0 && (
@@ -59,7 +39,14 @@ export function FilterMenu({
           Clear filters
         </button>
       )}
-      <div id={panelId} className="filter-panel" role="group" aria-label="Filters" hidden={!open}>
+      <div
+        id={panelId}
+        className="filter-panel"
+        role="group"
+        aria-label="Filters"
+        popover="auto"
+        style={{ positionAnchor: anchor }}
+      >
         {children}
       </div>
     </div>
