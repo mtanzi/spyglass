@@ -51,7 +51,7 @@ export function CallDetailView() {
         <code>{id}</code>
       </nav>
       <div className="view-header">
-        <h1 id="view-title">Call</h1>
+        <h1 id="view-title" tabIndex={-1}>Call</h1>
         {call && (
           <>
             <Tag text={formatText(call.model)} className="mono" />

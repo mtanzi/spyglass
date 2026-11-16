@@ -97,7 +97,7 @@ export function SessionView() {
         <span className="mono">{key}</span>
       </nav>
       <div className="view-header">
-        <h1 id="view-title">Session</h1>
+        <h1 id="view-title" tabIndex={-1}>Session</h1>
         <nav aria-label="Session view mode" className="segmented">
           {SESSION_MODES.map((m) => (
             <Link

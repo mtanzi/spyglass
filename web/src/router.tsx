@@ -28,6 +28,14 @@ import {
   validateToolsSearch,
 } from './search/routes'
 
+declare module '@tanstack/react-router' {
+  // The page title of a route, unique part first (WCAG 2.4.2). Layout joins it
+  // with the app name. A route without one (the not-found redirect) sets none.
+  interface StaticDataRouteOption {
+    title?: (params: Record<string, string>) => string
+  }
+}
+
 export interface RouterContext {
   queryClient: QueryClient
 }
@@ -41,6 +49,7 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   validateSearch: strict(validateDashboardSearch),
+  staticData: { title: () => 'Overview' },
   component: DashboardView,
 })
 
@@ -53,12 +62,14 @@ const callsIndexRoute = createRoute({
   getParentRoute: () => callsRoute,
   path: '/',
   validateSearch: strict(validateCallsSearch),
+  staticData: { title: () => 'Calls' },
   component: CallLogView,
 })
 const callDetailRoute = createRoute({
   getParentRoute: () => callsRoute,
   path: '$id',
   validateSearch: strict(validateCallDetailSearch),
+  staticData: { title: (p) => `Call ${p.id}` },
   component: CallDetailView,
 })
 
@@ -71,12 +82,14 @@ const sessionsIndexRoute = createRoute({
   getParentRoute: () => sessionsRoute,
   path: '/',
   validateSearch: strict(validateSessionsSearch),
+  staticData: { title: () => 'Sessions' },
   component: SessionListView,
 })
 const sessionDetailRoute = createRoute({
   getParentRoute: () => sessionsRoute,
   path: '$key',
   validateSearch: strict(validateSessionDetailSearch),
+  staticData: { title: (p) => `Session ${p.key}` },
   component: SessionView,
 })
 
@@ -84,6 +97,7 @@ const toolsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'tools',
   validateSearch: strict(validateToolsSearch),
+  staticData: { title: () => 'Tools' },
   component: ToolExplorerView,
 })
 
@@ -91,6 +105,7 @@ const costRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'cost',
   validateSearch: strict(validateCostSearch),
+  staticData: { title: () => 'Cost' },
   component: CostView,
 })
 
@@ -98,6 +113,7 @@ const configRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'admin/config',
   validateSearch: strict(validateNoSearch),
+  staticData: { title: () => 'Config' },
   component: ConfigView,
 })
 
