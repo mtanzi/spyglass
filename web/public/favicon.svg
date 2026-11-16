@@ -2,7 +2,7 @@
   <!-- Spyglass "Lens and glint" (ADR 0053): brass lens ring, teal pupil, reflection arc. -->
   <style>
     @media (prefers-color-scheme: light) {
-      .brass { stroke: #a8690f; }
+      .brass { stroke: #965d0c; }
       .teal { fill: #1c8a76; }
     }
   </style>
