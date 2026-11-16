@@ -15,6 +15,7 @@ import {
 import type { CellData, ColumnDef, RowData, TableFeatures, SortingState, ColumnVisibilityState } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useEffect, useId, useRef, useState } from 'react'
+import { useRem } from '../lib/rem'
 import { EmptyState, ErrorMessage, LoadingState } from './states'
 import { useRowNavigation } from './useRowNavigation'
 
@@ -63,7 +64,8 @@ export interface DataTableProps<T extends RowData> {
   /** Whether another page exists; onEndReached is only called when true. */
   hasNextPage?: boolean
   isFetchingNextPage?: boolean
-  rowHeight?: number
+  /** Row height in rem: the virtualiser needs a fixed height, and rem keeps it with the text size. */
+  rowSize?: number
   /** Height of the scroll area in px. */
   height?: number
   /**
@@ -100,12 +102,13 @@ export function DataTable<T extends RowData>({
   onEndReached,
   hasNextPage = false,
   isFetchingNextPage = false,
-  rowHeight = 36,
+  rowSize = 2.25,
   height = 480,
   keyboardNavigation = false,
   sorting: controlledSorting,
   onSortingChange,
 }: DataTableProps<T>) {
+  const rem = useRem()
   const [localSorting, setLocalSorting] = useState<SortingState>([])
   const controlled = controlledSorting !== undefined && onSortingChange !== undefined
   const sorting = controlled ? controlledSorting : localSorting
@@ -137,9 +140,13 @@ export function DataTable<T extends RowData>({
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => rowHeight,
+    estimateSize: () => rowSize * rem,
     overscan: OVERSCAN,
   })
+  // The row height is a count of rem: measure again when the text size changes.
+  useEffect(() => {
+    virtualizer.measure()
+  }, [virtualizer, rem])
   const nav = useRowNavigation({
     count: rows.length,
     containerRef: scrollRef,

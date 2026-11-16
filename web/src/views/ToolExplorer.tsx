@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useRem } from '../lib/rem'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
 import { infiniteListOptions, readQueryOptions } from '../api/queries'
@@ -36,7 +37,8 @@ import {
 import type { ToolCall, ToolStat } from './toolsData'
 
 const PAGE_SIZE = 100
-const ROW_HEIGHT = 32
+/** Row height in rem (32px at the default text size). */
+const ROW_SIZE = 2
 const SUMMARY_MAX_ROWS = 12
 const numeric = { numeric: true }
 
@@ -291,6 +293,7 @@ type Patch = Partial<ToolsSearch>
  * text is not stored (ADR 0043).
  */
 export function ToolExplorerView() {
+  const rem = useRem()
   const search = useSearch({ from: '/tools' }) as ToolsSearch
   const navigate = useNavigate({ from: '/tools' })
 
@@ -398,8 +401,8 @@ export function ToolExplorerView() {
             onRowClick={(s) => {
               if (s.name !== '') update({ tool: [s.name] })
             }}
-            rowHeight={ROW_HEIGHT}
-            height={Math.min(Math.max(stats.length, 1), SUMMARY_MAX_ROWS) * ROW_HEIGHT}
+            rowSize={ROW_SIZE}
+            height={Math.min(Math.max(stats.length, 1), SUMMARY_MAX_ROWS) * ROW_SIZE * rem}
             keyboardNavigation
           />
         )}
@@ -423,7 +426,7 @@ export function ToolExplorerView() {
           hasNextPage={list.hasNextPage}
           isFetchingNextPage={list.isFetchingNextPage}
           onEndReached={() => void list.fetchNextPage()}
-          rowHeight={ROW_HEIGHT}
+          rowSize={ROW_SIZE}
           height={560}
           keyboardNavigation
         />

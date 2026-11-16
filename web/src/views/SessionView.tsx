@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
+import { useRem } from '../lib/rem'
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { apiGet } from '../api/client'
 import type { QueryOf } from '../api/client'
 import { isRetryable } from '../api/errors'
@@ -294,13 +295,15 @@ function Num({ text }: { text: string }) {
   return <span className={text === UNKNOWN ? 'num unknown' : 'num'}>{text}</span>
 }
 
-const TREE_ROW = 28
+/** Row heights in rem (28px and 24px at the default text size). */
+const TREE_ROW = 1.75
 
 /**
  * Tree mode: prompt, agent, call and tool call as one flattened, virtualised
  * list, each row with its numbers and a bar on the shared axis.
  */
 function SessionTree({ model, onOpenCall }: { model: SessionModel; onOpenCall: (id: string) => void }) {
+  const rem = useRem()
   const [overrides, setOverrides] = useState<Record<string, boolean>>({})
   const promptCount = model.prompts.length
   const rows = useMemo(
@@ -313,9 +316,13 @@ function SessionTree({ model, onOpenCall }: { model: SessionModel; onOpenCall: (
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => TREE_ROW,
+    estimateSize: () => TREE_ROW * rem,
     overscan: 12,
   })
+  // The row height is a count of rem: measure again when the text size changes.
+  useEffect(() => {
+    virtualizer.measure()
+  }, [virtualizer, rem])
   const nav = useRowNavigation({
     count: rows.length,
     containerRef: scrollRef,
@@ -441,10 +448,11 @@ function SessionTree({ model, onOpenCall }: { model: SessionModel; onOpenCall: (
   )
 }
 
-const LANE_ROW = 24
+const LANE_ROW = 1.5
 
 /** Time mode: a waterfall by start time with one lane per agent. */
 function SessionWaterfall({ model }: { model: SessionModel }) {
+  const rem = useRem()
   const lanes = useMemo(() => buildLanes(model), [model])
   const scrollRef = useRef<HTMLDivElement>(null)
   // TanStack Virtual returns unmemoizable functions; the React Compiler skips this component.
@@ -452,9 +460,13 @@ function SessionWaterfall({ model }: { model: SessionModel }) {
   const virtualizer = useVirtualizer({
     count: lanes.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => LANE_ROW,
+    estimateSize: () => LANE_ROW * rem,
     overscan: 12,
   })
+  // The row height is a count of rem: measure again when the text size changes.
+  useEffect(() => {
+    virtualizer.measure()
+  }, [virtualizer, rem])
   const guides = useMemo(() => <AxisGuides axis={model.axis} compactions={model.compactions} />, [model])
   return (
     <div className="trace waterfall">
