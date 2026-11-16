@@ -161,7 +161,7 @@ test('filters round trip through the URL search parameters', async () => {
   await waitFor(() => expect(search(router).client).toEqual(['cursor']))
   fireEvent.change(screen.getByLabelText('Tool error'), { target: { value: 'true' } })
   await waitFor(() => expect(search(router).tool_error).toBe(true))
-  fireEvent.click(screen.getByRole('button', { name: 'Remove Model claude-x' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Remove Model claude-x', hidden: true }))
   await waitFor(() => expect(search(router).model).toBeUndefined())
   expect(search(router)).toMatchObject({ client: ['cursor'], status: [429], streamed: true, tool_error: true })
   await waitFor(() => {
