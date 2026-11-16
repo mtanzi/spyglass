@@ -26,9 +26,10 @@ The captain compared several brand proposals in [branding-proposals.html](../bra
   | `--muted` | `#8a8f98` | `#6b6e75` |
   | `--border` | `#2a2c31` | `#e2e0db` |
   | `--border-subtle` | `#1f2024` | `#ecebe7` |
+  | `--border-control` (inputs, selects, buttons) | `#6b6f78` | `#85827b` |
   | `--bar` | `#4b4f58` | `#c9c7c1` |
-  | `--accent` (brass) | `#e5a54b` | `#a8690f` |
-  | `--accent-soft` | `rgba(229,165,75,0.16)` | `rgba(168,105,15,0.12)` |
+  | `--accent` (brass) | `#e5a54b` | `#965d0c` |
+  | `--accent-soft` | `rgba(229,165,75,0.16)` | `rgba(150,93,12,0.12)` |
   | `--ok` (teal, live and ok) | `#3fbfa8` | `#1c8a76` |
   | `--error` | `#eb5757` | `#d14343` |
 
@@ -42,7 +43,7 @@ The captain compared several brand proposals in [branding-proposals.html](../bra
 - The light tokens were written twice in the stylesheet: once under the media query and once under `data-theme="light"`. [ADR 0058](0058-align-web-ui-with-modern-web-guidance.md) change 6 amends this: each token is now written once as `light-dark(<light>, <dark>)`, and `data-theme` sets only `color-scheme`.
 - `theme-init.js` repeats the read logic of `src/lib/theme.ts`. A unit test runs the script, so the two stay in step.
 - The UI and the binary have different names. The README says so near its opening.
-- Open: the decided light brass (`#a8690f`) has a contrast of 4.48:1 on white and 4.17:1 on the surface. That is just under the WCAG AA minimum of 4.5:1 for small text, and link text uses this colour. Light teal (`#1c8a76`, 4.25:1 on white) is used only for fills, and the ok badge text uses `--fg`. The jsdom axe checks cannot measure contrast. A slightly darker light brass would close the gap, if a browser contrast check shows it is needed.
+- Closed by [ADR 0058](0058-align-web-ui-with-modern-web-guidance.md) change 8: the decided light brass (`#a8690f`) had a contrast of 4.48:1 on white and 4.17:1 on the surface, just under the WCAG AA minimum of 4.5:1 for small text, and link text uses this colour. Light brass is now `#965d0c`, with 5.43:1 on `--bg` and 5.06:1 on `--bg-elevated`. Light teal (`#1c8a76`, 4.25:1 on white) is used only for fills, and the ok badge text uses `--fg`. The jsdom axe checks cannot measure contrast, so the ratios were computed and checked in a browser.
 - ADR 0033 stays Completed and unchanged. This ADR replaces only its "monochrome with one indigo accent, dark only" palette.
 
 ## Work required
