@@ -169,7 +169,8 @@ Every payload is a small JSON object of numbers, names, ids and hashes, so there
 
 The admin plane has no sign-in, so the browser's own protections carry the weight ([ADR 0058](../adrs/0058-align-web-ui-with-modern-web-guidance.md)).
 
-- **Content Security Policy** on `/ui/*`: `default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`. The UI loads scripts and styles only from its own origin and runs no inline script. It loads no plugin, sets no `<base>`, cannot be framed by another page and posts no form to another origin. `internal/ui/handler.go` sets it.
+- **Content Security Policy** on `/ui/*`: `default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; require-trusted-types-for 'script'`. The UI loads scripts and styles only from its own origin and runs no inline script. It loads no plugin, sets no `<base>`, cannot be framed by another page and posts no form to another origin. `internal/ui/handler.go` sets it.
+- **Trusted Types**: `require-trusted-types-for 'script'` makes the browser refuse a plain string written to an HTML or script sink, such as `innerHTML` or a script `src`. The UI defines no Trusted Types policy, because neither its code nor its dependencies write to such a sink. Never add a pass-through or `default` policy to make a violation go away: remove the sink instead. Browsers without Trusted Types ignore the directive.
 - **Security headers** on every admin-plane response: `/ui/*`, `/admin/*`, `/metrics`, `/healthz` and `/readyz`. One middleware, `httpmw.SecurityHeaders`, sets them, and `cmd/spyglass` applies it to the admin listener only. The data plane does not set them.
   - `X-Content-Type-Options: nosniff`, so a JSON response never runs as a script.
   - `Referrer-Policy: no-referrer`, so a link out of the UI does not leak the admin URL.

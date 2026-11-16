@@ -97,7 +97,7 @@ func TestOtherFileIsNoCache(t *testing.T) {
 }
 
 // wantCSP is the UI policy of ADR 0058, written out so a change to csp fails.
-const wantCSP = "default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+const wantCSP = "default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; require-trusted-types-for 'script'"
 
 func TestCSPOnEveryResponse(t *testing.T) {
 	h := newHandler(testFS)
