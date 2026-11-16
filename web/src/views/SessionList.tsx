@@ -175,7 +175,7 @@ export function SessionListView() {
   return (
     <section aria-labelledby="view-title">
       <div className="view-header">
-        <h1 id="view-title">Sessions</h1>
+        <h1 id="view-title" tabIndex={-1}>Sessions</h1>
         <span className="dim">{list.data ? `${formatCount(rows.length)}${list.hasNextPage ? '+' : ''} sessions` : ''}</span>
       </div>
       <div className="toolbar">

@@ -4,6 +4,10 @@ Notable changes to Spyglass. Release 0.1.0 and earlier are described in their [G
 
 ## Unreleased
 
+### Changed
+
+- **Page titles and focus on navigation** ([ADR 0058](docs/adrs/0058-align-web-ui-with-modern-web-guidance.md), [#124](https://github.com/mtanzi/spyglass/issues/124)). Each page of the UI now has its own title, unique part first, for example "Sessions · Spyglass" and "Session <key> · Spyglass", where the tab and the history showed "Spyglass" for every page. After a client-side navigation to another page, focus moves to the new page's heading, so a screen reader announces it. The first load and a change of filter, sort or range do not move focus.
+
 ### Security
 
 - **Trusted Types on the UI** ([ADR 0058](docs/adrs/0058-align-web-ui-with-modern-web-guidance.md), [#123](https://github.com/mtanzi/spyglass/issues/123)). The UI's Content Security Policy now ends with `require-trusted-types-for 'script'`, so the browser refuses any plain string written to an HTML or script sink. The UI defines no Trusted Types policy, because it writes to no such sink. Every view was checked in Chrome with the header on and logs no violation. Browsers without Trusted Types ignore the directive.

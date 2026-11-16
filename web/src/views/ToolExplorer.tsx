@@ -326,7 +326,7 @@ export function ToolExplorerView() {
   return (
     <section aria-labelledby="view-title">
       <div className="view-header">
-        <h1 id="view-title">Tools</h1>
+        <h1 id="view-title" tabIndex={-1}>Tools</h1>
         <span className="dim">
           {list.data ? `${formatCount(rows.length)}${list.hasNextPage ? '+' : ''} tool calls listed` : ''}
         </span>

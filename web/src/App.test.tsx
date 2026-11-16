@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createMemoryHistory } from '@tanstack/react-router'
 import axe from 'axe-core'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
@@ -107,5 +107,49 @@ describe.each(['light', 'dark'])('in the %s theme', (theme) => {
     // jsdom has no layout or styles, so colour contrast cannot be computed.
     const results = await axe.run(container, { rules: { 'color-contrast': { enabled: false } } })
     expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([])
+  })
+})
+
+test.each([
+  ['/ui/', 'Overview · Spyglass'],
+  ['/ui/calls', 'Calls · Spyglass'],
+  ['/ui/calls/0190a1b2-0000-7000-8000-000000000000', 'Call 0190a1b2-0000-7000-8000-000000000000 · Spyglass'],
+  ['/ui/sessions', 'Sessions · Spyglass'],
+  ['/ui/sessions/a%2Fb%3Ac', 'Session a/b:c · Spyglass'],
+  ['/ui/tools', 'Tools · Spyglass'],
+  ['/ui/cost', 'Cost · Spyglass'],
+  ['/ui/admin/config', 'Config · Spyglass'],
+  ['/ui/nope', 'Overview · Spyglass'],
+])('route %s has the title %s', async (path, title) => {
+  await renderAt(path)
+  await waitFor(() => expect(document.title).toBe(title))
+})
+
+describe('focus on navigation', () => {
+  test('the first load does not move focus', async () => {
+    await renderAt('/ui/calls')
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Calls' })).toBeTruthy())
+    expect(document.activeElement).toBe(document.body)
+  })
+
+  test('a link click moves focus to the new <h1> and updates the title', async () => {
+    await renderAt('/ui/calls')
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Calls' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('link', { name: 'Sessions' }))
+    const h1 = await screen.findByRole('heading', { level: 1, name: 'Sessions' })
+    await waitFor(() => expect(document.activeElement).toBe(h1))
+    expect(h1.getAttribute('tabindex')).toBe('-1')
+    expect(document.title).toBe('Sessions · Spyglass')
+  })
+
+  test('a change of search parameters only does not move focus', async () => {
+    const { router } = await renderAt('/ui/calls')
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Calls' })).toBeTruthy())
+    const sidebarLink = screen.getByRole('link', { name: 'Cost' })
+    sidebarLink.focus()
+    await act(() => router.navigate({ to: '/calls', search: { range: '1h' } }))
+    await waitFor(() => expect(router.state.location.searchStr).not.toBe(''))
+    expect(document.activeElement).toBe(sidebarLink)
+    expect(document.title).toBe('Calls · Spyglass')
   })
 })

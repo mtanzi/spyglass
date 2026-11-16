@@ -296,7 +296,7 @@ export function DashboardView() {
   return (
     <section aria-labelledby="view-title" className="dashboard">
       <div className="view-header">
-        <h1 id="view-title">Overview</h1>
+        <h1 id="view-title" tabIndex={-1}>Overview</h1>
         <span className="dim">Updated {now.toLocaleTimeString()}</span>
         <button type="button" onClick={() => setNow(new Date())}>
           Refresh

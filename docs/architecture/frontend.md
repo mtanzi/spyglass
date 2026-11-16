@@ -129,6 +129,8 @@ The UI supports the current release of Chrome, Edge, Firefox and Safari on deskt
 - **TanStack Router** with typed search parameters. Every filter, the time range, the cursor, the grouping toggle and the active tab are search parameters.
 - A filtered view is therefore a shareable link. The firstmate alert adapter and Grafana data links can point at one.
 - The router's search-param validation rejects unknown values, so a stale or hand-edited URL degrades to defaults instead of an error.
+- **Page titles.** Each route sets `staticData.title` in `router.tsx`, and `Layout` writes `document.title` as `<title> · Spyglass`, unique part first ("Sessions · Spyglass", "Session <key> · Spyglass", "Call <id> · Spyglass").
+- **Focus on navigation.** After a client-side navigation to another path, `Layout` moves focus to the new view's `<h1>` (`tabIndex={-1}`) on the router's `onRendered` event. The first load and a change of search parameters only (a filter, a sort, a range) do not move focus.
 - The SPA is mounted at `/ui/`. The Go handler returns `index.html` for any `/ui/*` path that is not a file, so deep links and reloads work (see [Build and embedding](#build-and-embedding)).
 
 ## State and data fetching

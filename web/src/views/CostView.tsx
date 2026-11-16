@@ -265,7 +265,7 @@ export function CostView() {
   return (
     <section aria-labelledby="view-title" className="dashboard cost-view">
       <div className="view-header">
-        <h1 id="view-title">Cost</h1>
+        <h1 id="view-title" tabIndex={-1}>Cost</h1>
         <span className="dim">Updated {now.toLocaleTimeString()}</span>
         <button type="button" onClick={() => setNow(new Date())}>
           Refresh

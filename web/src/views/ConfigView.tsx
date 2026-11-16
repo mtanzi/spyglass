@@ -33,7 +33,7 @@ export function ConfigView() {
   return (
     <section aria-labelledby="view-title" className="dashboard config-view">
       <div className="view-header">
-        <h1 id="view-title">Config</h1>
+        <h1 id="view-title" tabIndex={-1}>Config</h1>
         <button type="button" onClick={() => void query.refetch()}>
           Refresh
         </button>

@@ -305,7 +305,7 @@ export function CallLogView() {
   return (
     <section aria-labelledby="view-title">
       <div className="view-header">
-        <h1 id="view-title">Calls</h1>
+        <h1 id="view-title" tabIndex={-1}>Calls</h1>
       </div>
 
       <div className="toolbar">
