@@ -26,6 +26,15 @@ The binary has two listeners, so the data plane and the admin plane can be expos
 
 **The admin plane has no sign-in in v1.** It binds to a loopback address by default, and `serve` refuses to start if `listen.admin` is not a loopback address (`127.0.0.1`, `::1` or `localhost`). Anyone who can reach the loopback interface of the host can read the admin API and the UI, so the host must be trusted. Admin sign-in is a later item ([Later versions](#later-versions)). Virtual-key auth on the data plane is unchanged.
 
+**The admin plane refuses cross-site browser requests** ([ADR 0058](../adrs/0058-align-web-ui-with-modern-web-guidance.md)). The loopback bind keeps other hosts out, but a web page open in a browser on the same host can still send requests to `127.0.0.1`. So `httpmw.FetchMetadata` reads the browser's Fetch Metadata headers before any admin handler runs:
+
+- A request with `Sec-Fetch-Site: cross-site` gets `403`, unless it is a top-level navigation to the UI: method `GET`, `Sec-Fetch-Mode: navigate`, `Sec-Fetch-Dest: document` and a path under `/ui/`. A link from another site still opens the UI; the UI's own API calls are then same-origin.
+- `same-origin`, `same-site` and `none` (a typed URL or a bookmark) pass.
+- A request without `Sec-Fetch-Site` passes. `curl`, Prometheus and the CLI send none, and a browser that sends none is older than the [supported browsers](frontend.md#browser-support).
+- Every admin response carries `Vary: Sec-Fetch-Site, Sec-Fetch-Mode, Sec-Fetch-Dest`.
+
+The check runs inside the request chain, after the access log, so a refused request is logged with its call id. The data plane does not use it.
+
 ## Component diagram
 
 ```mermaid
@@ -127,7 +136,7 @@ The hot path is one flow, so it is one package with one file per concern: auth, 
 - **One header check.** A presented `lp_` virtual key is never forwarded upstream. A request that carries a credential in the wrong place for the provider's mode is rejected with `401`: for a `client_passthrough` provider, an `lp_` value in `Authorization` or `x-api-key`; for a `proxy_key` provider, an `x-spyglass-key` header.
 - **Lookup** is an in-memory map from SHA-256 to key record, owned by `keyring`. `keyring` builds it from the keys of a config snapshot, and the map travels with that snapshot: `SIGHUP` builds a new snapshot and swaps it atomically, and a request in flight keeps the map it started with. The handler hashes the presented key and looks the hash up. The config loader rejects a snapshot with a duplicate name, a duplicate hash or a malformed hash, and the proxy keeps the previous snapshot and logs the error. Nothing about keys touches the store.
 - **Checks:** the key exists and is not disabled. A failure returns a protocol-correct Anthropic error body with a stable `type` per error class (gap review R3). Expiry, request-rate and concurrency limits and budgets are deferred ([Later versions](#later-versions)).
-- **Admin plane** has no auth in v1. The admin listener is loopback-only and `serve` refuses to start otherwise (see [Shape](#shape)). Admin sign-in is a later item ([Later versions](#later-versions)). Every admin-plane response carries the browser security headers of `httpmw.SecurityHeaders` (ADR 0058, [frontend.md](frontend.md#security)); the data plane sets none of them.
+- **Admin plane** has no auth in v1. The admin listener is loopback-only and `serve` refuses to start otherwise (see [Shape](#shape)). Admin sign-in is a later item ([Later versions](#later-versions)). Every admin-plane response carries the browser security headers of `httpmw.SecurityHeaders` (ADR 0058, [frontend.md](frontend.md#security)), and `httpmw.FetchMetadata` refuses cross-site browser requests (see [Shape](#shape)); the data plane does neither.
 
 #### Correlation
 
@@ -575,7 +584,7 @@ spyglass/
 │   │                       graceful drain. One package, one file per concern.
 │   ├── httpmw/             request-lifecycle steps both listeners share: recover, request id,
 │   │                       access log with header redaction, request-size limit;
-│   │                       admin-plane security headers
+│   │                       admin-plane security headers and Fetch Metadata check
 │   ├── keyring/            immutable key map (SHA-256 to key) built from a config snapshot; lookup
 │   ├── recorder/           Finished events: live fan-out, bounded queue,
 │   │                       batch writer, retry, drop counting, shutdown flush

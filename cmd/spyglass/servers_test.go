@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -208,6 +209,95 @@ func TestAdminPlaneSetsSecurityHeaders(t *testing.T) {
 		}
 		if got := resp.Header.Get("Content-Security-Policy"); got != "" {
 			t.Errorf("data GET %s: Content-Security-Policy = %q, want none", path, got)
+		}
+	}
+}
+
+// TestAdminPlaneRefusesCrossSiteRequests checks the Fetch Metadata rule of
+// ADR 0058 end to end: a cross-site browser request to the admin plane gets
+// 403 unless it is a top-level GET navigation to the UI, other requests pass,
+// every admin response varies on Sec-Fetch-*, and the data plane is unchanged.
+func TestAdminPlaneRefusesCrossSiteRequests(t *testing.T) {
+	s, err := testServers(testConfig(), noSnapshots{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dataLn, adminLn := listen(t), listen(t)
+	go func() { _ = s.ServeData(dataLn) }()
+	go func() { _ = s.ServeAdmin(adminLn) }()
+	t.Cleanup(func() { _ = s.Data.Close(); _ = s.Admin.Close() })
+
+	// send makes one request; site, mode and dest are the Sec-Fetch-* values,
+	// and an empty one is not sent.
+	send := func(base, method, path, site, mode, dest string) *http.Response {
+		t.Helper()
+		req, err := http.NewRequest(method, "http://"+base+path, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for k, v := range map[string]string{"Sec-Fetch-Site": site, "Sec-Fetch-Mode": mode, "Sec-Fetch-Dest": dest} {
+			if v != "" {
+				req.Header.Set(k, v)
+			}
+		}
+		resp, err := http.DefaultTransport.RoundTrip(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+		return resp
+	}
+	admin := adminLn.Addr().String()
+	cases := []struct {
+		method, path, site, mode, dest string
+		want                           int
+	}{
+		{"GET", "/admin/calls", "cross-site", "cors", "empty", http.StatusForbidden},
+		{"GET", "/admin/openapi.json", "cross-site", "no-cors", "script", http.StatusForbidden},
+		{"POST", "/admin/calls", "cross-site", "cors", "empty", http.StatusForbidden},
+		{"GET", "/ui/assets/missing.js", "cross-site", "no-cors", "script", http.StatusForbidden},
+		{"GET", "/ui/", "cross-site", "cors", "empty", http.StatusForbidden},
+		{"GET", "/ui/", "cross-site", "navigate", "iframe", http.StatusForbidden},
+		{"POST", "/ui/", "cross-site", "navigate", "document", http.StatusForbidden},
+		{"GET", "/metrics", "cross-site", "no-cors", "empty", http.StatusForbidden},
+		{"GET", "/healthz", "cross-site", "cors", "empty", http.StatusForbidden},
+		{"GET", "/ui/", "cross-site", "navigate", "document", http.StatusOK},
+		{"GET", "/ui/calls", "cross-site", "navigate", "document", http.StatusOK},
+		{"GET", "/ui/", "none", "navigate", "document", http.StatusOK},
+		{"GET", "/admin/openapi.json", "same-origin", "cors", "empty", http.StatusOK},
+		{"GET", "/admin/nope", "same-origin", "cors", "empty", http.StatusNotFound},
+		{"GET", "/admin/openapi.json", "", "", "", http.StatusOK},
+		{"GET", "/metrics", "", "", "", http.StatusOK},
+		{"GET", "/healthz", "", "", "", http.StatusOK},
+	}
+	for _, c := range cases {
+		resp := send(admin, c.method, c.path, c.site, c.mode, c.dest)
+		if resp.StatusCode != c.want {
+			t.Errorf("admin %s %s site=%q mode=%q dest=%q = %d, want %d", c.method, c.path, c.site, c.mode, c.dest, resp.StatusCode, c.want)
+		}
+		if got := resp.Header.Values("Vary"); !slices.Contains(got, httpmw.FetchMetadataVary) {
+			t.Errorf("admin %s %s: Vary = %q, want it to hold %q", c.method, c.path, got, httpmw.FetchMetadataVary)
+		}
+		if got := resp.Header.Get("X-Frame-Options"); got != "DENY" {
+			t.Errorf("admin %s %s: X-Frame-Options = %q, want the security headers on every response", c.method, c.path, got)
+		}
+	}
+	if resp := send(admin, "GET", "/readyz", "", "", ""); resp.StatusCode == http.StatusForbidden {
+		t.Errorf("admin GET /readyz without Sec-Fetch-* = 403, want it to pass")
+	}
+
+	data := dataLn.Addr().String()
+	for _, path := range []string{"/healthz", "/readyz", "/v1/messages", "/api/hello"} {
+		plain := send(data, "GET", path, "", "", "")
+		cross := send(data, "GET", path, "cross-site", "cors", "empty")
+		if cross.StatusCode != plain.StatusCode {
+			t.Errorf("data GET %s cross-site = %d, want %d as without Sec-Fetch-*", path, cross.StatusCode, plain.StatusCode)
+		}
+		for _, v := range cross.Header.Values("Vary") {
+			if strings.Contains(v, "Sec-Fetch") {
+				t.Errorf("data GET %s: Vary = %q, want no Sec-Fetch-*", path, v)
+			}
 		}
 	}
 }

@@ -177,6 +177,7 @@ The admin plane has no sign-in, so the browser's own protections carry the weigh
   - `Cross-Origin-Opener-Policy: same-origin`. The UI opens no popups, so this costs nothing.
   - `X-Frame-Options: DENY`, for browsers that do not read `frame-ancestors`.
   - `Permissions-Policy`, which turns off camera, microphone, geolocation and similar device, sensor and payment features. The list is the `httpmw.PermissionsPolicy` constant.
+- **Fetch Metadata**: the admin plane answers `403` to a cross-site browser request, except a top-level `GET` navigation to `/ui/`, so another page cannot call the admin API. `httpmw.FetchMetadata` does it ([backend.md](backend.md#shape)).
 - These headers only change what a browser does. Prometheus, `curl`, the CLI and the probes get the same responses as before.
 - **Stored strings** (tool names, model names, labels) are rendered as text, never as HTML, so a value that contains markup cannot run in the browser.
 - A new directive or header must leave every view free of console violations in the supported browsers ([Browser support](#browser-support)).
