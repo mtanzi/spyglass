@@ -179,22 +179,24 @@ export function SessionListView() {
         <span className="dim">{list.data ? `${formatCount(rows.length)}${list.hasNextPage ? '+' : ''} sessions` : ''}</span>
       </div>
       <div className="toolbar">
-        <TimeRangePicker value={search} onChange={(next) => update(next)} />
-        <FilterMenu
-          activeCount={active}
-          onClear={() => update(Object.fromEntries(FILTER_KEYS.map((k) => [k, undefined])) as Patch)}
-        >
-          <TextListFilter label="Key name" values={search.key} onChange={(v) => update({ key: v })} />
-          <TextListFilter label="Client" values={search.client} onChange={(v) => update({ client: v })} />
-          <TextListFilter label="Provider" values={search.provider} onChange={(v) => update({ provider: v })} />
-          <TextListFilter label="Model" values={search.model} onChange={(v) => update({ model: v })} />
-          <TextListFilter label="Error class" values={search.error_class} onChange={(v) => update({ error_class: v })} />
-          <NumberFilter
-            label="Cost at least (micro-USD)"
-            value={search.cost_micro_usd_gte}
-            onChange={(v) => update({ cost_micro_usd_gte: v })}
-          />
-        </FilterMenu>
+        <search className="toolbar-search">
+          <TimeRangePicker value={search} onChange={(next) => update(next)} />
+          <FilterMenu
+            activeCount={active}
+            onClear={() => update(Object.fromEntries(FILTER_KEYS.map((k) => [k, undefined])) as Patch)}
+          >
+            <TextListFilter label="Key name" values={search.key} onChange={(v) => update({ key: v })} />
+            <TextListFilter label="Client" values={search.client} onChange={(v) => update({ client: v })} />
+            <TextListFilter label="Provider" values={search.provider} onChange={(v) => update({ provider: v })} />
+            <TextListFilter label="Model" values={search.model} onChange={(v) => update({ model: v })} />
+            <TextListFilter label="Error class" values={search.error_class} onChange={(v) => update({ error_class: v })} />
+            <NumberFilter
+              label="Cost at least (micro-USD)"
+              value={search.cost_micro_usd_gte}
+              onChange={(v) => update({ cost_micro_usd_gte: v })}
+            />
+          </FilterMenu>
+        </search>
         <p className="hint dim">
           <kbd>j</kbd> <kbd>k</kbd> move · <kbd>Enter</kbd> open
         </p>

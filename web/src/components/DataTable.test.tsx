@@ -43,7 +43,10 @@ test('renders only a window of 5,000 rows', () => {
 
 test('shows loading, error and empty states instead of rows', () => {
   const { rerender } = render(<DataTable {...props} data={[]} isLoading />)
-  expect(screen.getByRole('status').textContent).toContain('Loading')
+  expect(screen.getByText(/Loading/)).toBeTruthy()
+  // Loading is not a live region; the table says it is busy.
+  expect(screen.queryByRole('status')).toBeNull()
+  expect(screen.getByRole('table').getAttribute('aria-busy')).toBe('true')
   rerender(<DataTable {...props} data={[]} error={new Error('x')} />)
   expect(screen.getByRole('alert')).toBeTruthy()
   rerender(<DataTable {...props} data={[]} emptyMessage="No calls in this range." />)
@@ -58,6 +61,19 @@ test('sorts the loaded rows from the header', () => {
   expect(header.getAttribute('aria-sort')).toBe('descending')
   const rows = screen.getAllByRole('row').slice(1)
   expect(within(rows[0]).getByText('row 4')).toBeTruthy()
+})
+
+test('only the sorted header carries aria-sort, and the sort glyph is hidden from the name', () => {
+  render(<DataTable {...props} data={makeRows(5)} />)
+  const header = screen.getByRole('columnheader', { name: /Number/ })
+  expect(screen.getAllByRole('columnheader').filter((h) => h.hasAttribute('aria-sort'))).toHaveLength(0)
+  fireEvent.click(within(header).getByRole('button'))
+  const sorted = screen.getAllByRole('columnheader').filter((h) => h.hasAttribute('aria-sort'))
+  expect(sorted).toEqual([header])
+  const glyph = within(header).getByText('▼')
+  expect(glyph.getAttribute('aria-hidden')).toBe('true')
+  expect(within(header).getByRole('button').textContent).toBe('Number ▼')
+  expect(within(header).getByRole('button', { name: 'Number' })).toBeTruthy()
 })
 
 test('column visibility toggle hides a column', () => {

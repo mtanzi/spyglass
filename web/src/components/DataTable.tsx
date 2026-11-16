@@ -209,12 +209,14 @@ export function DataTable<T extends RowData>({
                       role="columnheader"
                       key={header.id}
                       className={cellClass('th', header.column.columnDef.meta?.numeric)}
-                      aria-sort={sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : 'none'}
+                      aria-sort={sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : undefined}
                     >
                       {header.column.getCanSort() ? (
                         <button type="button" onClick={header.column.getToggleSortingHandler()}>
                           {flexRender(header.column.columnDef.header, header.getContext())}
-                          {sorted === 'asc' ? ' ▲' : sorted === 'desc' ? ' ▼' : ''}
+                          {sorted && (
+                            <span aria-hidden="true">{sorted === 'asc' ? ' ▲' : ' ▼'}</span>
+                          )}
                         </button>
                       ) : (
                         flexRender(header.column.columnDef.header, header.getContext())

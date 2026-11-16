@@ -6,6 +6,7 @@ import type { QueryOf } from '../api/client'
 import { readQueryOptions } from '../api/queries'
 import { ActivityChart } from '../components/ActivityChart'
 import { StatusBadge, Tag } from '../components/Badge'
+import { InfoNote } from '../components/InfoNote'
 import { Sparkline } from '../components/Sparkline'
 import { EmptyState, ErrorMessage, LoadingState } from '../components/states'
 import { TimeRangePicker } from '../components/TimeRangePicker'
@@ -17,6 +18,7 @@ import {
   formatCount,
   formatDurationMs,
   formatText,
+  PASSTHROUGH_NOTE,
   zeroAsUnknown,
 } from '../lib/format'
 import { DASHBOARD_RANGES } from '../search/routes'
@@ -101,7 +103,7 @@ type Bad = 'up' | 'down' | 'none'
 interface TileSpec {
   label: string
   value: string
-  title?: string
+  approxNote?: string
   note?: string
   measure: Measure
   current: number | null
@@ -140,7 +142,7 @@ function Tiles({
   range: DashboardRange
   costNote?: string
 }) {
-  const latencyTitle =
+  const latencyNote =
     cur && !cur.latencyExact
       ? 'Approximate: the call-weighted mean of the per-interval percentiles. The usage API has no percentile over the whole range.'
       : undefined
@@ -162,8 +164,8 @@ function Tiles({
     { label: 'Tokens out', value: formatCount(cur?.tokensOut), measure: 'tokensOut', current: cur?.tokensOut ?? null, previous: prev?.tokensOut ?? null, mode: 'relative', bad: 'none' },
     { label: 'Error rate', value: formatRatio(cur?.errorRate ?? null), measure: 'errorRate', current: cur?.errorRate ?? null, previous: prev?.errorRate ?? null, mode: 'points', bad: 'up' },
     { label: 'Cache hit', value: formatRatio(cur?.cacheHit ?? null), measure: 'cacheHit', current: cur?.cacheHit ?? null, previous: prev?.cacheHit ?? null, mode: 'points', bad: 'down' },
-    { label: 'Latency p50', value: approx(cur?.p50 ?? null), title: latencyTitle, measure: 'p50', current: cur?.p50 ?? null, previous: prev?.p50 ?? null, mode: 'relative', bad: 'up' },
-    { label: 'Latency p95', value: approx(cur?.p95 ?? null), title: latencyTitle, measure: 'p95', current: cur?.p95 ?? null, previous: prev?.p95 ?? null, mode: 'relative', bad: 'up' },
+    { label: 'Latency p50', value: approx(cur?.p50 ?? null), approxNote: latencyNote, measure: 'p50', current: cur?.p50 ?? null, previous: prev?.p50 ?? null, mode: 'relative', bad: 'up' },
+    { label: 'Latency p95', value: approx(cur?.p95 ?? null), approxNote: latencyNote, measure: 'p95', current: cur?.p95 ?? null, previous: prev?.p95 ?? null, mode: 'relative', bad: 'up' },
   ]
   return (
     <dl className="kpi-grid">
@@ -171,9 +173,8 @@ function Tiles({
         <div key={t.label} className="kpi">
           <dt>{t.label}</dt>
           <dd>
-            <span className="kpi-value" title={t.title}>
-              {cur ? <Maybe text={t.value} /> : '…'}
-            </span>
+            <span className="kpi-value">{cur ? <Maybe text={t.value} /> : '…'}</span>
+            {t.approxNote && <InfoNote label="approximate" note={t.approxNote} />}
             {t.note && <small className="kpi-note">{t.note}</small>}
             {cur && prev && (
               <ChangeText change={compare(t.current, t.previous, t.mode)} mode={t.mode} bad={t.bad} range={range} />
@@ -303,12 +304,14 @@ export function DashboardView() {
         </button>
       </div>
       <div className="toolbar">
-        <TimeRangePicker
-          value={rangeSearch}
-          presets={DASHBOARD_RANGES}
-          allowAbsolute={false}
-          onChange={(next) => setSearch({ range: next.range as DashboardRange | undefined })}
-        />
+        <search className="toolbar-search">
+          <TimeRangePicker
+            value={rangeSearch}
+            presets={DASHBOARD_RANGES}
+            allowAbsolute={false}
+            onChange={(next) => setSearch({ range: next.range as DashboardRange | undefined })}
+          />
+        </search>
         <Link to="/tools" search={rangeSearch} className="toolbar-link">
           Tool calls
         </Link>
@@ -585,10 +588,10 @@ function FeedTable({ calls, passthrough }: { calls: CallSummary[]; passthrough: 
               <td className="num">
                 <Maybe text={formatCostMicroUsd(c.cost_micro_usd)} />
                 {c.cost_micro_usd !== null && passthrough.has(c.provider) && (
-                  <small className="dim" title="client_passthrough: the plan bills the person, not per token">
+                  <>
                     {' '}
-                    API-equivalent
-                  </small>
+                    <InfoNote label="API-equivalent" note={PASSTHROUGH_NOTE} />
+                  </>
                 )}
               </td>
             </tr>

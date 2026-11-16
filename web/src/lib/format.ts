@@ -50,3 +50,6 @@ export function formatText(value: string | null | undefined): string {
 export function zeroAsUnknown(value: number | null | undefined): number | null {
   return value == null || value === 0 ? null : value
 }
+
+/** Why a client_passthrough cost is shown as API-equivalent. */
+export const PASSTHROUGH_NOTE = 'client_passthrough: the plan bills the person, not per token'

@@ -152,11 +152,13 @@ test('the panels show a loading state while a long range loads', async () => {
   const gate = new Promise<void>((resolve) => (release = resolve))
   stubApi({ gate })
   await renderAt('/ui/cost?range=30d')
-  expect(within(panel('Cost over time by model')).getByRole('status').textContent).toContain('a long range can take a few seconds')
-  expect(within(panel('Cost by model')).getByRole('status')).toBeTruthy()
+  expect(within(panel('Cost over time by model')).getByText(/a long range can take a few seconds/)).toBeTruthy()
+  expect(within(panel('Cost by model')).getByText(/Loading/)).toBeTruthy()
+  // A loading state is not a live region.
+  expect(within(panel('Cost by model')).queryByRole('status')).toBeNull()
   release()
   await within(panel('Cost by model')).findByRole('table', { name: 'Cost by model' })
-  expect(within(panel('Cost by model')).queryByRole('status')).toBeNull()
+  expect(within(panel('Cost by model')).queryByText(/Loading/)).toBeNull()
 })
 
 test('cost by model lists every model with its share, and unknown cost is not zero', async () => {

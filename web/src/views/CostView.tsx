@@ -6,10 +6,11 @@ import { readQueryOptions } from '../api/queries'
 import { ActivityChart } from '../components/ActivityChart'
 import { ChartTable } from '../components/ChartTable'
 import { Tag } from '../components/Badge'
+import { InfoNote } from '../components/InfoNote'
 import { RatioChart } from '../components/RatioChart'
 import { EmptyState, ErrorMessage, LoadingState } from '../components/states'
 import { TimeRangePicker } from '../components/TimeRangePicker'
-import { UNKNOWN, formatCostMicroUsd, formatCount, formatText } from '../lib/format'
+import { PASSTHROUGH_NOTE, UNKNOWN, formatCostMicroUsd, formatCount, formatText } from '../lib/format'
 import { COST_GROUPS, DEFAULT_COST_GROUP } from '../search/routes'
 import type { CallsSearch, CostGroup, CostSearch } from '../search/routes'
 import { resolveTimeRange } from '../search/timeRange'
@@ -96,16 +97,16 @@ function CostCell({ cost, unpriced, apiEquivalent }: { cost: number | null; unpr
     <>
       <Maybe text={formatCostMicroUsd(cost)} />
       {cost !== null && apiEquivalent && (
-        <small className="dim" title="client_passthrough: the plan bills the person, not per token">
+        <>
           {' '}
-          API-equivalent
-        </small>
+          <InfoNote label="API-equivalent" note={PASSTHROUGH_NOTE} />
+        </>
       )}
       {cost !== null && unpriced > 0 && (
-        <small className="dim" title="Calls with no price are left out of the cost">
+        <>
           {' '}
-          + {formatCount(unpriced)} unpriced
-        </small>
+          <InfoNote label={`+ ${formatCount(unpriced)} unpriced`} note="Calls with no price are left out of the cost" />
+        </>
       )}
     </>
   )
@@ -272,19 +273,21 @@ export function CostView() {
         </button>
       </div>
       <div className="toolbar">
-        <TimeRangePicker value={timeValue} onChange={(next) => setSearch(next)} />
-        <div className="segmented" role="group" aria-label="Group by">
-          {COST_GROUPS.map((g) => (
-            <button
-              key={g}
-              type="button"
-              aria-pressed={group === g}
-              onClick={() => setSearch({ group_by: g === DEFAULT_COST_GROUP ? undefined : g })}
-            >
-              {GROUP_LABELS[g]}
-            </button>
-          ))}
-        </div>
+        <search className="toolbar-search">
+          <TimeRangePicker value={timeValue} onChange={(next) => setSearch(next)} />
+          <div className="segmented" role="group" aria-label="Group by">
+            {COST_GROUPS.map((g) => (
+              <button
+                key={g}
+                type="button"
+                aria-pressed={group === g}
+                onClick={() => setSearch({ group_by: g === DEFAULT_COST_GROUP ? undefined : g })}
+              >
+                {GROUP_LABELS[g]}
+              </button>
+            ))}
+          </div>
+        </search>
         <Link to="/" search={{ range: undefined }} className="toolbar-link">
           Overview
         </Link>

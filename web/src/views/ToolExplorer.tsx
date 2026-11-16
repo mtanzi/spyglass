@@ -14,6 +14,7 @@ import {
   TextListFilter,
 } from '../components/FilterMenu'
 import { Tag } from '../components/Badge'
+import { InfoNote } from '../components/InfoNote'
 import { ErrorMessage } from '../components/states'
 import { TimeRangePicker } from '../components/TimeRangePicker'
 import { UNKNOWN, formatBytes, formatCount, formatDurationMs, formatText } from '../lib/format'
@@ -84,9 +85,10 @@ const summaryColumns: DataTableColumn<ToolStat>[] = [
       const s = row.original
       const text = formatRatio(s.count > 0 ? s.error_rate : null)
       return s.errors > 0 ? (
-        <span className="badge badge-error" title={`${formatCount(s.errors)} of ${formatCount(s.count)} failed`}>
-          {text}
-        </span>
+        <>
+          <span className="badge badge-error">{text}</span>
+          <small className="dim"> {formatCount(s.errors)} failed</small>
+        </>
       ) : (
         <span className="dim">
           <Value text={text} />
@@ -152,8 +154,8 @@ function Duration({ call }: { call: ToolCall }) {
     <span className="duration-cell">
       <Value text={formatDurationMs(call.duration_ms)} />
       {source && call.duration_ms !== null && (
-        <span className="kind" data-source={call.duration_source} title={source.title}>
-          {source.label}
+        <span className="duration-source" data-source={call.duration_source}>
+          <InfoNote label={source.label} note={source.title} />
         </span>
       )}
     </span>
@@ -336,30 +338,32 @@ export function ToolExplorerView() {
       </div>
 
       <div className="toolbar">
-        <TimeRangePicker value={search} onChange={(next) => update(next)} />
-        <FilterMenu
-          activeCount={active}
-          onClear={() => update(Object.fromEntries(TOOL_FILTER_KEYS.map((k) => [k, undefined])) as Patch)}
-        >
-          <TextListFilter label="Tool name" values={search.tool} onChange={(v) => update({ tool: v })} />
-          <BooleanFilter label="Error" value={search.is_error} onChange={(v) => update({ is_error: v })} />
-          <TextFilter label="Session" value={search.session} onChange={(v) => update({ session: v })} />
-          <NumberFilter
-            label="Duration at least (ms)"
-            value={search.duration_ms_gte}
-            onChange={(v) => update({ duration_ms_gte: v })}
-          />
-          <NumberFilter
-            label="Argument size at least (bytes)"
-            value={search.arg_bytes_gte}
-            onChange={(v) => update({ arg_bytes_gte: v })}
-          />
-          <NumberFilter
-            label="Result size at least (bytes)"
-            value={search.result_bytes_gte}
-            onChange={(v) => update({ result_bytes_gte: v })}
-          />
-        </FilterMenu>
+        <search className="toolbar-search">
+          <TimeRangePicker value={search} onChange={(next) => update(next)} />
+          <FilterMenu
+            activeCount={active}
+            onClear={() => update(Object.fromEntries(TOOL_FILTER_KEYS.map((k) => [k, undefined])) as Patch)}
+          >
+            <TextListFilter label="Tool name" values={search.tool} onChange={(v) => update({ tool: v })} />
+            <BooleanFilter label="Error" value={search.is_error} onChange={(v) => update({ is_error: v })} />
+            <TextFilter label="Session" value={search.session} onChange={(v) => update({ session: v })} />
+            <NumberFilter
+              label="Duration at least (ms)"
+              value={search.duration_ms_gte}
+              onChange={(v) => update({ duration_ms_gte: v })}
+            />
+            <NumberFilter
+              label="Argument size at least (bytes)"
+              value={search.arg_bytes_gte}
+              onChange={(v) => update({ arg_bytes_gte: v })}
+            />
+            <NumberFilter
+              label="Result size at least (bytes)"
+              value={search.result_bytes_gte}
+              onChange={(v) => update({ result_bytes_gte: v })}
+            />
+          </FilterMenu>
+        </search>
         <label className="toggle">
           <input
             type="checkbox"

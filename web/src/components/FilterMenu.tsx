@@ -92,7 +92,8 @@ export function TextListFilter({
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
+          // Enter that confirms an IME candidate (isComposing, or keyCode 229 in Safari) is not a request to add.
+          if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) {
             e.preventDefault()
             add()
           }

@@ -243,8 +243,8 @@ function AxisHeader({ axis, compactions }: { axis: TimeAxis; compactions: number
         </span>
       ))}
       {axis.gaps.map((g) => (
-        <span key={`l${g.start}`} className="axis-gap-label" style={{ left: pct(g.from) }} title={`Idle ${formatDurationMs(g.end - g.start)}`}>
-          ⋯
+        <span key={`l${g.start}`} className="axis-gap-label" style={{ left: pct(g.from) }} >
+          ⋯ {formatDurationMs(g.end - g.start)}
         </span>
       ))}
       {compactions.map((t, i) => (

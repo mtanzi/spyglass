@@ -3,6 +3,7 @@ import axe from 'axe-core'
 import { expect, test, vi } from 'vitest'
 import { ContentNotStored } from './ContentNotStored'
 import { BooleanFilter, FilterMenu, NumberFilter, TextListFilter } from './FilterMenu'
+import { InfoNote } from './InfoNote'
 import { TimeRangePicker } from './TimeRangePicker'
 
 test('time range picker reports presets with all time keys, default as undefined', () => {
@@ -101,4 +102,26 @@ test('filter menu is a native popover opened by its button', () => {
   const anchor = (button as HTMLElement).style.getPropertyValue('anchor-name')
   expect(anchor).toMatch(/^--filters-/)
   expect((panel as HTMLElement).style.getPropertyValue('position-anchor')).toBe(anchor)
+})
+
+test('the chip filter ignores Enter while an IME is composing', () => {
+  const onList = vi.fn()
+  render(<TextListFilter label="Model" values={[]} onChange={onList} />)
+  const input = screen.getByLabelText('Model')
+  fireEvent.change(input, { target: { value: 'ni' } })
+  // A composing Enter, as Chrome and Firefox report it, and as Safari reports it (keyCode 229).
+  fireEvent.keyDown(input, { key: 'Enter', isComposing: true })
+  fireEvent.keyDown(input, { key: 'Enter', keyCode: 229 })
+  expect(onList).not.toHaveBeenCalled()
+  fireEvent.keyDown(input, { key: 'Enter' })
+  expect(onList).toHaveBeenCalledWith(['ni'])
+})
+
+test('an info note is a button that opens a popover note', () => {
+  render(<InfoNote label="API-equivalent" note="The plan bills the person." />)
+  const button = screen.getByRole('button', { name: 'API-equivalent' })
+  const note = screen.getByRole('note', { hidden: true })
+  expect(note.getAttribute('popover')).toBe('auto')
+  expect(button.getAttribute('popovertarget')).toBe(note.id)
+  expect(note.textContent).toBe('The plan bills the person.')
 })
