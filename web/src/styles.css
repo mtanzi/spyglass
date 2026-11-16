@@ -78,7 +78,7 @@ kbd { font-family: var(--font-mono); font-size: var(--text-xs); padding: 0 4px; 
 .app-sidebar { position: sticky; top: 0; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; padding: 12px 8px; background: var(--bg-elevated); border-right: 1px solid var(--border-subtle); }
 .sidebar-foot { margin-top: auto; padding: 8px; }
 .sidebar-foot .theme-toggle { display: flex; }
-.sidebar-foot .theme-toggle button { flex: 1; padding: 2px 6px; font-size: var(--text-xs); }
+.sidebar-foot .theme-toggle button { flex: 1 1 auto; padding: 2px 4px; font-size: var(--text-xs); white-space: nowrap; }
 .brand { display: flex; align-items: center; gap: 8px; padding: 4px 8px 12px; font-weight: 600; }
 .brand-icon { flex: none; color: var(--accent); }
 .brand-icon .pupil { fill: var(--ok); }
