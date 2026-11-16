@@ -2,7 +2,7 @@
 
 Notable changes to Spyglass. Release 0.1.0 and earlier are described in their [GitHub release notes](https://github.com/mtanzi/spyglass/releases).
 
-## Unreleased
+## 0.5.0 - 2026-11-16
 
 ### Changed
 
