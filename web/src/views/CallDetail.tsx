@@ -42,7 +42,7 @@ export function CallDetailView() {
   const call = query.data
 
   return (
-    <section aria-labelledby="view-title">
+    <section aria-labelledby="view-title" className="detail-host">
       <nav aria-label="Breadcrumb" className="crumbs">
         <Link to="/calls" search={{}}>
           Calls

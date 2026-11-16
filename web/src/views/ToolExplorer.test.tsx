@@ -97,7 +97,12 @@ test('a sort in the URL is applied on load, and errors show as a badge with text
   expect(first.getByText('Bash')).toBeTruthy()
   const badge = first.getByText('20.0%')
   expect(badge.className).toBe('badge badge-error')
-  expect(badge.getAttribute('title')).toBe('1 of 5 failed')
+  // The time range and the filters sit in a <search> landmark (jsdom has no `search` role yet).
+  const search = document.querySelector<HTMLElement>('search')!
+  expect(within(search).getByRole('button', { name: 'Filters' })).toBeTruthy()
+  expect(within(search).getByRole('button', { name: '24h' })).toBeTruthy()
+  // The failed count is visible text beside the badge, not a title.
+  expect(first.getByText('1 failed')).toBeTruthy()
   const strip = screen.getByRole('group', { name: 'Summary' })
   expect(within(strip).getByText('35')).toBeTruthy()
   expect(within(strip).getByText('2.9%')).toBeTruthy()
@@ -211,8 +216,10 @@ test('list rows show sizes and the duration source, and link to V3 and V2', asyn
   expect(header.getByText('120 B')).toBeTruthy()
   expect(header.getByText('2.0 KiB')).toBeTruthy()
   expect(header.getByText('1.50 s')).toBeTruthy()
-  expect(header.getByText('header').getAttribute('title')).toMatch(/prev_tool_durations/)
-  expect(estimated.getByText('estimated').getAttribute('title')).toMatch(/gap between the use and the result/)
+  // The source word opens a note that explains it.
+  expect(header.getByRole('button', { name: 'header' }).getAttribute('popovertarget')).toBeTruthy()
+  expect(header.getByRole('note', { hidden: true }).textContent).toMatch(/prev_tool_durations/)
+  expect(estimated.getByRole('note', { hidden: true }).textContent).toMatch(/gap between the use and the result/)
   expect(header.getByText('Success').className).toBe('badge badge-ok')
   expect(screen.getByRole('link', { name: 'sess/1' }).getAttribute('href')).toBe('/ui/sessions/sess%2F1')
   expect(header.getByRole('link', { name: 'Result' }).getAttribute('href')).toBe(

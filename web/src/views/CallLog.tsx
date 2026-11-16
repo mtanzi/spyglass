@@ -13,6 +13,7 @@ import {
   TextListFilter,
 } from '../components/FilterMenu'
 import { StatusBadge, Tag, isErrorStatus } from '../components/Badge'
+import { InfoNote } from '../components/InfoNote'
 import { ErrorMessage } from '../components/states'
 import { TimeRangePicker } from '../components/TimeRangePicker'
 import { VolumeChart } from '../components/VolumeChart'
@@ -87,14 +88,19 @@ function Total({ row, measure, format }: { row: LogRow; measure: Measure; format
   const total = sumKnown(calls, measure)
   const missing = calls.filter((c) => measure(c) === null).length
   const shown = total !== null && missing > 0
-  // The cell shows a compact "+N?" marker so the total fits; the title and label spell it out.
+  // The cell shows a compact "+N?" marker so the total fits; its note spells it out.
+  // The title only repeats the shown total, which a narrow column may clip.
   return (
-    <span title={format(total) + (shown ? ` (+${missing} unknown)` : '')}>
+    <span title={format(total)}>
       <Maybe text={format(total)} />
       {shown && (
         <>
           {' '}
-          <small className="unknown" aria-label={`+${missing} unknown`}>{`+${missing}?`}</small>
+          <InfoNote
+            className="unknown"
+            label={`+${missing}?`}
+            note={`${format(total)} is the total of the known values. ${missing} ${missing === 1 ? 'call has' : 'calls have'} no value and ${missing === 1 ? 'is' : 'are'} left out.`}
+          />
         </>
       )}
     </span>
@@ -309,35 +315,37 @@ export function CallLogView() {
       </div>
 
       <div className="toolbar">
-        <TimeRangePicker value={search} onChange={(next) => update(next)} />
-        <FilterMenu
-          activeCount={filterCount}
-          onClear={() =>
-            update(Object.fromEntries(Object.keys(filterQuery(search)).map((k) => [k, undefined])) as FilterPatch)
-          }
-        >
-          <TextListFilter label="Key name" values={search.key} onChange={(v) => update({ key: v })} />
-          <TextListFilter label="Client" values={search.client} onChange={(v) => update({ client: v })} />
-          <TextListFilter label="Provider" values={search.provider} onChange={(v) => update({ provider: v })} />
-          <TextListFilter label="Model" values={search.model} onChange={(v) => update({ model: v })} />
-          <TextListFilter label="Endpoint" values={search.endpoint} onChange={(v) => update({ endpoint: v })} />
-          <TextListFilter
-            label="Status"
-            values={search.status?.map(String)}
-            onChange={(v) => update({ status: v?.map(Number).filter((n) => Number.isInteger(n) && n >= 100 && n <= 599) })}
-          />
-          <TextListFilter label="Error class" values={search.error_class} onChange={(v) => update({ error_class: v })} />
-          <TextFilter label="Session" value={search.session?.[0]} onChange={(v) => update({ session: v ? [v] : undefined })} />
-          <TextFilter label="Agent" value={search.agent?.[0]} onChange={(v) => update({ agent: v ? [v] : undefined })} />
-          <TextListFilter label="Agent type" values={search.agent_type} onChange={(v) => update({ agent_type: v })} />
-          <TextFilter label="Prompt" value={search.prompt?.[0]} onChange={(v) => update({ prompt: v ? [v] : undefined })} />
-          <TextListFilter label="Request class" values={search.request_class} onChange={(v) => update({ request_class: v })} />
-          <TextListFilter label="Tool name" values={search.tool} onChange={(v) => update({ tool: v })} />
-          <BooleanFilter label="Streamed" value={search.streamed} onChange={(v) => update({ streamed: v })} />
-          <BooleanFilter label="Tool error" value={search.tool_error} onChange={(v) => update({ tool_error: v })} />
-          <NumberFilter label="Latency at least (ms)" value={search.latency_ms_gte} onChange={(v) => update({ latency_ms_gte: v })} />
-          <NumberFilter label="Cost at least (micro-USD)" value={search.cost_micro_usd_gte} onChange={(v) => update({ cost_micro_usd_gte: v })} />
-        </FilterMenu>
+        <search className="toolbar-search">
+          <TimeRangePicker value={search} onChange={(next) => update(next)} />
+          <FilterMenu
+            activeCount={filterCount}
+            onClear={() =>
+              update(Object.fromEntries(Object.keys(filterQuery(search)).map((k) => [k, undefined])) as FilterPatch)
+            }
+          >
+            <TextListFilter label="Key name" values={search.key} onChange={(v) => update({ key: v })} />
+            <TextListFilter label="Client" values={search.client} onChange={(v) => update({ client: v })} />
+            <TextListFilter label="Provider" values={search.provider} onChange={(v) => update({ provider: v })} />
+            <TextListFilter label="Model" values={search.model} onChange={(v) => update({ model: v })} />
+            <TextListFilter label="Endpoint" values={search.endpoint} onChange={(v) => update({ endpoint: v })} />
+            <TextListFilter
+              label="Status"
+              values={search.status?.map(String)}
+              onChange={(v) => update({ status: v?.map(Number).filter((n) => Number.isInteger(n) && n >= 100 && n <= 599) })}
+            />
+            <TextListFilter label="Error class" values={search.error_class} onChange={(v) => update({ error_class: v })} />
+            <TextFilter label="Session" value={search.session?.[0]} onChange={(v) => update({ session: v ? [v] : undefined })} />
+            <TextFilter label="Agent" value={search.agent?.[0]} onChange={(v) => update({ agent: v ? [v] : undefined })} />
+            <TextListFilter label="Agent type" values={search.agent_type} onChange={(v) => update({ agent_type: v })} />
+            <TextFilter label="Prompt" value={search.prompt?.[0]} onChange={(v) => update({ prompt: v ? [v] : undefined })} />
+            <TextListFilter label="Request class" values={search.request_class} onChange={(v) => update({ request_class: v })} />
+            <TextListFilter label="Tool name" values={search.tool} onChange={(v) => update({ tool: v })} />
+            <BooleanFilter label="Streamed" value={search.streamed} onChange={(v) => update({ streamed: v })} />
+            <BooleanFilter label="Tool error" value={search.tool_error} onChange={(v) => update({ tool_error: v })} />
+            <NumberFilter label="Latency at least (ms)" value={search.latency_ms_gte} onChange={(v) => update({ latency_ms_gte: v })} />
+            <NumberFilter label="Cost at least (micro-USD)" value={search.cost_micro_usd_gte} onChange={(v) => update({ cost_micro_usd_gte: v })} />
+          </FilterMenu>
+        </search>
         <label className="toggle">
           <input
             type="checkbox"

@@ -75,9 +75,9 @@ export function ConfigView() {
                         <td>
                           <Tag text={p.auth_mode} className="mono" />
                           {isPassthrough(p) && (
-                            <small className="dim" title="The plan bills the person, not per token">
+                            <small className="dim">
                               {' '}
-                              cost is API-equivalent
+                              cost is API-equivalent: the plan bills the person, not per token
                             </small>
                           )}
                         </td>

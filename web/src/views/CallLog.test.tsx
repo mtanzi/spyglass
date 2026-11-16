@@ -200,11 +200,14 @@ test('group by session folds consecutive calls and is kept in the URL', async ()
   expect(within(tableRows()[2]).getByText('p9')).toBeTruthy()
   // A turn with an unknown cost is not counted as zero.
   expect(within(tableRows()[2]).getByText('$1.00')).toBeTruthy()
-  // The cell shows a compact marker; its accessible label spells it out.
-  expect(within(tableRows()[2]).getByText('+1?')).toBeTruthy()
-  expect(within(tableRows()[2]).getByLabelText('+1 unknown')).toBeTruthy()
+  // The cell shows a compact marker: a button that opens a note spelling it out.
+  const marker = within(tableRows()[2]).getByRole('button', { name: '+1?' })
+  expect(marker.getAttribute('popovertarget')).toBeTruthy()
+  expect(within(tableRows()[2]).getByRole('note', { hidden: true }).textContent).toBe(
+    '$1.00 is the total of the known values. 1 call has no value and is left out.',
+  )
   // The title keeps the full total readable when the column is narrow.
-  expect(within(tableRows()[2]).getByTitle('$1.00 (+1 unknown)')).toBeTruthy()
+  expect(within(tableRows()[2]).getByTitle('$1.00')).toBeTruthy()
   // A group row opens the session.
   fireEvent.click(tableRows()[0])
   await waitFor(() => expect(router.state.location.pathname).toBe('/sessions/s1'))

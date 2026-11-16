@@ -1,9 +1,13 @@
 import { errorMessage } from '../api/errors'
 
-/** The one loading state of every page: a small spinner and a label. */
+/**
+ * The one loading state of every page: a small spinner and a label. It is not
+ * a live region: announcing every interstitial "Loading…" is noise. The table
+ * that is loading carries `aria-busy` instead.
+ */
 export function LoadingState({ label = 'Loading' }: { label?: string }) {
   return (
-    <p className="state state-loading" role="status">
+    <p className="state state-loading">
       {label}…
     </p>
   )
