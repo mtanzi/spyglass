@@ -60,17 +60,20 @@ type ServerOptions struct {
 
 // BuildServers builds the data-plane and admin-plane servers, each behind the
 // request chain. The admin plane also sets the browser security headers
-// (httpmw.SecurityHeaders); the data plane does not. It refuses a non-loopback listen.admin, so the
-// unauthenticated admin plane never leaves the host even when validation was
-// skipped.
+// (httpmw.SecurityHeaders) and refuses cross-site browser requests before any
+// handler (httpmw.FetchMetadata); the data plane does neither. It refuses a
+// non-loopback listen.admin, so the unauthenticated admin plane never leaves
+// the host even when validation was skipped.
 func BuildServers(o ServerOptions) (*Servers, error) {
 	if !config.IsLoopback(o.Listen.Admin) {
 		return nil, fmt.Errorf("listen.admin %q is not a loopback address; the admin plane must listen on 127.0.0.1, ::1 or localhost", o.Listen.Admin)
 	}
 	opts := httpmw.Options{Logger: o.Logger, MaxRequestBytes: o.MaxRequestBytes}
+	adminOpts := opts
+	adminOpts.Inner = []httpmw.Middleware{httpmw.FetchMetadata}
 	s := &Servers{
 		Data:          newServer(o.Listen.Data, httpmw.Wrap(o.Data, opts), o.Logger),
-		Admin:         newServer(o.Listen.Admin, httpmw.SecurityHeaders(httpmw.Wrap(o.Admin, opts)), o.Logger),
+		Admin:         newServer(o.Listen.Admin, httpmw.SecurityHeaders(httpmw.Wrap(o.Admin, adminOpts)), o.Logger),
 		Drain:         o.Drain,
 		Inflight:      o.Inflight,
 		InflightCalls: o.InflightCalls,
