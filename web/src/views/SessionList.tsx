@@ -214,7 +214,7 @@ export function SessionListView() {
         hasNextPage={list.hasNextPage}
         isFetchingNextPage={list.isFetchingNextPage}
         onEndReached={() => void list.fetchNextPage()}
-        rowHeight={32}
+        rowSize={2}
         height={600}
         keyboardNavigation
       />
