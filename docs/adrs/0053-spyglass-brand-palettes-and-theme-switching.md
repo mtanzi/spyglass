@@ -39,7 +39,7 @@ The captain compared several brand proposals in [branding-proposals.html](../bra
 ## Consequences
 
 - Every colour in `web/src/styles.css` is a token. The light theme only redefines tokens, so a new rule that uses tokens works in both themes.
-- The light tokens are written twice in the stylesheet: once under the media query and once under `data-theme="light"`. CSS cannot share one block between the two. A change to one block needs the same change in the other.
+- The light tokens were written twice in the stylesheet: once under the media query and once under `data-theme="light"`. [ADR 0058](0058-align-web-ui-with-modern-web-guidance.md) change 6 amends this: each token is now written once as `light-dark(<light>, <dark>)`, and `data-theme` sets only `color-scheme`.
 - `theme-init.js` repeats the read logic of `src/lib/theme.ts`. A unit test runs the script, so the two stay in step.
 - The UI and the binary have different names. The README says so near its opening.
 - Open: the decided light brass (`#a8690f`) has a contrast of 4.48:1 on white and 4.17:1 on the surface. That is just under the WCAG AA minimum of 4.5:1 for small text, and link text uses this colour. Light teal (`#1c8a76`, 4.25:1 on white) is used only for fills, and the ok badge text uses `--fg`. The jsdom axe checks cannot measure contrast. A slightly darker light brass would close the gap, if a browser contrast check shows it is needed.
