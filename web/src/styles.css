@@ -1,92 +1,46 @@
 /*
- * Spyglass theme tokens (ADR 0053), in the Linear look of ADR 0033: dense,
- * monochrome greys with brass as the one accent. Teal is the second colour,
- * for live and ok states and the second chart series. Error red is a status
- * colour, never an accent, and an error always carries a glyph and text.
+ * Spyglass theme tokens (ADR 0053, ADR 0058), in the Linear look of ADR 0033:
+ * dense, monochrome greys with brass as the one accent. Teal is the second
+ * colour, for live and ok states and the second chart series. Error red is a
+ * status colour, never an accent, and an error always carries a glyph and
+ * text.
  *
- * Dark is the default. Light applies when the system prefers it, unless the
- * theme toggle set data-theme on <html>; data-theme="light" or "dark" always
- * wins. The light block is repeated for the media query and the attribute,
- * because CSS cannot share one block between them.
+ * Each colour token is written once as light-dark(<light>, <dark>). :root
+ * declares color-scheme: light dark, so the browser picks the side that
+ * matches the system setting; the theme toggle sets data-theme on <html> to
+ * force color-scheme: light or dark, which always wins.
  */
-:root,
-:root[data-theme='dark'] {
-  color-scheme: dark;
-  --bg: #0f1011;
-  --bg-elevated: #16171a;
-  --bg-hover: #1c1d21;
-  --bg-active: #23252a;
-  --fg: #f7f8f8;
-  --muted: #8a8f98;
-  --border: #2a2c31;
-  --border-subtle: #1f2024;
-  --accent: #e5a54b;
-  --accent-soft: rgba(229, 165, 75, 0.16);
-  --ok: #3fbfa8;
-  --ok-soft: rgba(63, 191, 168, 0.14);
-  --error: #eb5757;
-  --error-soft: rgba(235, 87, 87, 0.14);
-  --bar: #4b4f58;
-  --bar-strong: #9aa0aa;
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+:root {
+  color-scheme: light dark;
+  --bg: light-dark(#ffffff, #0f1011);
+  --bg-elevated: light-dark(#f7f7f5, #16171a);
+  --bg-hover: light-dark(#f0efec, #1c1d21);
+  --bg-active: light-dark(#e9e7e2, #23252a);
+  --fg: light-dark(#1b1c1e, #f7f8f8);
+  --muted: light-dark(#6b6e75, #8a8f98);
+  --border: light-dark(#e2e0db, #2a2c31);
+  --border-subtle: light-dark(#ecebe7, #1f2024);
+  --accent: light-dark(#a8690f, #e5a54b);
+  --accent-soft: light-dark(rgba(168, 105, 15, 0.12), rgba(229, 165, 75, 0.16));
+  --ok: light-dark(#1c8a76, #3fbfa8);
+  --ok-soft: light-dark(rgba(28, 138, 118, 0.12), rgba(63, 191, 168, 0.14));
+  --error: light-dark(#d14343, #eb5757);
+  --error-soft: light-dark(rgba(209, 67, 67, 0.1), rgba(235, 87, 87, 0.14));
+  --bar: light-dark(#c9c7c1, #4b4f58);
+  --bar-strong: light-dark(#8e8b84, #9aa0aa);
+  /* light-dark() takes colours only, so the shadow colour is a token of its own. */
+  --shadow-color: light-dark(rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.5));
+  --shadow: 0 8px 24px var(--shadow-color);
   /* Chart series: brass first, teal second, a neutral grey for "other" (5). */
   --series-0: var(--accent);
   --series-1: var(--ok);
-  --series-2: #6b9bd8;
-  --series-3: #c27ac8;
-  --series-4: #8fae62;
-  --series-5: #6b7079;
+  --series-2: light-dark(#3f73b8, #6b9bd8);
+  --series-3: light-dark(#9a4fa0, #c27ac8);
+  --series-4: light-dark(#5b8a35, #8fae62);
+  --series-5: light-dark(#b3b0a9, #6b7079);
 }
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme]) {
-    color-scheme: light;
-    --bg: #ffffff;
-    --bg-elevated: #f7f7f5;
-    --bg-hover: #f0efec;
-    --bg-active: #e9e7e2;
-    --fg: #1b1c1e;
-    --muted: #6b6e75;
-    --border: #e2e0db;
-    --border-subtle: #ecebe7;
-    --accent: #a8690f;
-    --accent-soft: rgba(168, 105, 15, 0.12);
-    --ok: #1c8a76;
-    --ok-soft: rgba(28, 138, 118, 0.12);
-    --error: #d14343;
-    --error-soft: rgba(209, 67, 67, 0.1);
-    --bar: #c9c7c1;
-    --bar-strong: #8e8b84;
-    --shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    --series-2: #3f73b8;
-    --series-3: #9a4fa0;
-    --series-4: #5b8a35;
-    --series-5: #b3b0a9;
-  }
-}
-:root[data-theme='light'] {
-  color-scheme: light;
-  --bg: #ffffff;
-  --bg-elevated: #f7f7f5;
-  --bg-hover: #f0efec;
-  --bg-active: #e9e7e2;
-  --fg: #1b1c1e;
-  --muted: #6b6e75;
-  --border: #e2e0db;
-  --border-subtle: #ecebe7;
-  --accent: #a8690f;
-  --accent-soft: rgba(168, 105, 15, 0.12);
-  --ok: #1c8a76;
-  --ok-soft: rgba(28, 138, 118, 0.12);
-  --error: #d14343;
-  --error-soft: rgba(209, 67, 67, 0.1);
-  --bar: #c9c7c1;
-  --bar-strong: #8e8b84;
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  --series-2: #3f73b8;
-  --series-3: #9a4fa0;
-  --series-4: #5b8a35;
-  --series-5: #b3b0a9;
-}
+:root[data-theme='light'] { color-scheme: light; }
+:root[data-theme='dark'] { color-scheme: dark; }
 :root {
   --radius: 4px;
   --sidebar-width: 184px;
@@ -124,7 +78,7 @@ kbd { font-family: var(--font-mono); font-size: var(--text-xs); padding: 0 4px; 
 .app-sidebar { position: sticky; top: 0; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; padding: 12px 8px; background: var(--bg-elevated); border-right: 1px solid var(--border-subtle); }
 .sidebar-foot { margin-top: auto; padding: 8px; }
 .sidebar-foot .theme-toggle { display: flex; }
-.sidebar-foot .theme-toggle button { flex: 1; padding: 2px 6px; font-size: var(--text-xs); }
+.sidebar-foot .theme-toggle button { flex: 1 1 auto; padding: 2px 4px; font-size: var(--text-xs); white-space: nowrap; }
 .brand { display: flex; align-items: center; gap: 8px; padding: 4px 8px 12px; font-weight: 600; }
 .brand-icon { flex: none; color: var(--accent); }
 .brand-icon .pupil { fill: var(--ok); }
