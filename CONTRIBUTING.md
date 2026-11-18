@@ -85,9 +85,23 @@ An auto-merged PR gets GitHub auto-merge (squash), pinned to the head commit, an
 
 `.github/dependabot.yml` adds a cooldown before Dependabot proposes a new version: 3 days for patch, 7 for minor and 7 for major, with a 7-day default for versions Dependabot cannot classify by semver. It also groups runtime patch updates into one weekly PR per ecosystem; npm development-dependency patches ride in the `web-dev-tools` group instead. The cooldown gives the community time to find and yank a compromised release before it reaches `main` unattended. Auto-merge is limited to low-risk update types, and the required CI checks still gate every merge.
 
+## Releases
+
+Releases are automated with [Release Please](https://github.com/googleapis/release-please-action) (`.github/workflows/release-please.yml`, `release-please-config.json`, `.release-please-manifest.json`). A release is a merge, not a hand-made tag.
+
+1. Squash-merged PR titles on `main` follow Conventional Commits (`feat(web): ...`, `fix: ...`). After each merge, Release Please keeps one open release PR that bumps the version in `.release-please-manifest.json` and adds the new entries to `CHANGELOG.md`. `feat` bumps the minor version, `fix` the patch version. Before 1.0 a breaking change (`feat!:` or a `BREAKING CHANGE:` footer) also bumps the minor version (`bump-minor-pre-major`).
+2. Review the release PR, edit the generated changelog text if needed, and merge it. Release Please then creates the tag `vX.Y.Z` (no component prefix) and the GitHub release.
+3. In the same workflow run, the `release` job calls `.github/workflows/release.yml`: security gates, then the image (checked and smoke tested before push, tagged with the version only, never `latest`), then the binaries attached to the release.
+
+A tag made with the built-in `GITHUB_TOKEN` does not trigger other workflows, so `release.yml` no longer runs on a tag push. It is a reusable workflow called from `release-please.yml` when `release_created` is true. This avoids a GitHub App token or personal access token.
+
+To repeat a failed publish, run `release` from the Actions tab (`workflow_dispatch`) and give the existing tag, for example `v0.6.0`. Do not create release tags by hand.
+
+`CHANGELOG.md` keeps its hand-written history. Release Please adds each new version above the newest existing version heading, so the `Unreleased` section stays where it is until a maintainer folds it into the release PR's entry.
+
 ## Release security gates
 
-The `release` workflow runs `.github/workflows/security-gates.yml` before anything else. The `image` and `binaries` jobs `need` it, so a failed gate stops the release before any image is pushed or binary attached. Run the same gates by hand on any branch from the Actions tab (`Security gates`, `workflow_dispatch`); this needs no tag.
+The `release` workflow (called by Release Please) runs `.github/workflows/security-gates.yml` before anything else. The `image` and `binaries` jobs `need` it, so a failed gate stops the release before any image is pushed or binary attached. Run the same gates by hand on any branch from the Actions tab (`Security gates`, `workflow_dispatch`); this needs no release.
 
 | Gate | Tool | Fails on |
 | --- | --- | --- |
