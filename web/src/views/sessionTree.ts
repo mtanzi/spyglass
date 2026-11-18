@@ -28,6 +28,12 @@ interface NodeBase {
   tokens: number | null
   /** Micro-USD over the known costs; null when none is known. */
   cost: number | null
+  /** Sum of the LLM call durations in this subtree, ms. Busy time: parallel calls add up. */
+  llmMs: number
+  /** Sum of the known tool call durations in this subtree, ms. Busy time: parallel tool calls add up. */
+  toolMs: number
+  /** A tool duration in this subtree was estimated, not reported by the client. */
+  toolEstimated: boolean
   /** Calls with an error and tool calls with an error result, in this subtree. */
   errors: number
   /** LLM calls in this subtree (a sub-agent's calls count for its parent agent too). */
@@ -132,6 +138,9 @@ function base(id: string, promptIndex: number): NodeBase {
     duration: null,
     tokens: null,
     cost: null,
+    llmMs: 0,
+    toolMs: 0,
+    toolEstimated: false,
     errors: 0,
     llmCalls: 0,
     toolCalls: 0,
@@ -177,9 +186,15 @@ function finish(node: TreeNode): void {
   if (node.kind === 'call') {
     node.llmCalls = 1
     node.toolCalls = node.children.reduce((n, k) => n + k.toolCalls, 0)
+    // The call keeps its own LLM time; its tool time is that of the tools it requested.
+    node.toolMs = node.children.reduce((n, k) => n + k.toolMs, 0)
+    node.toolEstimated = node.children.some((k) => k.toolEstimated)
     return
   }
   const kids = node.children
+  node.llmMs = kids.reduce((n, k) => n + k.llmMs, 0)
+  node.toolMs = kids.reduce((n, k) => n + k.toolMs, 0)
+  node.toolEstimated = kids.some((k) => k.toolEstimated)
   if (kids.length === 0) {
     node.start = NaN
     node.end = NaN
@@ -256,6 +271,7 @@ export function buildSessionModel(detail: SessionDetail, tools: ToolCall[] = [])
         start,
         end,
         duration: zeroAsUnknown(c.duration_ms),
+        llmMs: Math.max(0, c.duration_ms),
         tokens: callTokens(c),
         cost,
         errors: callHasError(c) ? 1 : 0,
@@ -283,6 +299,8 @@ export function buildSessionModel(detail: SessionDetail, tools: ToolCall[] = [])
       start,
       end,
       duration: t.duration_ms,
+      toolMs: t.duration_ms ?? 0,
+      toolEstimated: t.duration_ms != null && t.duration_source === 'estimated',
       errors: t.is_error === true ? 1 : 0,
     }
     owner.children.push(node)

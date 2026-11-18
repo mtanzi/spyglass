@@ -68,6 +68,13 @@ type SessionSummary struct {
 	Usage         Usage
 	Cost          *MicroUSD // nil when no call in the session has a known cost
 	UnpricedCalls int       // calls whose cost is nil
+	// LLMTime is the sum of the call durations. ToolTime is the sum of the
+	// known tool call durations of the session. Both are busy time: parallel
+	// calls overlap in wall time and still add up. ToolTimeEstimated is true
+	// when a summed tool duration was estimated, not reported by the client.
+	LLMTime           time.Duration
+	ToolTime          time.Duration
+	ToolTimeEstimated bool
 }
 
 // AgentNode is one distinct (agent_id, parent_agent_id, agent_type) of a session.

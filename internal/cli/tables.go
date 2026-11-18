@@ -147,6 +147,9 @@ var sessionCols = colTable[sessionSummary]{schema: "SessionSummary", cols: join(
 		desc:  "sum of the known call costs in USD, rounded to four decimals; `unpriced` when no call has a known cost. It leaves out the calls counted in unpriced_calls",
 		deflt: true, value: func(r *sessionSummary) any { return costUSD(r.CostMicroUSD) }},
 	{name: "unpriced_calls", api: []string{"unpriced_calls"}, desc: "calls of the session with no known cost, left out of cost_usd (ADR 0056)", value: func(r *sessionSummary) any { return r.UnpricedCalls }},
+	{name: "llm_ms", api: []string{"llm_ms"}, unit: "ms", desc: "model time: sum of the call durations. Parallel calls overlap in wall time and still add up", value: func(r *sessionSummary) any { return r.LLMMS }},
+	{name: "tool_ms", api: []string{"tool_ms"}, unit: "ms", desc: "tool time: sum of the known tool call durations. Parallel tool calls overlap in wall time and still add up", value: func(r *sessionSummary) any { return r.ToolMS }},
+	{name: "tool_ms_estimated", api: []string{"tool_ms_estimated"}, desc: "true when a summed tool duration was estimated, not reported by the client", value: func(r *sessionSummary) any { return r.ToolMSEst }},
 })}
 
 var agentCols = colTable[agent]{schema: "Agent", cols: defaultOn([]column[agent]{

@@ -30,14 +30,15 @@ const sessionColumns = `c.session_key,
 	count(*) FILTER (WHERE c.error_class IS NOT NULL),
 	count(DISTINCT (c.agent_id, coalesce(c.parent_agent_id, ''), coalesce(c.agent_type, ''))) FILTER (WHERE c.agent_id IS NOT NULL),
 	array_agg(DISTINCT c.model COLLATE "C" ORDER BY c.model COLLATE "C") FILTER (WHERE c.model IS NOT NULL),
-	` + usageSums + `, ` + costSum + `, count(*) FILTER (WHERE c.cost_usd IS NULL), array_agg(c.id)`
+	` + usageSums + `, ` + costSum + `, count(*) FILTER (WHERE c.cost_usd IS NULL),
+	coalesce(sum(c.duration_ms), 0)::bigint, array_agg(c.id)`
 
 const sessionFields = `s(session_key, key_name, client, first_ts, last_ts, last_id, ended_at, calls, prompts,
-	errors, agents, models, input_uncached, cache_read, cache_write_5m, cache_write_1h, output, reasoning, cost, unpriced, call_ids)`
+	errors, agents, models, input_uncached, cache_read, cache_write_5m, cache_write_1h, output, reasoning, cost, unpriced, llm_ms, call_ids)`
 
 const sessionSelect = `s.session_key, s.key_name, s.client, s.first_ts, s.last_ts, s.last_id, s.ended_at, s.calls, s.prompts,
 	(SELECT count(DISTINCT t.tool_call_id) FROM tool_events t WHERE t.call_id = ANY(s.call_ids)),
-	s.errors, s.agents, s.models, s.input_uncached, s.cache_read, s.cache_write_5m, s.cache_write_1h, s.output, s.reasoning, s.cost, s.unpriced`
+	s.errors, s.agents, s.models, s.input_uncached, s.cache_read, s.cache_write_5m, s.cache_write_1h, s.output, s.reasoning, s.cost, s.unpriced, s.llm_ms`
 
 // usageSums and costSum add the usage columns and the known costs of a group.
 const usageSums = `sum(c.input_uncached)::bigint, sum(c.cache_read)::bigint, sum(c.cache_write_5m)::bigint,
@@ -62,11 +63,12 @@ func scanSession(r pgx.CollectableRow) (session, error) {
 		lastID                           pgtype.UUID
 		calls, prompts, tools, errs      int
 		agents, unpriced                 int
+		llmMS                            int64
 		models                           []string
 		in, cr, cw5, cw1, out, rs, costM = new(int64), new(int64), new(int64), new(int64), new(int64), new(int64), (*int64)(nil)
 	)
 	if err := r.Scan(&key, &name, &client, &first, &last, &lastID, &end, &calls, &prompts, &tools, &errs, &agents, &models,
-		in, cr, cw5, cw1, out, rs, &costM, &unpriced); err != nil {
+		in, cr, cw5, cw1, out, rs, &costM, &unpriced, &llmMS); err != nil {
 		return s, err
 	}
 	s.SessionSummary = core.SessionSummary{
@@ -76,7 +78,7 @@ func scanSession(r pgx.CollectableRow) (session, error) {
 			InputUncached: int(*in), CacheRead: int(*cr), CacheWrite5m: int(*cw5), CacheWrite1h: int(*cw1),
 			Output: int(*out), Reasoning: int(*rs),
 		},
-		Cost: micro(costM), UnpricedCalls: unpriced,
+		Cost: micro(costM), UnpricedCalls: unpriced, LLMTime: time.Duration(llmMS) * time.Millisecond,
 	}
 	s.lastID = core.ID(lastID.Bytes)
 	return s, nil
@@ -114,10 +116,66 @@ func (s *Store) ListSessions(ctx context.Context, f core.SessionFilter, p core.P
 		next = &core.Cursor{TS: last.LastTS, ID: last.lastID}
 	}
 	out := make([]core.SessionSummary, len(got))
+	keys := make([]string, len(got))
 	for i, g := range got {
 		out[i] = g.SessionSummary
+		keys[i] = g.SessionKey
+	}
+	if err := fillToolTime(ctx, s.pool, out, keys, f.From, f.To); err != nil {
+		return nil, nil, fmt.Errorf("postgres: list sessions: %w", err)
 	}
 	return out, next, nil
+}
+
+// queryer is what fillToolTime needs from a pool or a transaction.
+type queryer interface {
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+}
+
+// fillToolTime sets ToolTime and ToolTimeEstimated of the sessions, in one
+// query over the paired tool calls of all of them (the pairing of the tool
+// explorer, so header and estimated durations agree with it). A tool call
+// with no known duration adds nothing. It runs on the selected sessions only.
+func fillToolTime(ctx context.Context, q queryer, sessions []core.SessionSummary, keys []string, from, to time.Time) error {
+	if len(sessions) == 0 {
+		return nil
+	}
+	w := &where{}
+	union := toolCallsSQL(w, core.ToolCallFilter{From: from, To: to, SessionKeys: keys}, time.Now(), nil, 0)
+	rows, err := q.Query(ctx, `SELECT t.session_key, coalesce(sum(t.dur_ms), 0)::bigint,
+		coalesce(bool_or(t.dur_src = 'estimated'), false)
+		FROM (`+union+`) t WHERE t.session_key IS NOT NULL GROUP BY t.session_key`, w.args...)
+	if err != nil {
+		return err
+	}
+	type total struct {
+		ms        int64
+		estimated bool
+	}
+	totals, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (struct {
+		key string
+		total
+	}, error) {
+		var x struct {
+			key string
+			total
+		}
+		err := r.Scan(&x.key, &x.ms, &x.estimated)
+		return x, err
+	})
+	if err != nil {
+		return err
+	}
+	byKey := make(map[string]total, len(totals))
+	for _, t := range totals {
+		byKey[t.key] = t.total
+	}
+	for i := range sessions {
+		t := byKey[sessions[i].SessionKey]
+		sessions[i].ToolTime = time.Duration(t.ms) * time.Millisecond
+		sessions[i].ToolTimeEstimated = t.estimated
+	}
+	return nil
 }
 
 // listSessionsSQL returns the statement and arguments of one page of sessions.
@@ -189,6 +247,13 @@ func (s *Store) GetSession(ctx context.Context, key string) (core.SessionDetail,
 		return fail(err)
 	}
 	d := core.SessionDetail{SessionSummary: sum.SessionSummary}
+	// Every call of the session is in the summary, so the tool window covers
+	// them all: a tool use is timed at the end of its response.
+	tt := []core.SessionSummary{d.SessionSummary}
+	if err := fillToolTime(ctx, tx, tt, []string{key}, d.FirstTS, d.EndedAt.Add(time.Hour)); err != nil {
+		return fail(err)
+	}
+	d.SessionSummary = tt[0]
 
 	rows, err = tx.Query(ctx, `SELECT c.agent_id, c.parent_agent_id, c.agent_type, count(*)
 		FROM calls c WHERE c.session_key = $1 AND c.agent_id IS NOT NULL

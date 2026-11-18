@@ -172,6 +172,9 @@ type sessionSummaryJSON struct {
 	Usage         usageJSON      `json:"usage"`
 	CostMicroUSD  *core.MicroUSD `json:"cost_micro_usd"`
 	UnpricedCalls int            `json:"unpriced_calls"`
+	LLMMS         int64          `json:"llm_ms"`
+	ToolMS        int64          `json:"tool_ms"`
+	ToolMSEst     bool           `json:"tool_ms_estimated"`
 }
 
 func toSessionSummary(s core.SessionSummary) sessionSummaryJSON {
@@ -183,6 +186,7 @@ func toSessionSummary(s core.SessionSummary) sessionSummaryJSON {
 		SessionKey: s.SessionKey, Key: s.KeyName, Client: s.Client, FirstTS: s.FirstTS.UTC(), LastTS: s.LastTS.UTC(),
 		EndedAt: s.EndedAt.UTC(), Calls: s.Calls, Prompts: s.PromptCount, ToolCalls: s.ToolCallCount, Errors: s.Errors, AgentCount: s.AgentCount, Models: models, Usage: toUsage(s.Usage), CostMicroUSD: s.Cost,
 		UnpricedCalls: s.UnpricedCalls,
+		LLMMS:         s.LLMTime.Milliseconds(), ToolMS: s.ToolTime.Milliseconds(), ToolMSEst: s.ToolTimeEstimated,
 	}
 }
 

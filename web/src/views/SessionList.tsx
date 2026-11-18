@@ -8,7 +8,7 @@ import { DataTable } from '../components/DataTable'
 import type { DataTableColumn } from '../components/DataTable'
 import { FilterMenu, NumberFilter, TextListFilter } from '../components/FilterMenu'
 import { TimeRangePicker } from '../components/TimeRangePicker'
-import { UNKNOWN, formatCostMicroUsd, formatCount, formatDurationMs, formatText } from '../lib/format'
+import { UNKNOWN, formatCostMicroUsd, formatCount, formatDurationMs, formatText, formatTimeSplit } from '../lib/format'
 import { formatToolsPerCall, toolsPerCall } from './sessionTree'
 import type { SessionsSearch } from '../search/routes'
 import { DEFAULT_RANGE, resolveTimeRange } from '../search/timeRange'
@@ -70,6 +70,15 @@ const columns: DataTableColumn<SessionSummary>[] = [
     size: 100,
     accessorFn: (s) => sessionDurationMs(s),
     cell: ({ row }) => <Cell text={formatDurationMs(sessionDurationMs(row.original))} />,
+  },
+  {
+    id: 'time_split',
+    header: 'Model / tool time',
+    size: 330,
+    enableSorting: false,
+    cell: ({ row }) => (
+      <Cell text={formatTimeSplit(row.original.llm_ms, row.original.tool_ms, row.original.tool_ms_estimated)} />
+    ),
   },
   {
     id: 'client',
@@ -210,6 +219,10 @@ export function SessionListView() {
           <kbd>j</kbd> <kbd>k</kbd> move · <kbd>Enter</kbd> open
         </p>
       </div>
+      <p className="hint dim">
+        Model / tool time: shares of summed model time and tool time. Parallel tool calls and sub-agents overlap in
+        wall time, so these are not shares of Duration. “est.” marks a tool time with an estimated duration.
+      </p>
       <DataTable<SessionSummary>
         label="Sessions"
         columns={columns}

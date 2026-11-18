@@ -232,6 +232,7 @@ func toolCallsSQL(w *where, f core.ToolCallFilter, now time.Time, after *core.Cu
 	useConds := []string{"u.kind = 'use'", "u.ts >= " + from, "u.ts < " + to}
 	useConds = append(useConds, w.collect(func(t *where) {
 		t.textEq("u.session_key", f.SessionKey)
+		t.textIn("u.session_key", false, f.SessionKeys)
 		t.textEq("u.agent_id", f.AgentID)
 		t.textIn("u.tool_name", true, f.Tools)
 		t.textIn("u.source", false, sources)
@@ -242,6 +243,7 @@ func toolCallsSQL(w *where, f core.ToolCallFilter, now time.Time, after *core.Cu
 	resConds := []string{"r.kind = 'result'", "r.ts >= " + from, "r.ts < " + to}
 	resConds = append(resConds, w.collect(func(t *where) {
 		t.textEq("r.session_key", f.SessionKey)
+		t.textIn("r.session_key", false, f.SessionKeys)
 		t.textEq("r.agent_id", f.AgentID)
 		t.textIn("r.source", false, sources)
 	})...)
@@ -351,6 +353,7 @@ func toolOuterConds(w *where, f core.ToolCallFilter) []string {
 	}
 	return w.collect(func(t *where) {
 		t.textEq("t.session_key", f.SessionKey)
+		t.textIn("t.session_key", false, f.SessionKeys)
 		t.textEq("t.agent_id", f.AgentID)
 		t.textIn("t.name", true, f.Tools)
 		t.textIn("t.source", false, sources)

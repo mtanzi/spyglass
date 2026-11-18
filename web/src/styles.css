@@ -293,7 +293,7 @@ main:focus { outline: none; }
 .trace { border: 1px solid var(--border-subtle); border-radius: var(--radius); background: var(--bg); }
 .trace-tools { display: flex; gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--border-subtle); }
 .trace-scroll { height: calc(100dvh - 300px); min-height: 20rem; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
-.tree-head, .tree-row { display: grid; grid-template-columns: minmax(16.25rem, 2fr) 4.75rem 4.75rem 5.25rem 3.5rem minmax(13.75rem, 3fr); align-items: center; column-gap: 8px; padding: 0 8px; }
+.tree-head, .tree-row { display: grid; grid-template-columns: minmax(16.25rem, 2fr) 4.75rem 17.5rem 4.75rem 5.25rem 3.5rem minmax(13.75rem, 3fr); align-items: center; column-gap: 8px; padding: 0 8px; }
 .lane-head, .lane-row { display: grid; grid-template-columns: 12.5rem 1fr; align-items: center; column-gap: 8px; padding: 0 8px; }
 .tree-head, .lane-head { height: 1.75rem; color: var(--muted); font-size: var(--text-xs); border-bottom: 1px solid var(--border-subtle); background: var(--bg-elevated); overflow: hidden; scrollbar-gutter: stable; }
 .tree-row, .lane-row { position: absolute; top: 0; left: 0; right: 0; box-sizing: border-box; border-bottom: 1px solid var(--border-subtle); }
