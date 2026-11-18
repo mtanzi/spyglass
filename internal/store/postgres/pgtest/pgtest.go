@@ -29,7 +29,7 @@ const EnvURL = "SPYGLASS_TEST_DATABASE_URL"
 
 // Image is the container image used when EnvURL is not set: the oldest
 // supported Postgres.
-const Image = "postgres:16-alpine"
+const Image = "postgres:16"
 
 var (
 	once      sync.Once

@@ -1,0 +1,44 @@
+{
+  "Usage": {
+    "InputTokens": 10682,
+    "OutputTokens": 510,
+    "CacheReadInputTokens": 4000,
+    "CacheCreationInputTokens": 200,
+    "Ephemeral5mInputTokens": 200,
+    "Ephemeral1hInputTokens": 0
+  },
+  "UsageRaw": {
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 200,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 200,
+    "cache_read_input_tokens": 4000,
+    "input_tokens": 10682,
+    "output_tokens": 510,
+    "server_tool_use": {
+      "web_search_requests": 1
+    },
+    "service_tier": "standard"
+  },
+  "StopReason": "end_turn",
+  "ErrorType": "",
+  "ToolUses": [
+    {
+      "Source": "server",
+      "ToolCallID": "srvtoolu_01C",
+      "Name": "web_search",
+      "ArgBytes": 29
+    }
+  ],
+  "ToolResults": [
+    {
+      "Source": "server",
+      "ToolCallID": "srvtoolu_01C",
+      "IsError": false,
+      "ResultBytes": 107
+    }
+  ],
+  "Complete": true,
+  "Partial": false
+}

@@ -29,7 +29,7 @@ const sessionColumns = `c.session_key,
 	max(coalesce(c.ended_at, c.ts)), count(*), count(DISTINCT c.prompt_id),
 	count(*) FILTER (WHERE c.error_class IS NOT NULL),
 	count(DISTINCT (c.agent_id, coalesce(c.parent_agent_id, ''), coalesce(c.agent_type, ''))) FILTER (WHERE c.agent_id IS NOT NULL),
-	array_agg(DISTINCT c.model ORDER BY c.model) FILTER (WHERE c.model IS NOT NULL),
+	array_agg(DISTINCT c.model COLLATE "C" ORDER BY c.model COLLATE "C") FILTER (WHERE c.model IS NOT NULL),
 	` + usageSums + `, ` + costSum + `, count(*) FILTER (WHERE c.cost_usd IS NULL), array_agg(c.id)`
 
 const sessionFields = `s(session_key, key_name, client, first_ts, last_ts, last_id, ended_at, calls, prompts,
@@ -193,7 +193,7 @@ func (s *Store) GetSession(ctx context.Context, key string) (core.SessionDetail,
 	rows, err = tx.Query(ctx, `SELECT c.agent_id, c.parent_agent_id, c.agent_type, count(*)
 		FROM calls c WHERE c.session_key = $1 AND c.agent_id IS NOT NULL
 		GROUP BY c.agent_id, c.parent_agent_id, c.agent_type
-		ORDER BY min(c.ts), c.agent_id, c.parent_agent_id NULLS FIRST, c.agent_type NULLS FIRST`, key)
+		ORDER BY min(c.ts), c.agent_id COLLATE "C", c.parent_agent_id COLLATE "C" NULLS FIRST, c.agent_type COLLATE "C" NULLS FIRST`, key)
 	if err != nil {
 		return fail(err)
 	}
@@ -214,7 +214,7 @@ func (s *Store) GetSession(ctx context.Context, key string) (core.SessionDetail,
 
 	rows, err = tx.Query(ctx, `SELECT c.prompt_id, min(c.ts), count(*), `+usageSums+`, `+costSum+`
 		FROM calls c WHERE c.session_key = $1 AND c.prompt_id IS NOT NULL
-		GROUP BY c.prompt_id ORDER BY min(c.ts) DESC, c.prompt_id`, key)
+		GROUP BY c.prompt_id ORDER BY min(c.ts) DESC, c.prompt_id COLLATE "C"`, key)
 	if err != nil {
 		return fail(err)
 	}

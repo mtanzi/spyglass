@@ -53,6 +53,27 @@ func TestDefaultExtractorFillsRecordAndCost(t *testing.T) {
 	}
 }
 
+// TestCumulativeMessageDeltaUsagePricesTheCall: the usage of message_delta is
+// cumulative (streaming docs), so the record and its cost come from the delta
+// values, not from the lower input count of message_start. This stream is
+// shaped like the docs' web-search example: 2679 input tokens at the start,
+// 10682 at the end, with cache fields and server_tool_use.
+func TestCumulativeMessageDeltaUsagePricesTheCall(t *testing.T) {
+	e := newEnv(t, sseUpstream(fixture(t, "sse_cumulative_usage.sse"), 64), nil, func(e *env) { e.pricing = opusPricing })
+	_ = readAll(t, e.do(t, "POST", "/v1/messages", req("true"), auth()...).Body)
+	rec := e.rec.next(t)
+
+	want := core.Usage{InputUncached: 10682, CacheRead: 4000, CacheWrite5m: 200, Output: 510}
+	if rec.Usage != want || rec.UsageEstimated {
+		t.Errorf("usage %+v, estimated %v", rec.Usage, rec.UsageEstimated)
+	}
+	// 10682*5 + 4000*0.5 + 200*6.25 + 510*25 = 69410 USD per million tokens.
+	// Kept at the message_start count of 2679 it would be 28895.
+	if rec.Cost == nil || *rec.Cost != 69410 {
+		t.Errorf("cost %v", rec.Cost)
+	}
+}
+
 func TestCostIsNullWithoutMatchingPrice(t *testing.T) {
 	// No pricing at all, and a pricing entry for another model.
 	for name, pricing := range map[string]string{

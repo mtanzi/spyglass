@@ -55,7 +55,7 @@ function detail(over: Partial<CallDetail> = {}): CallDetail {
     tool_uses: [],
     tool_results: [],
     ...over,
-  } as CallDetail
+  }
 }
 
 function pair(over: Partial<ToolCall>): ToolCall {
@@ -76,7 +76,7 @@ function pair(over: Partial<ToolCall>): ToolCall {
     arg_bytes: 100,
     result_bytes: 2048,
     ...over,
-  } as ToolCall
+  }
 }
 
 function stubApi(call: CallDetail, pairs: ToolCall[] = []) {

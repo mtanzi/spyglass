@@ -9,8 +9,8 @@ import { toolCall, toolStat } from './toolsData.test'
 import type { ToolCall, ToolStat } from './toolsData'
 
 function stubApi({
-  stats = [] as ToolStat[],
-  calls = [] as ToolCall[],
+  stats = [],
+  calls = [],
   fail = () => false,
 }: { stats?: ToolStat[]; calls?: ToolCall[]; fail?: () => boolean } = {}) {
   const urls: string[] = []

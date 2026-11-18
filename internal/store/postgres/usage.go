@@ -61,7 +61,7 @@ func (s *Store) Usage(ctx context.Context, q core.UsageQuery) ([]core.UsageBucke
 		count(*) FILTER (WHERE c.usage_estimated),
 		count(*) FILTER (WHERE c.usage_raw IS NULL),
 		percentile_cont(ARRAY[0.5, 0.95, 0.99]) WITHIN GROUP (ORDER BY c.duration_ms)
-	FROM calls c WHERE ` + w.sql() + ` GROUP BY 1, 2 ORDER BY 1, 2`
+	FROM calls c WHERE ` + w.sql() + ` GROUP BY 1, 2 ORDER BY 1, ` + group + ` COLLATE "C"`
 	rows, err := s.pool.Query(ctx, sql, w.args...)
 	if err != nil {
 		return nil, fmt.Errorf("postgres: usage: %w", err)
@@ -130,7 +130,7 @@ func (s *Store) PromptCosts(ctx context.Context, q core.PromptCostQuery) (core.P
 			coalesce(bool_or(c.auth_mode = 'client_passthrough' AND c.cost_usd IS NOT NULL), false) AS api_equivalent
 		FROM calls c WHERE `+where+` AND coalesce(c.prompt_id, '') <> '' GROUP BY c.prompt_id)
 		SELECT prompt_id, session_key, calls, cost, unpriced, api_equivalent, count(*) OVER ()
-		FROM p ORDER BY (cost IS NULL), cost DESC, calls DESC, prompt_id LIMIT `+limit, w.args...)
+		FROM p ORDER BY (cost IS NULL), cost DESC, calls DESC, prompt_id COLLATE "C" LIMIT `+limit, w.args...)
 	if err != nil {
 		return fail(err)
 	}

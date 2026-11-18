@@ -377,7 +377,7 @@ var toolCases = []testCase{
 	}},
 }
 
-// toolDataset is ten calls, in two sessions and one without, whose tool halves
+// toolDataset is nine calls, in two sessions and one without, whose tool halves
 // make paired, use-only and result-only tool calls, with errors, header and
 // estimated durations, a server tool, and several tools in one call.
 func toolDataset(g *Gen) []core.CallRecord {
@@ -396,6 +396,10 @@ func toolDataset(g *Gen) []core.CallRecord {
 		at(100, WithSession("s1"), WithAgent("a1", "", "main"), tres("toolu_orphan", false, 900)),
 		at(120, WithSession("s1"), WithAgent("a3", "a1", "subagent"), tres("toolu_5", false, 40), tuse("toolu_7", "Bash", 3000)),
 		at(140, WithSession("s2"), WithAgent("a2", "a1", "subagent"), tres("toolu_7", false, 60)),
+		// Mixed case and punctuation in names and agent types: byte order
+		// ("Bash" < "_mcp" < "bash", "Subagent" < "subagent") and glibc locale
+		// order differ. The summary sorts bytewise (COLLATE "C").
+		at(160, WithSession("s2"), WithAgent("a4", "a1", "Subagent"), tuse("toolu_8", "_mcp", 10), tuse("toolu_9", "bash", 10)),
 	}
 }
 

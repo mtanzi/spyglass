@@ -160,7 +160,7 @@ func toolSummarySQL(f core.ToolCallFilter, now time.Time) (string, []any) {
 		coalesce(sum(t.dur_ms), 0)::bigint
 		FROM (` + union + `) t
 		LEFT JOIN calls c ON c.id = coalesce(t.use_call_id, t.result_call_id)` + whereClause(conds) +
-		` GROUP BY 1, 2 ORDER BY 1, 2`
+		` GROUP BY 1, 2 ORDER BY coalesce(t.name, '') COLLATE "C", coalesce(c.agent_type, '') COLLATE "C"`
 	return sql, w.args
 }
 
