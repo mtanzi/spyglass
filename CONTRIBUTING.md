@@ -95,7 +95,7 @@ Releases are automated with [Release Please](https://github.com/googleapis/relea
 
 A tag made with the built-in `GITHUB_TOKEN` does not trigger other workflows, so `release.yml` no longer runs on a tag push. It is a reusable workflow called from `release-please.yml` when `release_created` is true. This avoids a GitHub App token or personal access token.
 
-To repeat a failed publish, run `release` from the Actions tab (`workflow_dispatch`) and give the existing tag, for example `v0.6.0`. Do not create release tags by hand.
+To repeat a failed publish, run `Release` from the Actions tab (`workflow_dispatch`) and give the existing tag, for example `v0.6.0`. Do not create release tags by hand.
 
 `CHANGELOG.md` keeps its hand-written history. Release Please adds each new version above the newest existing version heading, so the `Unreleased` section stays where it is until a maintainer folds it into the release PR's entry.
 
