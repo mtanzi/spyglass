@@ -4,6 +4,10 @@ Notable changes to Spyglass. Release 0.1.0 and earlier are described in their [G
 
 ## Unreleased
 
+### Added
+
+- **LLM and tool call counts in the session view** ([#143](https://github.com/mtanzi/spyglass/issues/143)). Each prompt row and agent row in the session tree now shows a count summary on its own line, for example "8 LLM calls · 23 tool calls · 2.9 tools per call". The counts cover the row's whole subtree, so an agent includes its sub-agents. The ratio is left out when the row has no LLM call. The session list has a new sortable "Tools per call" column: the session's tool calls divided by its calls, with one decimal.
+
 ### Fixed
 
 - **Text sorts in byte order on every Postgres image.** Usage groups, the tool summary, the models of a session, and the prompt and agent tie-breaks now sort with `COLLATE "C"`. On the Debian `postgres:16` image that `docker-compose.yml` deploys, they used the database locale, so mixed-case values sorted differently than on the Alpine image the tests used. The store tests now run on `postgres:16`.
