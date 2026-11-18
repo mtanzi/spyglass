@@ -264,7 +264,7 @@ Served on the admin listener under `/admin/`, implemented by the `api` package. 
 |---|---|---|
 | `GET /admin/calls` | Call log: filters, keyset cursor, `limit` | G1, G8, G9 |
 | `GET /admin/calls/{id}` | One call's metadata and tool calls. Numbers and names only, no content | G4 |
-| `GET /admin/sessions` | Session list with the same filters and cursor, computed from call rows | G3 |
+| `GET /admin/sessions` | Session list with the same filters and cursor, computed from call rows. Each summary carries `llm_ms` (sum of call durations), `tool_ms` (sum of known paired tool call durations) and `tool_ms_estimated`, all summed busy time | G3 |
 | `GET /admin/sessions/{key}` | Summary, prompts, agents and calls (metadata only) | G2, G3 |
 | `GET /admin/tool-calls` | Tool-call explorer list; `?session=` filters to one session | G6 |
 | `GET /admin/tool-calls/summary` | Per-tool count, error rate, p50 and p95 duration, total time, split by agent type | G6 |

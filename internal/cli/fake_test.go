@@ -222,5 +222,5 @@ func sessionJSON(key string, calls, errs int, cost string, unpriced int) string 
 	return fmt.Sprintf(`{"session_key":%q,"key":"alice","client":"claude-code","first_ts":"2026-11-13T09:00:00Z","last_ts":"2026-11-13T14:10:00Z",
  "ended_at":"2026-11-13T14:10:03Z","calls":%d,"prompts":4,"tool_calls":17,"errors":%d,"agent_count":2,"models":["claude-opus-4-8","claude-haiku-5-5"],
  "usage":{"input_uncached":100,"cache_read":2000,"cache_write_5m":300,"cache_write_1h":40,"output":550,"reasoning":50},
- "cost_micro_usd":%s,"unpriced_calls":%d}`, key, calls, errs, cost, unpriced)
+ "cost_micro_usd":%s,"unpriced_calls":%d,"llm_ms":42000,"tool_ms":28000,"tool_ms_estimated":false}`, key, calls, errs, cost, unpriced)
 }

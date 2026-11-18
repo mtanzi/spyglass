@@ -126,6 +126,9 @@ type sessionSummary struct {
 	Usage         usage    `json:"usage"`
 	CostMicroUSD  *int64   `json:"cost_micro_usd"`
 	UnpricedCalls int64    `json:"unpriced_calls"`
+	LLMMS         int64    `json:"llm_ms"`
+	ToolMS        int64    `json:"tool_ms"`
+	ToolMSEst     bool     `json:"tool_ms_estimated"`
 }
 
 type sessionList struct {

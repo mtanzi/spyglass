@@ -4,6 +4,10 @@ Notable changes to Spyglass. Release 0.1.0 and earlier are described in their [G
 
 ## Unreleased
 
+### Added
+
+- **Model time versus tool time** ([#142](https://github.com/mtanzi/spyglass/issues/142)). The session summary in the admin API and the CLI now has `llm_ms` (sum of the call durations), `tool_ms` (sum of the known tool call durations) and `tool_ms_estimated`. The session list, the session summary strip and the prompt and agent rows of the session tree show the split, for example `LLM 42.00 s (60%) · tools 28.00 s (40%)`. Both values are summed busy time: parallel calls and sub-agents overlap in wall time and still add up, so the split is not a share of the session duration.
+
 ### Fixed
 
 - **Text sorts in byte order on every Postgres image.** Usage groups, the tool summary, the models of a session, and the prompt and agent tie-breaks now sort with `COLLATE "C"`. On the Debian `postgres:16` image that `docker-compose.yml` deploys, they used the database locale, so mixed-case values sorted differently than on the Alpine image the tests used. The store tests now run on `postgres:16`.

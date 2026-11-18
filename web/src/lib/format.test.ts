@@ -7,6 +7,7 @@ import {
   formatCount,
   formatDurationMs,
   formatText,
+  formatTimeSplit,
   zeroAsUnknown,
 } from './format'
 
@@ -40,4 +41,11 @@ test('formats values', () => {
   expect(formatBytes(2048)).toBe('2.0 KiB')
   expect(formatCappedCount(10000, true)).toBe('10,000+')
   expect(formatCappedCount(42, false)).toBe('42')
+})
+
+test('formatTimeSplit shows each part as a share of model plus tool time', () => {
+  expect(formatTimeSplit(42_000, 28_000, false)).toBe('LLM 42.00 s (60%) · tools 28.00 s (40%)')
+  expect(formatTimeSplit(42_000, 28_000, true)).toBe('LLM 42.00 s (60%) · tools 28.00 s est. (40%)')
+  expect(formatTimeSplit(500, 0, false)).toBe('LLM 500 ms (100%) · tools 0 ms (0%)')
+  expect(formatTimeSplit(0, 0, false)).toBe(UNKNOWN)
 })

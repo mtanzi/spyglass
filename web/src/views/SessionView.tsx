@@ -17,6 +17,7 @@ import {
   formatCount,
   formatDurationMs,
   formatText,
+  formatTimeSplit,
 } from '../lib/format'
 import { SESSION_MODES } from '../search/routes'
 import type { SessionMode } from '../search/routes'
@@ -163,6 +164,7 @@ function SessionSummaryStrip({
     ['Agents', formatCount(s.agent_count)],
     ['Calls', formatCount(s.calls)],
     ['Tool calls', toolsPending ? '…' : formatCount(toolCount)],
+    ['Model / tool time', formatTimeSplit(s.llm_ms, s.tool_ms, s.tool_ms_estimated)],
     ['Cost', formatCostMicroUsd(s.cost_micro_usd)],
     ['Cache hit', formatRatio(cacheHitRatio(s.usage))],
     [
@@ -370,10 +372,15 @@ function SessionTree({ model, onOpenCall }: { model: SessionModel; onOpenCall: (
         <span className="hint dim">
           <kbd>j</kbd> <kbd>k</kbd> move · <kbd>h</kbd> <kbd>l</kbd> collapse, expand · <kbd>Enter</kbd> open call
         </span>
+        <span className="hint dim">
+          Model / tool time: shares of summed model time and tool time. Parallel tool calls and sub-agents overlap
+          in wall time, so these are not shares of Duration. “est.” marks an estimated tool duration.
+        </span>
       </div>
       <div className="tree-head" aria-hidden="true">
         <span>Name</span>
         <span className="num">Duration</span>
+        <span className="num">Model / tool time</span>
         <span className="num">Tokens</span>
         <span className="num">Cost</span>
         <span className="num">Errors</span>
@@ -424,6 +431,13 @@ function SessionTree({ model, onOpenCall }: { model: SessionModel; onOpenCall: (
                   {node.kind === 'call' && node.call.context_compacted && <span className="badge">compacted</span>}
                 </span>
                 <Num text={formatDurationMs(node.duration)} />
+                <Num
+                  text={
+                    node.kind === 'prompt' || node.kind === 'agent'
+                      ? formatTimeSplit(node.llmMs, node.toolMs, node.toolEstimated)
+                      : ''
+                  }
+                />
                 <Num text={node.kind === 'tool' ? '' : formatCount(node.tokens)} />
                 <Num text={node.kind === 'tool' ? '' : formatCostMicroUsd(node.cost)} />
                 <span className="num">

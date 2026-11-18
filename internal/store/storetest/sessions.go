@@ -433,6 +433,20 @@ func refSessions(calls []core.CallRecord, f core.SessionFilter) []core.SessionSu
 		s    core.SessionSummary
 		last core.CallRecord
 	}
+	type toolTotal struct {
+		time      time.Duration
+		estimated bool
+	}
+	toolTime := map[string]toolTotal{}
+	for _, tc := range refTools(calls, core.ToolCallFilter{From: f.From, To: f.To}, time.Now()) {
+		if tc.DurationSource == "" {
+			continue
+		}
+		tt := toolTime[tc.SessionKey]
+		tt.time += tc.Duration
+		tt.estimated = tt.estimated || tc.DurationSource == core.DurationEstimated
+		toolTime[tc.SessionKey] = tt
+	}
 	var out []listed
 	for key, g := range groups {
 		if !g.hit {
@@ -478,6 +492,7 @@ func refSessions(calls []core.CallRecord, f core.SessionFilter) []core.SessionSu
 			if end.After(s.EndedAt) {
 				s.EndedAt = end
 			}
+			s.LLMTime += c.Duration
 			s.Usage.InputUncached += c.Usage.InputUncached
 			s.Usage.CacheRead += c.Usage.CacheRead
 			s.Usage.CacheWrite5m += c.Usage.CacheWrite5m
@@ -491,6 +506,7 @@ func refSessions(calls []core.CallRecord, f core.SessionFilter) []core.SessionSu
 			}
 		}
 		s.AgentCount, s.PromptCount, s.ToolCallCount = len(agents), len(prompts), len(tools)
+		s.ToolTime, s.ToolTimeEstimated = toolTime[key].time, toolTime[key].estimated
 		for m := range models {
 			s.Models = append(s.Models, m)
 		}

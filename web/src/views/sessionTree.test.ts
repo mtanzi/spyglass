@@ -169,3 +169,71 @@ test('an agent span covers a tool call that runs past its last call', () => {
   expect(agent.duration).toBe(1000)
   expect(model.prompts[0].duration).toBe(1000)
 })
+
+function findNode(nodes: TreeNode[], id: string): TreeNode | undefined {
+  for (const n of nodes) {
+    const found = n.id === id ? n : findNode(n.children, id)
+    if (found) return found
+  }
+  return undefined
+}
+const nodeById = (nodes: TreeNode[], id: string): TreeNode => {
+  const n = findNode(nodes, id)
+  if (!n) throw new Error(`no node ${id}`)
+  return n
+}
+
+test('time split sums sequential call and tool durations per prompt and agent', () => {
+  const calls = [
+    sessionCall('c1', { offset: 0, duration_ms: 1000 }),
+    sessionCall('c2', { offset: 3000, duration_ms: 2000 }),
+  ]
+  const tools = [
+    toolCall('t1', { use_call_id: 'c1', result_call_id: 'c2', use_ts: at(1000), duration_ms: 500 }),
+    toolCall('t2', { use_call_id: 'c2', use_ts: at(5000), duration_ms: 1500 }),
+  ]
+  const model = buildSessionModel(detail(calls), tools)
+  const prompt = model.prompts[0]
+  const agent = nodeById(model.prompts, 'a:p1:main')
+  for (const n of [prompt, agent]) {
+    expect([n.llmMs, n.toolMs, n.toolEstimated]).toEqual([3000, 2000, false])
+  }
+})
+
+test('time split adds parallel tool calls and parallel sub-agents as busy time', () => {
+  const { detail: d, tools } = parallelSession()
+  const model = buildSessionModel(d, tools)
+  // Tool calls ta (80 ms) and tb (90 ms) overlap in wall time and both count.
+  const subA = nodeById(model.prompts, 'a:p1:subA')
+  const subB = nodeById(model.prompts, 'a:p1:subB')
+  expect([subA.llmMs, subA.toolMs]).toEqual([400, 80])
+  expect([subB.llmMs, subB.toolMs]).toEqual([400, 90])
+  const main = nodeById(model.prompts, 'a:p1:main')
+  expect([main.llmMs, main.toolMs]).toEqual([1000, 170])
+  expect(model.prompts[0].llmMs).toBe(1000)
+  expect(model.prompts[0].toolMs).toBe(170)
+})
+
+test('time split of a scope with no tool calls has zero tool time', () => {
+  const model = buildSessionModel(detail([sessionCall('c1', { duration_ms: 700 })]), [])
+  const prompt = model.prompts[0]
+  expect([prompt.llmMs, prompt.toolMs, prompt.toolEstimated]).toEqual([700, 0, false])
+})
+
+test('time split marks the scope estimated when a tool duration is estimated, and skips unknown durations', () => {
+  const calls = [sessionCall('c1', { duration_ms: 100 }), sessionCall('c2', { offset: 500, duration_ms: 100, agent_id: 'other' })]
+  const tools = [
+    toolCall('t1', { use_call_id: 'c1', use_ts: at(100), duration_ms: 300, duration_source: 'estimated' }),
+    toolCall('t2', { use_call_id: 'c1', use_ts: at(100), duration_ms: null, duration_source: null, status: 'pending' }),
+    toolCall('t3', { use_call_id: 'c2', use_ts: at(600), duration_ms: 50, duration_source: 'header' }),
+  ]
+  const model = buildSessionModel(detail(calls, [
+    { agent_id: 'main', parent_agent_id: '', agent_type: '', calls: 1 },
+    { agent_id: 'other', parent_agent_id: '', agent_type: '', calls: 1 },
+  ]), tools)
+  const main = nodeById(model.prompts, 'a:p1:main')
+  const other = nodeById(model.prompts, 'a:p1:other')
+  expect([main.toolMs, main.toolEstimated]).toEqual([300, true])
+  expect([other.toolMs, other.toolEstimated]).toEqual([50, false])
+  expect([model.prompts[0].toolMs, model.prompts[0].toolEstimated]).toEqual([350, true])
+})
