@@ -114,8 +114,12 @@ const (
 
 // ToolCallFilter selects tool calls, which are a use joined to its result.
 type ToolCallFilter struct {
-	From, To    time.Time // half-open [From, To), on the use (or the result, for result_only)
-	SessionKey  string
+	From, To   time.Time // half-open [From, To), on the use (or the result, for result_only)
+	SessionKey string
+	// SessionKeys selects tool calls of any of these sessions. It is for
+	// readers that summarise several sessions in one query, and has no HTTP
+	// parameter. Empty means no restriction.
+	SessionKeys []string
 	AgentID     string
 	Tools       []string
 	Sources     []ToolSource
@@ -151,7 +155,8 @@ func (f ToolCallFilter) Match(t ToolCall) bool {
 		!in(f.Sources, t.Source),
 		!in(f.Statuses, t.Status):
 		return false
-	case f.SessionKey != "" && f.SessionKey != t.SessionKey,
+	case !in(f.SessionKeys, t.SessionKey),
+		f.SessionKey != "" && f.SessionKey != t.SessionKey,
 		f.AgentID != "" && f.AgentID != t.AgentID:
 		return false
 	case f.IsError != nil && (t.IsError == nil || *t.IsError != *f.IsError):

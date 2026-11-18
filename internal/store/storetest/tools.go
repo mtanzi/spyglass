@@ -408,6 +408,7 @@ var toolFilterCases = []struct {
 	set  func(*core.ToolCallFilter)
 }{
 	{"session_key", func(f *core.ToolCallFilter) { f.SessionKey = "s2" }},
+	{"session_keys", func(f *core.ToolCallFilter) { f.SessionKeys = []string{"s1", "s2"} }},
 	{"agent_id", func(f *core.ToolCallFilter) { f.AgentID = "a1" }},
 	{"tools", func(f *core.ToolCallFilter) { f.Tools = []string{"Bash", "Edit"} }},
 	{"tools_unknown_name", func(f *core.ToolCallFilter) { f.Tools = []string{""} }},

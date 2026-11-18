@@ -25,6 +25,20 @@ export function formatDurationMs(value: number | null | undefined): string {
   return `${minutes} min ${seconds} s`
 }
 
+/**
+ * Model time and tool time as shares of their sum, for example
+ * "LLM 42.00 s (60%) · tools 28.00 s (40%)". The sums are busy time: parallel
+ * tool calls and sub-agents overlap in wall time and still add up. A tool
+ * time with an estimated duration reads "est.". Null when both are zero.
+ */
+export function formatTimeSplit(llmMs: number, toolMs: number, toolEstimated: boolean): string {
+  const total = llmMs + toolMs
+  if (!(total > 0)) return UNKNOWN
+  const share = (v: number) => `${Math.round((v / total) * 100)}%`
+  const tools = `${formatDurationMs(toolMs)}${toolEstimated ? ' est.' : ''}`
+  return `LLM ${formatDurationMs(llmMs)} (${share(llmMs)}) · tools ${tools} (${share(toolMs)})`
+}
+
 /** Formats a byte size. */
 export function formatBytes(value: number | null | undefined): string {
   if (value == null) return UNKNOWN

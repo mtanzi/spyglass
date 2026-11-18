@@ -803,7 +803,7 @@ components:
     SessionSummary:
       type: object
       description: One session, grouped from its calls in the time range.
-      required: [session_key, key, client, first_ts, last_ts, ended_at, calls, prompts, tool_calls, errors, agent_count, models, usage, cost_micro_usd, unpriced_calls]
+      required: [session_key, key, client, first_ts, last_ts, ended_at, calls, prompts, tool_calls, errors, agent_count, models, usage, cost_micro_usd, unpriced_calls, llm_ms, tool_ms, tool_ms_estimated]
       properties:
         session_key: { type: string }
         key: { type: string, description: Virtual key name of the session. }
@@ -827,6 +827,17 @@ components:
           type: [integer, "null"]
           description: Sum of the known costs. Null when no call of the session has a known cost.
         unpriced_calls: { type: integer, description: Calls of the session whose cost is null. 0 when every call is priced. }
+        llm_ms:
+          type: integer
+          format: int64
+          description: Model time. Sum of the call durations in milliseconds. Parallel calls overlap in wall time and still add up.
+        tool_ms:
+          type: integer
+          format: int64
+          description: Tool time. Sum of the known tool call durations in milliseconds, with the pairing of the tool explorer. Parallel tool calls overlap in wall time and still add up. A tool call with no known duration adds nothing.
+        tool_ms_estimated:
+          type: boolean
+          description: True when a summed tool duration was estimated from the gap between use and result, not reported by the client.
     SessionList:
       type: object
       required: [sessions, next_cursor]

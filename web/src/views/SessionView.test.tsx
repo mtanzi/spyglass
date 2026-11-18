@@ -65,6 +65,9 @@ function summary(key: string, over: Partial<SessionSummary> = {}): SessionSummar
     usage: { input_uncached: 25, cache_read: 75, cache_write_5m: 0, cache_write_1h: 0, output: 5, reasoning: 0 },
     cost_micro_usd: 2_500_000,
     unpriced_calls: 0,
+    llm_ms: 42_000,
+    tool_ms: 28_000,
+    tool_ms_estimated: false,
     ...over,
   }
 }
@@ -96,7 +99,7 @@ test('session list shows the columns', async () => {
   const rows = within(table).getAllByRole('row').slice(1)
   expect(rows).toHaveLength(2)
   const headers = within(table).getAllByRole('columnheader').map((h) => h.textContent?.replace(/[▲▼]/g, '').trim())
-  expect(headers).toEqual(['Start', 'Session', 'Duration', 'Client', 'Key', 'Prompts', 'Calls', 'Tool calls', 'Cost', 'Cache hit', 'Errors'])
+  expect(headers).toEqual(['Start', 'Session', 'Duration', 'Model / tool time', 'Client', 'Key', 'Prompts', 'Calls', 'Tool calls', 'Cost', 'Cache hit', 'Errors'])
   const first = within(rows[0])
   expect(first.getByText('team/a:1')).toBeTruthy()
   // Duration runs from the first call start to the latest call end.
@@ -105,6 +108,7 @@ test('session list shows the columns', async () => {
   expect(first.getByText('12')).toBeTruthy()
   expect(first.getByText('7')).toBeTruthy()
   expect(first.getByText('$2.50')).toBeTruthy()
+  expect(first.getByText('LLM 42.00 s (60%) · tools 28.00 s (40%)')).toBeTruthy()
   expect(first.getByText('75.0%')).toBeTruthy()
   expect(first.getByText('3')).toBeTruthy()
   // Only the unknown cost and cache hit of the second row read unknown.
@@ -147,6 +151,7 @@ function routesFor(d: SessionDetail, tools: ToolCall[] = []): Routes {
 
 test('deep link with an encoded key loads the session and its tool calls, in tree mode by default', async () => {
   const { detail: d, tools } = parallelSession()
+  d.summary = { ...d.summary, llm_ms: 42_000, tool_ms: 28_000 }
   const urls = stubApi(routesFor(d, tools))
   const { container } = await renderAt('/ui/sessions/team%2Fa%3A1')
   await screen.findByRole('tree', { name: 'Session tree' })
@@ -172,6 +177,11 @@ test('deep link with an encoded key loads the session and its tool calls, in tre
   expect(within(prompt).getByText('60')).toBeTruthy()
   expect(within(prompt).getByText('$0.000060')).toBeTruthy()
   expect(within(prompt).getByText('2')).toBeTruthy()
+  // Model and tool time of the prompt are busy time: the two parallel tool calls add up.
+  expect(within(prompt).getByText('LLM 1.00 s (85%) · tools 170 ms (15%)')).toBeTruthy()
+  // The header shows the session total from the summary, with the note on parallel time.
+  expect(screen.getByText('LLM 42.00 s (60%) · tools 28.00 s (40%)')).toBeTruthy()
+  expect(screen.getAllByText(/Parallel tool calls and sub-agents overlap in wall time/).length).toBeGreaterThan(0)
   expect(screen.getByRole('link', { name: 'Tree' }).getAttribute('aria-current')).toBe('page')
   expect(screen.getByRole('link', { name: 'Time' }).getAttribute('aria-current')).toBeNull()
   expect((await axe.run(container)).violations.filter((v) => v.impact === 'critical' || v.impact === 'serious')).toEqual([])

@@ -457,6 +457,18 @@ export interface components {
             cost_micro_usd: number | null;
             /** @description Calls of the session whose cost is null. 0 when every call is priced. */
             unpriced_calls: number;
+            /**
+             * Format: int64
+             * @description Model time. Sum of the call durations in milliseconds. Parallel calls overlap in wall time and still add up.
+             */
+            llm_ms: number;
+            /**
+             * Format: int64
+             * @description Tool time. Sum of the known tool call durations in milliseconds, with the pairing of the tool explorer. Parallel tool calls overlap in wall time and still add up. A tool call with no known duration adds nothing.
+             */
+            tool_ms: number;
+            /** @description True when a summed tool duration was estimated from the gap between use and result, not reported by the client. */
+            tool_ms_estimated: boolean;
         };
         SessionList: {
             sessions: components["schemas"]["SessionSummary"][];
