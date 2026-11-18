@@ -26,6 +26,7 @@ import {
   agentLabel,
   buildLanes,
   buildSessionModel,
+  countSummary,
   defaultExpanded,
   flattenTree,
   shortId,
@@ -318,6 +319,10 @@ function SessionTree({ model, onOpenCall }: { model: SessionModel; onOpenCall: (
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
+    // Rows are measured (a count summary can wrap), so key the size cache by
+    // node: when tool calls load or a node collapses the indexes shift, and an
+    // index-keyed cache would give a row another row's height.
+    getItemKey: (index) => rows[index].node.id,
     estimateSize: () => TREE_ROW * rem,
     overscan: 12,
   })
@@ -406,7 +411,8 @@ function SessionTree({ model, onOpenCall }: { model: SessionModel; onOpenCall: (
                 aria-label={`${label.kind} ${label.title}`}
                 tabIndex={item.index === nav.active ? 0 : -1}
                 className={`tree-row kind-${node.kind}${node.errors > 0 ? ' has-error' : ''}`}
-                style={{ height: item.size, transform: `translateY(${item.start}px)` }}
+                ref={virtualizer.measureElement}
+                style={{ minHeight: TREE_ROW * rem, transform: `translateY(${item.start}px)` }}
                 onFocus={() => nav.setActive(item.index)}
                 onClick={() => {
                   nav.setActive(item.index)
@@ -415,20 +421,26 @@ function SessionTree({ model, onOpenCall }: { model: SessionModel; onOpenCall: (
                 onKeyDown={(e) => onKeyDown(e, row, item.index)}
               >
                 <span className="tree-name" style={{ paddingLeft: row.depth * 16 }}>
-                  <span
-                    className="chevron"
-                    aria-hidden="true"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      toggle(row)
-                    }}
-                  >
-                    {row.hasChildren ? (row.expanded ? '▾' : '▸') : ''}
+                  <span className="tree-line">
+                    <span
+                      className="chevron"
+                      aria-hidden="true"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggle(row)
+                      }}
+                    >
+                      {row.hasChildren ? (row.expanded ? '▾' : '▸') : ''}
+                    </span>
+                    <span className="kind">{label.kind}</span>
+                    <span className="title">{label.title}</span>
+                    {label.sub !== '' && <span className="sub dim">{label.sub}</span>}
+                    {node.kind === 'call' && node.call.context_compacted && <span className="badge">compacted</span>}
                   </span>
-                  <span className="kind">{label.kind}</span>
-                  <span className="title">{label.title}</span>
-                  {label.sub !== '' && <span className="sub dim">{label.sub}</span>}
-                  {node.kind === 'call' && node.call.context_compacted && <span className="badge">compacted</span>}
+                  {/* The counts take their own line and wrap, so neither they nor the title are cut off. */}
+                  {(node.kind === 'prompt' || node.kind === 'agent') && (
+                    <span className="counts dim">{countSummary(node)}</span>
+                  )}
                 </span>
                 <Num text={formatDurationMs(node.duration)} />
                 <Num

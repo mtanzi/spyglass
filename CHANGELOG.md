@@ -7,6 +7,7 @@ Notable changes to Spyglass. Release 0.1.0 and earlier are described in their [G
 ### Added
 
 - **Model time versus tool time** ([#142](https://github.com/mtanzi/spyglass/issues/142)). The session summary in the admin API and the CLI now has `llm_ms` (sum of the call durations), `tool_ms` (sum of the known tool call durations) and `tool_ms_estimated`. The session list, the session summary strip and the prompt and agent rows of the session tree show the split, for example `LLM 42.00 s (60%) · tools 28.00 s (40%)`. Both values are summed busy time: parallel calls and sub-agents overlap in wall time and still add up, so the split is not a share of the session duration.
+- **LLM and tool call counts in the session view** ([#143](https://github.com/mtanzi/spyglass/issues/143)). Each prompt row and agent row in the session tree now shows a count summary on its own line, for example "8 LLM calls · 23 tool calls · 2.9 tools per call". The counts cover the row's whole subtree, so an agent includes its sub-agents. The ratio is left out when the row has no LLM call. The session list has a new sortable "Tools per call" column: the session's tool calls divided by its calls, with one decimal.
 
 ### Fixed
 

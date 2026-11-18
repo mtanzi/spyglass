@@ -75,6 +75,8 @@ function summary(key: string, over: Partial<SessionSummary> = {}): SessionSummar
 beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(480)
   vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1200)
+  // jsdom has no layout: give measured tree rows a one-line height.
+  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(28)
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
     width: 1200, height: 480, top: 0, left: 0, right: 1200, bottom: 480, x: 0, y: 0, toJSON: () => ({}),
   })
@@ -99,7 +101,7 @@ test('session list shows the columns', async () => {
   const rows = within(table).getAllByRole('row').slice(1)
   expect(rows).toHaveLength(2)
   const headers = within(table).getAllByRole('columnheader').map((h) => h.textContent?.replace(/[▲▼]/g, '').trim())
-  expect(headers).toEqual(['Start', 'Session', 'Duration', 'Model / tool time', 'Client', 'Key', 'Prompts', 'Calls', 'Tool calls', 'Cost', 'Cache hit', 'Errors'])
+  expect(headers).toEqual(['Start', 'Session', 'Duration', 'Model / tool time', 'Client', 'Key', 'Prompts', 'Calls', 'Tool calls', 'Tools per call', 'Cost', 'Cache hit', 'Errors'])
   const first = within(rows[0])
   expect(first.getByText('team/a:1')).toBeTruthy()
   // Duration runs from the first call start to the latest call end.
@@ -107,6 +109,8 @@ test('session list shows the columns', async () => {
   expect(first.getByText('4')).toBeTruthy()
   expect(first.getByText('12')).toBeTruthy()
   expect(first.getByText('7')).toBeTruthy()
+  // 7 tool calls over 12 calls.
+  expect(first.getByText('0.6')).toBeTruthy()
   expect(first.getByText('$2.50')).toBeTruthy()
   expect(first.getByText('LLM 42.00 s (60%) · tools 28.00 s (40%)')).toBeTruthy()
   expect(first.getByText('75.0%')).toBeTruthy()
@@ -177,6 +181,8 @@ test('deep link with an encoded key loads the session and its tool calls, in tre
   expect(within(prompt).getByText('60')).toBeTruthy()
   expect(within(prompt).getByText('$0.000060')).toBeTruthy()
   expect(within(prompt).getByText('2')).toBeTruthy()
+  expect(within(prompt).getByText('6 LLM calls · 2 tool calls · 0.3 tools per call')).toBeTruthy()
+  expect(within(treeItems()[1]).getByText('6 LLM calls · 2 tool calls · 0.3 tools per call')).toBeTruthy()
   // Model and tool time of the prompt are busy time: the two parallel tool calls add up.
   expect(within(prompt).getByText('LLM 1.00 s (85%) · tools 170 ms (15%)')).toBeTruthy()
   // The header shows the session total from the summary, with the note on parallel time.
