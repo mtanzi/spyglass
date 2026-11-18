@@ -5,7 +5,7 @@
 // list of rows for virtualisation, following agent-prism's model.
 
 import type { ResponseOf } from '../api/client'
-import { zeroAsUnknown } from '../lib/format'
+import { UNKNOWN, formatCount, zeroAsUnknown } from '../lib/format'
 import { buildTimeAxis } from './timeAxis'
 import type { Interval, TimeAxis } from './timeAxis'
 
@@ -30,6 +30,10 @@ interface NodeBase {
   cost: number | null
   /** Calls with an error and tool calls with an error result, in this subtree. */
   errors: number
+  /** LLM calls in this subtree (a sub-agent's calls count for its parent agent too). */
+  llmCalls: number
+  /** Tool calls in this subtree, each counted once under the call that requested it. */
+  toolCalls: number
   /** A call in this subtree resets the cache prefix. */
   compacted: boolean
   /** Index of the prompt this node belongs to, oldest first. */
@@ -129,10 +133,31 @@ function base(id: string, promptIndex: number): NodeBase {
     tokens: null,
     cost: null,
     errors: 0,
+    llmCalls: 0,
+    toolCalls: 0,
     compacted: false,
     promptIndex,
     children: [],
   }
+}
+
+/** Tool calls per LLM call; null when there is no LLM call, so no division error shows. */
+export function toolsPerCall(toolCalls: number, llmCalls: number): number | null {
+  return llmCalls > 0 ? toolCalls / llmCalls : null
+}
+
+/** Ratio with one decimal; the unknown dash when null. */
+export function formatToolsPerCall(ratio: number | null): string {
+  return ratio == null ? UNKNOWN : ratio.toFixed(1)
+}
+
+/** Count summary of a prompt or agent row, e.g. "8 LLM calls · 23 tool calls · 2.9 tools per call". */
+export function countSummary(node: Pick<NodeBase, 'llmCalls' | 'toolCalls'>): string {
+  const plural = (n: number, one: string) => `${formatCount(n)} ${one}${n === 1 ? '' : 's'}`
+  const parts = [plural(node.llmCalls, 'LLM call'), plural(node.toolCalls, 'tool call')]
+  const ratio = toolsPerCall(node.toolCalls, node.llmCalls)
+  if (ratio !== null) parts.push(`${formatToolsPerCall(ratio)} tools per call`)
+  return parts.join(' · ')
 }
 
 const byStart = (a: TreeNode, b: TreeNode) => a.start - b.start || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
@@ -145,7 +170,15 @@ function subtreeEnd(node: TreeNode): number {
 function finish(node: TreeNode): void {
   for (const child of node.children) finish(child)
   node.children.sort(byStart)
-  if (node.kind === 'call' || node.kind === 'tool') return
+  if (node.kind === 'tool') {
+    node.toolCalls = 1
+    return
+  }
+  if (node.kind === 'call') {
+    node.llmCalls = 1
+    node.toolCalls = node.children.reduce((n, k) => n + k.toolCalls, 0)
+    return
+  }
   const kids = node.children
   if (kids.length === 0) {
     node.start = NaN
@@ -159,6 +192,8 @@ function finish(node: TreeNode): void {
   node.tokens = sumKnown(kids.map((k) => k.tokens))
   node.cost = sumKnown(kids.map((k) => k.cost))
   node.errors = kids.reduce((n, k) => n + k.errors, 0)
+  node.llmCalls = kids.reduce((n, k) => n + k.llmCalls, 0)
+  node.toolCalls = kids.reduce((n, k) => n + k.toolCalls, 0)
   node.compacted = kids.some((k) => k.compacted)
 }
 

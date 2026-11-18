@@ -9,6 +9,7 @@ import type { DataTableColumn } from '../components/DataTable'
 import { FilterMenu, NumberFilter, TextListFilter } from '../components/FilterMenu'
 import { TimeRangePicker } from '../components/TimeRangePicker'
 import { UNKNOWN, formatCostMicroUsd, formatCount, formatDurationMs, formatText } from '../lib/format'
+import { formatToolsPerCall, toolsPerCall } from './sessionTree'
 import type { SessionsSearch } from '../search/routes'
 import { DEFAULT_RANGE, resolveTimeRange } from '../search/timeRange'
 
@@ -107,6 +108,14 @@ const columns: DataTableColumn<SessionSummary>[] = [
     size: 90,
     accessorFn: (s) => s.tool_calls,
     cell: ({ row }) => <>{formatCount(row.original.tool_calls)}</>,
+  },
+  {
+    id: 'tools_per_call',
+    meta: { numeric: true },
+    header: 'Tools per call',
+    size: 110,
+    accessorFn: (s) => toolsPerCall(s.tool_calls, s.calls),
+    cell: ({ row }) => <Cell text={formatToolsPerCall(toolsPerCall(row.original.tool_calls, row.original.calls))} />,
   },
   {
     id: 'cost',

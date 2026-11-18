@@ -25,6 +25,7 @@ import {
   agentLabel,
   buildLanes,
   buildSessionModel,
+  countSummary,
   defaultExpanded,
   flattenTree,
   shortId,
@@ -421,6 +422,9 @@ function SessionTree({ model, onOpenCall }: { model: SessionModel; onOpenCall: (
                   <span className="kind">{label.kind}</span>
                   <span className="title">{label.title}</span>
                   {label.sub !== '' && <span className="sub dim">{label.sub}</span>}
+                  {(node.kind === 'prompt' || node.kind === 'agent') && (
+                    <span className="sub dim counts">{countSummary(node)}</span>
+                  )}
                   {node.kind === 'call' && node.call.context_compacted && <span className="badge">compacted</span>}
                 </span>
                 <Num text={formatDurationMs(node.duration)} />

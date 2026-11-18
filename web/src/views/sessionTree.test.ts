@@ -4,8 +4,11 @@ import {
   LATEST_PROMPTS_EXPANDED,
   buildLanes,
   buildSessionModel,
+  countSummary,
   defaultExpanded,
   flattenTree,
+  formatToolsPerCall,
+  toolsPerCall,
 } from './sessionTree'
 import type { FlatRow, TreeNode } from './sessionTree'
 
@@ -168,4 +171,38 @@ test('an agent span covers a tool call that runs past its last call', () => {
   const [agent] = model.prompts[0].children
   expect(agent.duration).toBe(1000)
   expect(model.prompts[0].duration).toBe(1000)
+})
+
+test('prompt and agent rows count LLM calls and tool calls, a sub-agent counting for its parent', () => {
+  const { detail: d, tools } = parallelSession()
+  const [prompt] = buildSessionModel(d, tools).prompts
+  expect([prompt.llmCalls, prompt.toolCalls]).toEqual([6, 2])
+  expect(countSummary(prompt)).toBe('6 LLM calls · 2 tool calls · 0.3 tools per call')
+  const main = prompt.children[0]
+  // The main agent holds its own two calls plus both sub-agents.
+  expect([main.llmCalls, main.toolCalls]).toEqual([6, 2])
+  const subA = main.children.find((n) => n.id === 'a:p1:subA')!
+  expect([subA.llmCalls, subA.toolCalls]).toEqual([2, 1])
+  expect(countSummary(subA)).toBe('2 LLM calls · 1 tool call · 0.5 tools per call')
+})
+
+test('tool calls are counted once, under the call that requested them', () => {
+  const d = detail([sessionCall('x'), sessionCall('y', { offset: 10 })])
+  const tools = [
+    toolCall('t1', { use_call_id: 'x', result_call_id: 'y', use_ts: at(5) }),
+    toolCall('t2', { use_call_id: 'x', use_ts: at(6) }),
+    toolCall('t3', { result_call_id: 'y', result_ts: at(20) }),
+  ]
+  const [prompt] = buildSessionModel(d, [...tools, tools[0]]).prompts
+  expect([prompt.llmCalls, prompt.toolCalls]).toEqual([2, 3])
+  expect(countSummary(prompt)).toBe('2 LLM calls · 3 tool calls · 1.5 tools per call')
+})
+
+test('a scope with no LLM call shows no ratio and no division error', () => {
+  expect(toolsPerCall(3, 0)).toBeNull()
+  expect(formatToolsPerCall(null)).toBe('unknown')
+  expect(countSummary({ llmCalls: 0, toolCalls: 0 })).toBe('0 LLM calls · 0 tool calls')
+  expect(toolsPerCall(0, 4)).toBe(0)
+  expect(formatToolsPerCall(23 / 8)).toBe('2.9')
+  expect(countSummary({ llmCalls: 1, toolCalls: 1 })).toBe('1 LLM call · 1 tool call · 1.0 tools per call')
 })

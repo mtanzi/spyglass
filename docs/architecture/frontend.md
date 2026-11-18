@@ -45,7 +45,7 @@ session → prompt (user turn) → agent (main or sub-agent) → LLM call → to
 |---|---|---|---|
 | Overview (home) | `/ui` | Headline numbers against the previous equal period, activity by model, live feed, recent sessions, problems and cost breakdowns | `GET /admin/usage`, `GET /admin/sessions`, `GET /admin/calls`, `GET /admin/stream`, `GET /admin/config` |
 | V1 Call log | `/ui/calls` | Paginated, filterable list of every LLM call, with a volume chart and a summary strip | `GET /admin/calls`, `GET /admin/usage`, `GET /admin/stream` |
-| V2 Session list | `/ui/sessions` | One row per session: start, duration, client, key, prompts, calls, tool calls, cost, cache hit, errors, labelled by key, client and start time (no prompt text is stored) | `GET /admin/sessions` |
+| V2 Session list | `/ui/sessions` | One row per session: start, duration, client, key, prompts, calls, tool calls, tools per call, cost, cache hit, errors, labelled by key, client and start time (no prompt text is stored) | `GET /admin/sessions` |
 | V2 Session view | `/ui/sessions/:key` | Tree and waterfall of prompts, agents, calls and tool calls | `GET /admin/sessions/{key}`, `GET /admin/tool-calls?session=` |
 | V3 Call detail | `/ui/calls/:id` | Who, timings, usage and cost, outcome, tools requested and resolved. No content | `GET /admin/calls/{id}` |
 | V4 Tool-call explorer | `/ui/tools` | Per-tool summary and a list of tool calls with filters on name, error, duration and sizes | `GET /admin/tool-calls/summary`, `GET /admin/tool-calls` |
@@ -80,6 +80,8 @@ The wireframes for V1 to V4 are in UI report sections 5.1 to 5.4; the parts that
 - **Time mode** is a waterfall sorted by start time, with one lane per agent, so parallel sub-agents and parallel tool calls show as concurrent bars.
 - **Idle-gap compression** in both modes: gaps wider than 5% of the session collapse to a fixed marker (Langfuse's port of Sentry's approach). Agent sessions are mostly idle time, so a linear axis would hide the work.
 - Each tree row shows duration, tokens, cost and an error badge.
+- Each prompt row and agent row also shows a count summary, for example "8 LLM calls · 23 tool calls · 2.9 tools per call". The counts cover the row's whole subtree, so an agent row includes its sub-agents. Each tool call counts once, under the call that requested it. The ratio is tool calls divided by LLM calls with one decimal, and it is left out when the scope has no LLM call. The numbers are computed at read time from the call rows and the paired tool events, with no stored value.
+- The session list has a sortable "Tools per call" column next to calls and tool calls: the session's tool calls divided by its calls, with one decimal. A session with no calls shows it as unknown.
 - A call without a session header has no session, so it shows in V1 and V3 but in no session row or tree.
 - Compaction points (the `context_compacted` flag, from `x-claude-code-context-compacted`) are drawn as a marker where the cache prefix resets.
 - Collapsed by default past the latest prompts; virtualized beyond a few hundred rows.
