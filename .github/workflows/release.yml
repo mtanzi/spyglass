@@ -1,11 +1,24 @@
 name: Release
 
-# Runs only on a version tag. It first runs the security gates, then builds the
-# multi-arch image (ADR 0036), pushes it
-# to GitHub Container Registry, and attaches release binaries to the GitHub release.
+# Called by release-please.yml after it creates a release (a tag made with
+# GITHUB_TOKEN does not trigger a tag-push workflow). It first runs the security
+# gates, then builds the multi-arch image (ADR 0036), pushes it to GitHub
+# Container Registry, and attaches release binaries to the GitHub release.
+# Manual fallback: run it from the Actions tab (workflow_dispatch) with the
+# name of an existing tag, for example v0.6.0, to repeat a failed publish.
 on:
-  push:
-    tags: ["v*"]
+  workflow_call:
+    inputs:
+      tag:
+        description: Existing release tag to build, for example v1.2.3.
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build, for example v1.2.3.
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -28,6 +41,8 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
       - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
@@ -35,7 +50,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      # Tags follow the git tag: v1.2.3 gives 1.2.3 only. No latest or other
+      # Tags follow the release tag: v1.2.3 gives 1.2.3 only. No latest or other
       # moving tag; deployments pin a version.
       - id: meta
         uses: docker/metadata-action@v6
@@ -43,7 +58,7 @@ jobs:
           images: ${{ env.IMAGE }}
           flavor: latest=false
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern={{version}},value=${{ inputs.tag }}
       # Gate the push: build the amd64 image locally and run the CI checks.
       - name: Check the image before push
         uses: docker/build-push-action@v7
@@ -52,7 +67,7 @@ jobs:
           platforms: linux/amd64
           load: true
           tags: spyglass:release-check
-          build-args: VERSION=${{ github.ref_name }}
+          build-args: VERSION=${{ inputs.tag }}
           cache-from: type=gha
       - run: scripts/check-image.sh spyglass:release-check && scripts/smoke-image.sh spyglass:release-check
       - uses: docker/build-push-action@v7
@@ -62,7 +77,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: VERSION=${{ github.ref_name }}
+          build-args: VERSION=${{ inputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -74,6 +89,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -85,7 +102,7 @@ jobs:
       - run: make ui-build
       - name: Build binaries
         env:
-          VERSION: ${{ github.ref_name }}
+          VERSION: ${{ inputs.tag }}
         run: |
           mkdir -p dist
           for target in linux/amd64 linux/arm64 darwin/arm64 darwin/amd64; do
@@ -98,7 +115,8 @@ jobs:
       - name: Attach to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
         run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
-            || gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes
-          gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          gh release view "$TAG" >/dev/null 2>&1 \
+            || gh release create "$TAG" --verify-tag --generate-notes
+          gh release upload "$TAG" dist/* --clobber
