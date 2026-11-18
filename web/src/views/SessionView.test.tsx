@@ -72,6 +72,8 @@ function summary(key: string, over: Partial<SessionSummary> = {}): SessionSummar
 beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(480)
   vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1200)
+  // jsdom has no layout: give measured tree rows a one-line height.
+  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(28)
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
     width: 1200, height: 480, top: 0, left: 0, right: 1200, bottom: 480, x: 0, y: 0, toJSON: () => ({}),
   })

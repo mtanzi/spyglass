@@ -301,7 +301,9 @@ main:focus { outline: none; }
 .tree-row:hover { background: var(--bg-hover); }
 .tree-row:focus { background: var(--bg-active); box-shadow: inset 2px 0 0 var(--accent); }
 .tree-row:focus-visible { z-index: 1; }
-.tree-name { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; overflow: hidden; }
+.tree-name { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding-block: 2px; }
+.tree-line { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; overflow: hidden; }
+.tree-name .counts { font-size: var(--text-xs); padding-left: 18px; overflow-wrap: anywhere; }
 .tree-name .title { overflow: hidden; text-overflow: ellipsis; }
 .tree-name .sub { font-size: var(--text-xs); overflow: hidden; text-overflow: ellipsis; }
 .chevron { width: 12px; flex: none; color: var(--muted); text-align: center; }
