@@ -14,6 +14,19 @@ Notable changes to Spyglass. Release 0.1.0 and earlier are described in their [G
 - **Text sorts in byte order on every Postgres image.** Usage groups, the tool summary, the models of a session, and the prompt and agent tie-breaks now sort with `COLLATE "C"`. On the Debian `postgres:16` image that `docker-compose.yml` deploys, they used the database locale, so mixed-case values sorted differently than on the Alpine image the tests used. The store tests now run on `postgres:16`.
 - **`usage_raw` in the admin API schema allows its keys.** `api/openapi.yaml` declared `usage_raw` as an object with no `additionalProperties`, so the generated TypeScript type forbade every key the server sends. It now allows any property and describes the merged usage object.
 
+## [0.6.0](https://github.com/mtanzi/spyglass/compare/v0.5.0...v0.6.0) (2026-11-18)
+
+
+### Features
+
+* **ui:** show LLM and tool call counts per prompt and agent, and tools per call in the session list ([#147](https://github.com/mtanzi/spyglass/issues/147)) ([e8c977e](https://github.com/mtanzi/spyglass/commit/e8c977e4aa533d8a1cbeb52099f8c889a2c3afed))
+* **ui:** show model time versus tool time split per session, prompt and agent ([#146](https://github.com/mtanzi/spyglass/issues/146)) ([5dcd729](https://github.com/mtanzi/spyglass/commit/5dcd72939248e1bf7815f49528abcd54ab375adc))
+
+
+### Bug Fixes
+
+* **store:** sort text in byte order on every Postgres image and fix test-audit defects ([#145](https://github.com/mtanzi/spyglass/issues/145)) ([f222bcf](https://github.com/mtanzi/spyglass/commit/f222bcf38404a58cba9be07ae251a3a204f8677b))
+
 ## 0.5.0 - 2026-11-16
 
 ### Changed
