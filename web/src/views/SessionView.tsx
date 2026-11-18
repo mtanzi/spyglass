@@ -317,6 +317,10 @@ function SessionTree({ model, onOpenCall }: { model: SessionModel; onOpenCall: (
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
+    // Rows are measured (a count summary can wrap), so key the size cache by
+    // node: when tool calls load or a node collapses the indexes shift, and an
+    // index-keyed cache would give a row another row's height.
+    getItemKey: (index) => rows[index].node.id,
     estimateSize: () => TREE_ROW * rem,
     overscan: 12,
   })
