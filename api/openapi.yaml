@@ -782,8 +782,13 @@ components:
         ended_at: { type: [string, "null"], format: date-time }
         usage: { $ref: "#/components/schemas/Usage" }
         usage_raw:
-          description: The provider usage object as received, numbers only. Null when there was none.
+          description: >-
+            The provider usage object as received, with the fields of every
+            usage event merged (a later value replaces an earlier one). Values
+            are numbers, strings such as service_tier, and nested objects such
+            as cache_creation and server_tool_use. Null when there was none.
           type: [object, "null"]
+          additionalProperties: true
         usage_estimated: { type: boolean }
         extraction_partial: { type: boolean }
         cost_micro_usd: { type: [integer, "null"] }
@@ -999,7 +1004,7 @@ components:
         grain: { type: string, enum: [minute, hour, day] }
         buckets:
           type: array
-          description: Ordered by start, then group.
+          description: Ordered by start, then group. Group values compare bytewise (the C collation), whatever the database locale.
           items: { $ref: "#/components/schemas/UsageBucket" }
     PromptCost:
       type: object

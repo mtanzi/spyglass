@@ -23,7 +23,7 @@ export function call(id: string, over: Partial<CallSummary> = {}): CallSummary {
     tool_count: 1,
     context_compacted: false,
     ...over,
-  } as CallSummary
+  }
 }
 
 test('live insert puts the newest first and ignores a repeated id', () => {

@@ -26,6 +26,17 @@ jobs:
       - run: make vet
       - run: make test
 
+  race:
+    name: Race detector
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+      # The runner has Docker, so the store tests start Postgres themselves.
+      - run: make test-race
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -74,7 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -98,7 +109,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:

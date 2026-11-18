@@ -9,7 +9,7 @@ GOTAGS = $(shell test -f $(UI_DIST) || echo -tags noui)
 # Not ./...: that would walk web/node_modules, where npm packages may ship Go.
 PKGS := ./api/... ./cmd/... ./internal/...
 
-.PHONY: build test e2e lint check-imports check-openapi vet goldens ui-build ui-dev ui-check ui-gen
+.PHONY: build test test-race e2e lint check-imports check-openapi vet goldens ui-build ui-dev ui-check ui-gen
 
 build:
 	CGO_ENABLED=0 go build $(GOTAGS) -trimpath -ldflags "$(LDFLAGS)" -o bin/spyglass ./cmd/spyglass
@@ -19,6 +19,11 @@ vet:
 
 test:
 	go test $(GOTAGS) $(PKGS)
+
+# The same tests under the race detector. The concurrency tests (config swap,
+# recorder, store) can only fail with it. Needs cgo and a C compiler.
+test-race:
+	go test -race $(GOTAGS) $(PKGS)
 
 # The end-to-end tests (ADR 0038): the real wiring against a fake Anthropic
 # upstream and a test Postgres. They need Docker or SPYGLASS_TEST_DATABASE_URL

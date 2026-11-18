@@ -251,6 +251,25 @@ var usageCases = []testCase{
 			t.Errorf("free = %+v, want a known cost of zero", p)
 		}
 	}},
+	{"prompt_costs_break_ties_bytewise", func(t *testing.T, e *env) {
+		// Prompts of equal cost and call count are ordered by id. Byte order
+		// puts "P2" < "_p" < "p1"; a glibc locale puts "_p" < "p1" < "P2".
+		g := e.gen
+		e.write(t,
+			g.Call(WithPrompt("p1"), WithCost(10)), g.Call(WithPrompt("P2"), WithCost(10)), g.Call(WithPrompt("_p"), WithCost(10)),
+		)
+		got, err := e.PromptCosts(context.Background(), core.PromptCostQuery{Filter: usageWin, Limit: 10})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var ids []string
+		for _, p := range got.Prompts {
+			ids = append(ids, p.PromptID)
+		}
+		if want := []string{"P2", "_p", "p1"}; !slices.Equal(ids, want) {
+			t.Errorf("order %q, want %q", ids, want)
+		}
+	}},
 	{"prompt_costs_count_calls_without_a_prompt_id", func(t *testing.T, e *env) {
 		g := e.gen
 		e.write(t,
@@ -361,6 +380,12 @@ func usageDataset(g *Gen) []core.CallRecord {
 		{at: 24*time.Hour + 90*time.Minute, key: "bob", model: "opus", client: "sdk", provider: "anthropic", session: "s3", usage: u(3, 9, 0, 0, 12, 2), cost: m(42)},
 		{at: 47*time.Hour + 59*time.Minute, key: "carol", model: "haiku", client: "claude-code", provider: "bedrock", session: "s2", errc: "overloaded", usage: u(8, 16, 24, 32, 40, 4), cost: m(99)},
 		{at: 48 * time.Hour, key: "carol", model: "sonnet", provider: "bedrock", usage: u(9, 18, 27, 36, 45, 3), cost: m(500_000)},
+		// Mixed case and punctuation: byte order ("Bob" < "_x" < "alice") and
+		// locale order (glibc: "_x" < "alice" < "Bob") disagree on these. The
+		// store sorts text bytewise (COLLATE "C"), so the oracle can use Go's
+		// string order on any Postgres image.
+		{at: 9*time.Hour + 45*time.Minute, key: "Bob", model: "claude-opus-4-8", client: "Claude-Code", provider: "Anthropic", session: "S1", usage: u(2, 4, 6, 8, 10, 1), cost: m(60)},
+		{at: 9*time.Hour + 50*time.Minute, key: "_x", model: "claude-opus4", client: "_cli", provider: "_bedrock", session: "_s1", errc: "Overloaded", usage: u(3, 6, 9, 12, 15, 2), cost: m(70)},
 	}
 	var out []core.CallRecord
 	for i, s := range specs {

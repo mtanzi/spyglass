@@ -2,6 +2,13 @@
 
 Notable changes to Spyglass. Release 0.1.0 and earlier are described in their [GitHub release notes](https://github.com/mtanzi/spyglass/releases).
 
+## Unreleased
+
+### Fixed
+
+- **Text sorts in byte order on every Postgres image.** Usage groups, the tool summary, the models of a session, and the prompt and agent tie-breaks now sort with `COLLATE "C"`. On the Debian `postgres:16` image that `docker-compose.yml` deploys, they used the database locale, so mixed-case values sorted differently than on the Alpine image the tests used. The store tests now run on `postgres:16`.
+- **`usage_raw` in the admin API schema allows its keys.** `api/openapi.yaml` declared `usage_raw` as an object with no `additionalProperties`, so the generated TypeScript type forbade every key the server sends. It now allows any property and describes the merged usage object.
+
 ## 0.5.0 - 2026-11-16
 
 ### Changed

@@ -409,8 +409,10 @@ export interface components {
             /** Format: date-time */
             ended_at: string | null;
             usage: components["schemas"]["Usage"];
-            /** @description The provider usage object as received, numbers only. Null when there was none. */
-            usage_raw: Record<string, never> | null;
+            /** @description The provider usage object as received, with the fields of every usage event merged (a later value replaces an earlier one). Values are numbers, strings such as service_tier, and nested objects such as cache_creation and server_tool_use. Null when there was none. */
+            usage_raw: {
+                [key: string]: unknown;
+            } | null;
             usage_estimated: boolean;
             extraction_partial: boolean;
             cost_micro_usd: number | null;
@@ -583,7 +585,7 @@ export interface components {
             group_by: "key" | "model" | "client" | "provider" | "session" | "error_class" | null;
             /** @enum {string} */
             grain: "minute" | "hour" | "day";
-            /** @description Ordered by start, then group. */
+            /** @description Ordered by start, then group. Group values compare bytewise (the C collation), whatever the database locale. */
             buckets: components["schemas"]["UsageBucket"][];
         };
         /**

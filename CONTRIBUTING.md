@@ -30,6 +30,7 @@ Only `cmd/spyglass` and the test-only contract suite `store/storetest` import `s
 make build          # static binary in bin/
 make vet
 make test
+make test-race     # the same tests under the race detector (CI runs it; needs cgo)
 make lint           # golangci-lint, including depguard rules (.golangci.yml)
 make check-imports  # depguard rules only
 make check-openapi  # lint api/openapi.yaml with Redocly (needs Node)
@@ -43,7 +44,7 @@ make e2e            # end-to-end tests: real wiring, fake upstream, test Postgre
 
 Without `internal/ui/dist`, `make build`, `make vet`, `make test` and `make lint` use the `noui` build tag, so a fresh clone needs no Node and the binary serves a stub page at `/ui/`.
 
-The store tests in `internal/store/...` need a real Postgres. They start a `postgres:16-alpine` container with testcontainers-go when Docker is running, or use the server in `SPYGLASS_TEST_DATABASE_URL` (a URL whose user may create databases); without either they skip. Each test gets its own throwaway database.
+The store tests in `internal/store/...` need a real Postgres. They start a `postgres:16` container (the Debian image `docker-compose.yml` deploys) with testcontainers-go when Docker is running, or use the server in `SPYGLASS_TEST_DATABASE_URL` (a URL whose user may create databases); without either they skip. Each test gets its own throwaway database.
 
 The contract suite `storetest.Run` runs against the Postgres adapter from `internal/store/postgres/storetest_test.go`. To run it alone, or all store tests against a local Postgres:
 

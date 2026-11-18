@@ -226,6 +226,10 @@ func TestRecoverAbortsAStartedResponse(t *testing.T) {
 	if strings.Contains(string(body), "api_error") {
 		t.Errorf("error body written into a started response: %q", body)
 	}
+	// The access log is written when the handler chain returns, which can be
+	// after the client sees the abort. Close blocks until the handler is done,
+	// so the buffer has no writer left when it is read.
+	srv.Close()
 	if !strings.Contains(buf.String(), `"status":200`) {
 		t.Errorf("access log does not record the sent status 200:\n%s", buf.String())
 	}

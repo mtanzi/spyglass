@@ -294,6 +294,43 @@ var sessionCases = []testCase{
 			t.Errorf("AgentCount %d with %d calls", got.AgentCount, len(got.Calls))
 		}
 	}},
+	{"session_text_order_is_bytewise", func(t *testing.T, e *env) {
+		// Mixed case and punctuation sort differently by byte and by glibc
+		// locale ("B" < "_a" < "b" against "_a" < "b" < "B"). The store orders
+		// text bytewise (COLLATE "C"), whatever the server's locale. The calls
+		// share one timestamp, so the text decides the order of agents and prompts.
+		g := e.gen
+		at := g.At(Base)
+		e.write(t,
+			g.Call(at, WithSession("m"), WithModel("claude-opus4"), WithAgent("b", "", "subagent"), WithPrompt("p1")),
+			g.Call(at, WithSession("m"), WithModel("claude-opus-4-8"), WithAgent("B", "", "subagent"), WithPrompt("P2")),
+			g.Call(at, WithSession("m"), WithModel("Claude-x"), WithAgent("_a", "", "subagent"), WithPrompt("_p")),
+		)
+		got, err := e.GetSession(context.Background(), "m")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := []string{"Claude-x", "claude-opus-4-8", "claude-opus4"}; !slices.Equal(got.Models, want) {
+			t.Errorf("models %q, want %q", got.Models, want)
+		}
+		var agents, prompts []string
+		for _, a := range got.Agents {
+			agents = append(agents, a.AgentID)
+		}
+		for _, p := range got.Prompts {
+			prompts = append(prompts, p.PromptID)
+		}
+		if want := []string{"B", "_a", "b"}; !slices.Equal(agents, want) {
+			t.Errorf("agents %q, want %q", agents, want)
+		}
+		if want := []string{"P2", "_p", "p1"}; !slices.Equal(prompts, want) {
+			t.Errorf("prompts %q, want %q", prompts, want)
+		}
+		list := e.walkSessions(t, sessionWin, 10)
+		if len(list) != 1 || !slices.Equal(list[0].Models, got.Models) {
+			t.Errorf("session list %+v, want one session with the same models", list)
+		}
+	}},
 	{"session_detail_missing_is_not_found", func(t *testing.T, e *env) {
 		e.write(t, e.gen.Call(), e.gen.Call(WithSession("s1")))
 		for _, key := range []string{"nope", "", "S1"} {

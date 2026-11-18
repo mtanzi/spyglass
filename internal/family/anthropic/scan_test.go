@@ -44,6 +44,7 @@ func TestScannerGolden(t *testing.T) {
 		{"sse_normal", true, true},
 		{"sse_thinking_ping", true, true},
 		{"sse_tool_use", true, true},
+		{"sse_cumulative_usage", true, true},
 		{"sse_error_midstream", true, true},
 		{"sse_truncated", true, true},
 		{"body_message", false, false},
@@ -77,7 +78,7 @@ func TestScannerGolden(t *testing.T) {
 // TestScannerEveryByteOffset cuts every stream fixture at every byte offset and
 // wants the facts of the uncut stream. A one-byte-per-chunk run covers the rest.
 func TestScannerEveryByteOffset(t *testing.T) {
-	for _, name := range []string{"sse_normal", "sse_thinking_ping", "sse_tool_use", "sse_error_midstream", "sse_truncated"} {
+	for _, name := range []string{"sse_normal", "sse_thinking_ping", "sse_tool_use", "sse_cumulative_usage", "sse_error_midstream", "sse_truncated"} {
 		t.Run(name, func(t *testing.T) {
 			in := readFixture(t, name+".sse")
 			want, wantContent := scanChunks(true, in)
@@ -113,6 +114,28 @@ func TestScannerFacts(t *testing.T) {
 		}
 		if len(f.ToolUses) != 0 {
 			t.Errorf("tool uses = %+v", f.ToolUses)
+		}
+	})
+	t.Run("message_delta usage is cumulative and replaces message_start", func(t *testing.T) {
+		// The streaming docs: the usage of message_delta is cumulative. A
+		// server-tool call starts at 2679 input tokens and ends at 10682, so a
+		// scanner that kept the message_start count would undercount about 4 times.
+		f, _ := scanChunks(true, readFixture(t, "sse_cumulative_usage.sse"))
+		want := Usage{InputTokens: intp(10682), OutputTokens: intp(510), CacheReadInputTokens: intp(4000),
+			CacheCreationInputTokens: intp(200), Ephemeral5mInputTokens: intp(200), Ephemeral1hInputTokens: intp(0)}
+		if !reflect.DeepEqual(f.Usage, want) {
+			t.Errorf("usage = %+v", f.Usage)
+		}
+		var m map[string]json.RawMessage
+		if err := json.Unmarshal(f.UsageRaw, &m); err != nil {
+			t.Fatal(err)
+		}
+		if string(m["input_tokens"]) != "10682" || string(m["output_tokens"]) != "510" ||
+			string(m["server_tool_use"]) != `{"web_search_requests":1}` || string(m["service_tier"]) != `"standard"` {
+			t.Errorf("usage raw = %s", f.UsageRaw)
+		}
+		if !f.Complete || f.Partial || f.StopReason != "end_turn" {
+			t.Errorf("facts = %+v", f)
 		}
 	})
 	t.Run("tool use argument sizes", func(t *testing.T) {
