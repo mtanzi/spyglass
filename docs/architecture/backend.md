@@ -624,7 +624,7 @@ Dependency rules:
 - `recorder` is the only caller of `CallWriter`. Nothing else writes call or tool records.
 - An import check in CI (a `depguard` rule or `go list -deps`) enforces the rules above.
 
-Later executables (the firstmate ledger reporter, [ADR 0040](../adrs/0040-firstmate-integration-claude-code-routing-and-ledger-reporter.md)) go under `cmd/` in the same module (gap review N9).
+Later executables (the cost reporter `cmd/spyglass-report`, with its packages under `internal/costreport`, [ADR 0040](../adrs/0040-firstmate-integration-claude-code-routing-and-ledger-reporter.md)) go under `cmd/` in the same module (gap review N9).
 
 ## Libraries
 
