@@ -2,6 +2,13 @@
 
 Notable changes to Spyglass. Release 0.1.0 and earlier are described in their [GitHub release notes](https://github.com/mtanzi/spyglass/releases).
 
+## [0.7.0](https://github.com/mtanzi/spyglass/compare/v0.6.1...v0.7.0) (2026-11-19)
+
+
+### Features
+
+* **costreport:** add spyglass-report for cost per task and per merged PR ([#152](https://github.com/mtanzi/spyglass/issues/152)) ([7b5a9c6](https://github.com/mtanzi/spyglass/commit/7b5a9c6f8ab3a7723d9d0114b0ce4a1f46f449eb))
+
 ## [0.6.1](https://github.com/mtanzi/spyglass/compare/v0.6.0...v0.6.1) (2026-11-19)
 
 
