@@ -32,8 +32,10 @@ import type { CallsSearch } from '../search/routes'
 import { DEFAULT_RANGE, resolveTimeRange } from '../search/timeRange'
 import {
   activeFilterCount,
+  agentLabel,
   filterQuery,
   groupBySession,
+  matchesAgentFilter,
   mergeRows,
   plainRows,
   streamQuery,
@@ -76,6 +78,8 @@ function turnsLabel(row: LogRow): string | null {
 
 const rowCalls = (row: LogRow): CallSummary[] => (row.kind === 'group' ? row.calls : [row.call])
 const first = (row: LogRow): CallSummary => rowCalls(row)[0]
+
+const rowAgentLabel = (c: CallSummary): string => agentLabel(c.session_key, c.agent_id)
 
 function promptLabel(row: LogRow): string {
   const prompts = new Set(rowCalls(row).map((c) => c.prompt_id ?? '').filter((id) => id !== ''))
@@ -163,7 +167,7 @@ const columns: DataTableColumn<LogRow>[] = [
     enableSorting: false,
     cell: ({ row }) => (
       <span className="mono dim">
-        <Maybe text={formatText(first(row.original).agent_id)} />
+        <Maybe text={rowAgentLabel(first(row.original))} />
       </span>
     ),
   },
@@ -289,7 +293,11 @@ export function CallLogView() {
   const stream = useLiveCalls(live, streamParams, catchUp)
 
   const paged = useMemo(() => list.data?.pages.flatMap((p) => p.calls) ?? [], [list.data])
-  const calls = useMemo(() => mergeRows(stream.rows, paged), [stream.rows, paged])
+  const agentFilter = search.agent?.[0]
+  const calls = useMemo(
+    () => mergeRows(stream.rows, paged).filter((c) => matchesAgentFilter(agentFilter, c)),
+    [stream.rows, paged, agentFilter],
+  )
   const rows = useMemo(
     () => (search.group === 'session' ? groupBySession(calls) : plainRows(calls)),
     [calls, search.group],
@@ -335,7 +343,12 @@ export function CallLogView() {
             />
             <TextListFilter label="Error class" values={search.error_class} onChange={(v) => update({ error_class: v })} />
             <TextFilter label="Session" value={search.session?.[0]} onChange={(v) => update({ session: v ? [v] : undefined })} />
-            <TextFilter label="Agent" value={search.agent?.[0]} onChange={(v) => update({ agent: v ? [v] : undefined })} />
+            <TextFilter
+              label="Agent"
+              value={search.agent?.[0]}
+              suggestions={['main']}
+              onChange={(v) => update({ agent: v ? [v] : undefined })}
+            />
             <TextListFilter label="Agent type" values={search.agent_type} onChange={(v) => update({ agent_type: v })} />
             <TextFilter label="Prompt" value={search.prompt?.[0]} onChange={(v) => update({ prompt: v ? [v] : undefined })} />
             <TextListFilter label="Request class" values={search.request_class} onChange={(v) => update({ request_class: v })} />

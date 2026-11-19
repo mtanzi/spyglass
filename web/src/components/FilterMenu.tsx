@@ -167,20 +167,32 @@ export function TextFilter({
   label,
   value,
   onChange,
+  suggestions,
 }: {
   label: string
   value: string | undefined
   onChange: (next: string | undefined) => void
+  /** Values offered while typing; any text is still accepted. */
+  suggestions?: string[]
 }) {
   const id = useId()
+  const listId = `${id}-options`
   return (
     <div className="filter-field">
       <label htmlFor={id}>{label}</label>
       <input
         id={id}
         value={value ?? ''}
+        list={suggestions ? listId : undefined}
         onChange={(e) => onChange(e.target.value.trim() === '' ? undefined : e.target.value)}
       />
+      {suggestions && (
+        <datalist id={listId}>
+          {suggestions.map((s) => (
+            <option key={s} value={s} />
+          ))}
+        </datalist>
+      )}
     </div>
   )
 }
