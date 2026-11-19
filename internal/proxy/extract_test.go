@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -179,5 +180,20 @@ func TestMalformedRequestBodyStillRecords(t *testing.T) {
 	rec := e.rec.next(t)
 	if rec.Model != "" || !rec.ExtractionPartial || len(rec.ToolResults) != 0 {
 		t.Errorf("model %q, partial %v, results %v", rec.Model, rec.ExtractionPartial, rec.ToolResults)
+	}
+}
+
+// An error event inside a 200 stream classifies the call: the extractor leaves
+// the error type, and finish maps it to the class.
+func TestMidstreamErrorEventClassifiesCall(t *testing.T) {
+	stream, err := os.ReadFile("../../testdata/fixtures/midstream_error/response.sse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := newEnv(t, sseUpstream(string(stream), 64), nil)
+	_ = readAll(t, e.do(t, "POST", "/v1/messages", req("true"), auth()...).Body)
+	rec := e.rec.next(t)
+	if rec.Status != 200 || rec.ErrorType != "overloaded_error" || rec.ErrorClass != "upstream_5xx" {
+		t.Errorf("status %d, error type %q, class %q", rec.Status, rec.ErrorType, rec.ErrorClass)
 	}
 }

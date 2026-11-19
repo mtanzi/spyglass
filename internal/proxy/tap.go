@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"io"
-	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -28,16 +27,10 @@ type Extractor interface {
 type tap struct {
 	body    io.ReadCloser
 	scanner anthropic.Scanner
-	wd      *watchdog
-	rec     *core.CallRecord
-	request []byte
-	ex      Extractor
-	flight  *flight
-	log     *slog.Logger
+	flight  *flight // owns the record, the request bytes, the watchdog and the failure kind
 
 	unscanned bool // the body is encoded, so the scanner cannot read it
 	ended     bool // the body ended, by EOF or by the watchdog
-	timedOut  bool
 	gotTTFT   bool
 
 	closeOnce sync.Once
@@ -50,12 +43,7 @@ func newTap(f *flight, resp *http.Response) *tap {
 	return &tap{
 		body:      resp.Body,
 		scanner:   anthropic.NewScanner(f.rec.Streamed),
-		wd:        f.wd,
-		rec:       f.rec,
-		request:   f.body,
-		ex:        f.h.extractor,
 		flight:    f,
-		log:       f.h.log,
 		unscanned: enc != "" && !strings.EqualFold(enc, "identity"),
 	}
 }
@@ -68,15 +56,15 @@ func (t *tap) Read(p []byte) (int, error) {
 	if t.ended {
 		return 0, io.EOF
 	}
-	t.wd.Arm()
+	t.flight.wd.Arm()
 	n, err := t.body.Read(p)
-	t.wd.Disarm()
+	t.flight.wd.Disarm()
 	if n > 0 {
 		t.scan(p[:n])
 	}
 	switch {
-	case err != nil && err != io.EOF && t.wd.Fired():
-		t.timedOut, t.ended = true, true
+	case err != nil && err != io.EOF && t.flight.wd.Fired():
+		t.flight.failure, t.ended = core.FailureIdleTimeout, true
 		return n, io.EOF
 	case err != nil:
 		t.ended = true
@@ -91,12 +79,13 @@ func (t *tap) scan(chunk []byte) {
 	t.scanner.Write(chunk)
 	if !t.gotTTFT && t.scanner.ContentStarted() {
 		t.gotTTFT = true
-		t.rec.TTFT = time.Since(t.rec.TS)
+		rec := t.flight.rec
+		rec.TTFT = time.Since(rec.TS)
 	}
 }
 
 // Close closes the upstream body and, the first time, finishes the exchange:
-// it records the timeout, if any, and hands the facts to the extractor.
+// it logs the timeout, if any, and hands the facts to the extractor.
 // ReverseProxy closes the body after a complete copy, a failed copy and a
 // client abort, so this runs once per exchange on every path.
 func (t *tap) Close() error {
@@ -106,19 +95,19 @@ func (t *tap) Close() error {
 }
 
 func (t *tap) finish() {
-	t.wd.Disarm()
+	t.flight.wd.Disarm()
 	facts := t.scanner.Facts()
 	if t.unscanned {
 		facts.Partial = true
 	}
-	t.rec.ExtractionPartial = facts.Partial
-	if t.timedOut {
-		t.rec.ErrorClass = string(core.ClassifyOutcome(t.rec.Status, core.FailureIdleTimeout))
-		t.log.Warn("upstream stream went idle", "call_id", t.rec.ID.String(),
-			"provider", t.rec.Provider, "endpoint", t.rec.Endpoint)
+	rec := t.flight.rec
+	rec.ExtractionPartial = facts.Partial
+	if t.flight.failure == core.FailureIdleTimeout {
+		t.flight.h.log.Warn("upstream stream went idle", "call_id", rec.ID.String(),
+			"provider", rec.Provider, "endpoint", rec.Endpoint)
 	}
-	if t.ex != nil {
-		t.ex.Extract(t.rec, t.request, facts)
+	if ex := t.flight.h.extractor; ex != nil {
+		ex.Extract(rec, t.flight.body, facts)
 		t.flight.extracted = true
 	}
 }

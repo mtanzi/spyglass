@@ -1,8 +1,6 @@
 package anthropic
 
 import (
-	"net/http"
-
 	"github.com/tidwall/gjson"
 
 	"github.com/mtanzi/spyglass/internal/core"
@@ -61,10 +59,6 @@ func extractResponse(rec *core.CallRecord, f Facts) {
 	if rec.Endpoint == endpointMessages {
 		rec.ToolResults = append(rec.ToolResults, f.ToolResults...)
 		rec.ToolUses = f.ToolUses
-	}
-	// A status below 400 hides an error event inside the stream.
-	if rec.ErrorClass == "" && rec.Status < http.StatusBadRequest && f.ErrorType != "" {
-		rec.ErrorClass = string(ErrorClassOf(f.ErrorType))
 	}
 }
 

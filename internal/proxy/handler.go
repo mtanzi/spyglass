@@ -343,7 +343,7 @@ func (f *flight) errorHandler(w http.ResponseWriter, r *http.Request, err error)
 	}
 	f.h.log.Warn("upstream request failed", "call_id", f.reqID,
 		"provider", f.rec.Provider, "endpoint", f.rec.Endpoint, "status", f.rec.Status,
-		"error_class", string(core.ClassifyOutcome(f.rec.Status, f.failure)))
+		"error_class", string(f.classify()))
 }
 
 func isTimeout(err error) bool {
@@ -374,10 +374,9 @@ func (f *flight) finish(ctx context.Context) {
 	if f.failure == core.FailureNone && ctx.Err() != nil {
 		f.failure = core.FailureClientAbort
 	}
-	if rec.ErrorClass == "" {
-		rec.ErrorClass = string(core.ClassifyOutcome(rec.Status, f.failure))
-	}
-	if rec.ErrorClass == string(core.ErrorClassClientAbort) {
+	class := f.classify()
+	rec.ErrorClass = string(class)
+	if class == core.ErrorClassClientAbort {
 		rec.UsageEstimated = true
 	}
 	f.price()
@@ -391,6 +390,17 @@ func (f *flight) finish(ctx context.Context) {
 		f.h.recorder.Finished(*rec)
 	}
 	f.h.calls.Add(-1)
+}
+
+// classify returns the error class of the call from its status, its failure
+// kind and the error type the extractor read from the response. It is the only
+// caller of core.ClassifyOutcome, so the log line and the record agree.
+func (f *flight) classify() core.ErrorClass {
+	var inStream core.ErrorClass
+	if f.rec.ErrorType != "" {
+		inStream = anthropic.ErrorClassOf(f.rec.ErrorType)
+	}
+	return core.ClassifyOutcome(f.rec.Status, f.failure, inStream)
 }
 
 // price sets the cost and the pricing version from the snapshot the request

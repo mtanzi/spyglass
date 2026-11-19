@@ -21,7 +21,7 @@
   "Model": "claude-opus-4-8",
   "UpstreamRequestID": "req_01",
   "Status": 200,
-  "ErrorClass": "upstream_5xx",
+  "ErrorClass": "",
   "ErrorType": "overloaded_error",
   "StopReason": "",
   "Streamed": true,

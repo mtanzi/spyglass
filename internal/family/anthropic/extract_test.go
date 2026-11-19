@@ -185,7 +185,7 @@ func TestFixtureFacts(t *testing.T) {
 			return check(r.ErrorType == "overloaded_error" && r.Status == 529, r)
 		}},
 		{"midstream_error", func(r core.CallRecord) string {
-			return check(r.Status == 200 && r.ErrorType == "overloaded_error" && r.ErrorClass == "upstream_5xx" && r.UsageEstimated, r)
+			return check(r.Status == 200 && r.ErrorType == "overloaded_error" && r.ErrorClass == "" && r.UsageEstimated, r)
 		}},
 		{"abort", func(r core.CallRecord) string {
 			return check(r.ErrorClass == "client_abort" && r.UsageEstimated && !r.ExtractionPartial &&

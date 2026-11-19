@@ -49,11 +49,14 @@ const (
 	FailureInternal
 )
 
-// ClassifyOutcome maps one outcome to its error class. A FailureKind other
-// than FailureNone decides alone. Otherwise the HTTP status decides: a status
-// below 400 is a success and gives the empty class. Every outcome gets at most
-// one class.
-func ClassifyOutcome(status int, kind FailureKind) ErrorClass {
+// ClassifyOutcome is the one place that decides the error class of a call.
+// A FailureKind other than FailureNone decides alone. Otherwise the HTTP
+// status decides, and a status of 400 or more always gives a class. Only a
+// status below 400 falls back to inStream, the class of an error event the
+// provider sent inside a successful response; the caller passes the empty
+// class when there is none. An outcome with none of these is a success and
+// gives the empty class. Every outcome gets at most one class.
+func ClassifyOutcome(status int, kind FailureKind, inStream ErrorClass) ErrorClass {
 	switch kind {
 	case FailureClientAbort:
 		return ErrorClassClientAbort
@@ -70,7 +73,7 @@ func ClassifyOutcome(status int, kind FailureKind) ErrorClass {
 	}
 	switch {
 	case status < 400:
-		return ""
+		return inStream
 	case status == http.StatusUnauthorized, status == http.StatusForbidden:
 		return ErrorClassAuth
 	case status == http.StatusTooManyRequests:
