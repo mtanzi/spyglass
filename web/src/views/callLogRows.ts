@@ -7,6 +7,34 @@ export type CallsQuery = Omit<QueryOf<'/admin/calls'>, 'cursor' | 'limit'>
 /** At most this many calls arrive through the stream and stay in the list (ADR 0031). */
 export const LIVE_ROW_CAP = 500
 
+/** The Agent filter value that stands for the lead agent. */
+export const MAIN_AGENT = 'main'
+
+const SHORT_ID_LENGTH = 8
+
+/**
+ * The Agent label of a call. Claude Code sends an agent id only from
+ * sub-agents, so a main-thread call has a session and an empty agent id.
+ * A sub-agent shows its type, or the short agent id when it has no type.
+ * A call without a session shows "unknown".
+ */
+export function agentLabel(session: string, agentId: string, agentType?: string): string {
+  if (session === '') return 'unknown'
+  if (agentId === '') return MAIN_AGENT
+  return agentType || agentId.slice(0, SHORT_ID_LENGTH)
+}
+
+/**
+ * Whether a call passes the Agent filter. The value "main" matches the label,
+ * because main-thread calls store an empty agent id; any other value matches
+ * the stored agent id, as the API does.
+ */
+export function matchesAgentFilter(filter: string | undefined, call: CallSummary): boolean {
+  if (filter === undefined) return true
+  if (filter === MAIN_AGENT) return agentLabel(call.session_key, call.agent_id) === MAIN_AGENT
+  return call.agent_id === filter
+}
+
 /** The call-log filter parameters of a search, without time, cursor, grouping or live flag. */
 export function filterQuery(search: CallsSearch): CallsQuery {
   return {
@@ -20,7 +48,8 @@ export function filterQuery(search: CallsSearch): CallsQuery {
     error_class: search.error_class,
     // The API takes one value for these three.
     session: search.session?.[0],
-    agent: search.agent?.[0],
+    // "main" is matched in the browser: the API compares the stored agent id, which is empty for the lead agent.
+    agent: search.agent?.[0] === MAIN_AGENT ? undefined : search.agent?.[0],
     prompt: search.prompt?.[0],
     agent_type: search.agent_type,
     request_class: search.request_class,
@@ -42,7 +71,7 @@ export function streamQuery(search: CallsSearch): CallsQuery {
 
 /** Number of active filters, for the menu button. The time range is not counted. */
 export function activeFilterCount(search: CallsSearch): number {
-  const q = filterQuery(search) as Record<string, unknown>
+  const q = { ...filterQuery(search), agent: search.agent?.[0] } as Record<string, unknown>
   return Object.values(q).filter((v) => v !== undefined).length
 }
 

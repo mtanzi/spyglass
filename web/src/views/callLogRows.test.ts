@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { groupBySession, insertLive, LIVE_ROW_CAP, mergeRows, streamQuery } from './callLogRows'
+import { agentLabel, filterQuery, groupBySession, matchesAgentFilter, insertLive, LIVE_ROW_CAP, mergeRows, streamQuery } from './callLogRows'
 import type { CallSummary } from './callLogRows'
 
 export function call(id: string, over: Partial<CallSummary> = {}): CallSummary {
@@ -75,4 +75,22 @@ test('group by session folds consecutive calls only', () => {
 test('the stream query leaves out a preset range', () => {
   expect(streamQuery({ range: '7d', model: ['m'] })).toMatchObject({ model: ['m'], from: undefined, to: undefined })
   expect(streamQuery({ from: '2026-01-01T00:00:00.000Z' }).from).toBe('2026-01-01T00:00:00.000Z')
+})
+
+test('agent label: main, sub-agent type, sub-agent id fallback, no session', () => {
+  expect(agentLabel('s1', '')).toBe('main')
+  expect(agentLabel('s1', 'abcdef1234567890', 'Explore')).toBe('Explore')
+  expect(agentLabel('s1', 'abcdef1234567890')).toBe('abcdef12')
+  expect(agentLabel('', '')).toBe('unknown')
+})
+
+test('agent filter main matches the label, other values match the stored id', () => {
+  const main = call('m', { session_key: 's1', agent_id: '' })
+  const sub = call('s', { session_key: 's1', agent_id: 'abc' })
+  const bare = call('b', { session_key: '', agent_id: '' })
+  expect([main, sub, bare].filter((c) => matchesAgentFilter('main', c))).toEqual([main])
+  expect([main, sub, bare].filter((c) => matchesAgentFilter('abc', c))).toEqual([sub])
+  expect(matchesAgentFilter(undefined, bare)).toBe(true)
+  expect(filterQuery({ agent: ['main'] }).agent).toBeUndefined()
+  expect(filterQuery({ agent: ['abc'] }).agent).toBe('abc')
 })
