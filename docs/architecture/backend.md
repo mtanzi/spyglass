@@ -207,7 +207,7 @@ After building the record, the proxy computes cost from the pricing snapshot, dr
 
 ### Error classes and error bodies
 
-`error_class` is a closed vocabulary ([ADR 0007](../adrs/0007-anthropic-error-classes-and-error-bodies.md)). `core.ClassifyOutcome(status, kind)` maps one outcome to exactly one class. A failure the proxy saw itself (client abort, idle timeout, unreachable upstream, rejected key, internal error) decides alone; otherwise the HTTP status decides. A status below 400 has no class.
+`error_class` is a closed vocabulary ([ADR 0007](../adrs/0007-anthropic-error-classes-and-error-bodies.md)). `core.ClassifyOutcome(status, kind, inStream)` is the one place that maps an outcome to exactly one class. A failure the proxy saw itself (client abort, idle timeout, unreachable upstream, rejected key, internal error) decides alone; otherwise the HTTP status decides. Only a status below 400 falls back to `inStream`, the class of an error event inside a successful stream; with none of these the call has no class.
 
 | `error_class` | Set when | Proxy-generated response | Anthropic `type` |
 |---|---|---|---|
