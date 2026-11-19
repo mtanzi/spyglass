@@ -2,9 +2,15 @@ name: Release Please
 
 # Keeps one open release PR on main (version bump and CHANGELOG.md, from the
 # Conventional Commit titles). Merging that PR makes Release Please create the
-# vX.Y.Z tag and the GitHub release. A tag made with GITHUB_TOKEN does not
-# trigger other workflows, so the build is called from here, gated on
-# release_created, instead of on a tag push. See CONTRIBUTING.md ("Releases").
+# vX.Y.Z tag and the GitHub release.
+#
+# Token: with the RELEASE_PLEASE_TOKEN secret set, the release PR and the tag
+# come from that identity, so CI starts normally on the PR and a tag push can
+# trigger other workflows. Without it, the action falls back to GITHUB_TOKEN:
+# the bot-authored release PR then waits for a person to approve its workflow
+# runs, and a tag made with GITHUB_TOKEN does not trigger other workflows.
+# Either way the build is called from here, gated on release_created, instead
+# of on a tag push. See CONTRIBUTING.md ("Releases").
 on:
   push:
     branches: [main]
@@ -30,6 +36,7 @@ jobs:
       - id: rp
         uses: googleapis/release-please-action@v5
         with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 

@@ -94,7 +94,9 @@ Releases are automated with [Release Please](https://github.com/googleapis/relea
 2. Review the release PR, edit the generated changelog text if needed, and merge it. Release Please then creates the tag `vX.Y.Z` (no component prefix) and the GitHub release.
 3. In the same workflow run, the `release` job calls `.github/workflows/release.yml`: security gates, then the image (checked and smoke tested before push, tagged with the version only, never `latest`), then the binaries attached to the release.
 
-A tag made with the built-in `GITHUB_TOKEN` does not trigger other workflows, so `release.yml` no longer runs on a tag push. It is a reusable workflow called from `release-please.yml` when `release_created` is true. This avoids a GitHub App token or personal access token.
+A tag made with the built-in `GITHUB_TOKEN` does not trigger other workflows, so `release.yml` no longer runs on a tag push. It is a reusable workflow called from `release-please.yml` when `release_created` is true.
+
+Release Please uses the repository secret `RELEASE_PLEASE_TOKEN` when it exists, and falls back to `GITHUB_TOKEN` otherwise. With the fallback, the bot-authored release PR gets no CI, Security scans or automerge runs until a person approves them ("action required"). `RELEASE_PLEASE_TOKEN` is a fine-grained personal access token (contents, pull requests and issues write, `spyglass` only). It expires: renew it before then. Symptom of an expired token: the Release Please run fails with a 401 or "Bad credentials" error.
 
 To repeat a failed publish, run `Release` from the Actions tab (`workflow_dispatch`) and give the existing tag, for example `v0.6.0`. Do not create release tags by hand.
 
