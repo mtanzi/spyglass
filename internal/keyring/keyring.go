@@ -3,12 +3,9 @@ package keyring
 import (
 	"errors"
 	"fmt"
-	"regexp"
 
 	"github.com/mtanzi/spyglass/internal/core"
 )
-
-var hashRE = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 // Keyring is an immutable map from SHA-256 to key. It is safe for concurrent
 // use because nothing modifies it after New.
@@ -20,29 +17,12 @@ type Keyring struct {
 // a hash that is not 64 lowercase hex characters and a duplicate hash. The
 // error lists every problem and never contains a key hash.
 func New(keys []core.Key) (*Keyring, error) {
-	byHash := make(map[string]core.Key, len(keys))
-	names := make(map[string]int, len(keys))
-	var errs []error
-	for i, k := range keys {
-		if k.Name == "" {
-			errs = append(errs, fmt.Errorf("keys[%d]: name is required", i))
-		} else if j, dup := names[k.Name]; dup {
-			errs = append(errs, fmt.Errorf("keys[%d]: duplicate name %q (also keys[%d])", i, k.Name, j))
-		} else {
-			names[k.Name] = i
-		}
-		if !hashRE.MatchString(k.SHA256) {
-			errs = append(errs, fmt.Errorf("keys[%d]: sha256 must be 64 lowercase hex characters", i))
-			continue
-		}
-		if _, dup := byHash[k.SHA256]; dup {
-			errs = append(errs, fmt.Errorf("keys[%d]: duplicate sha256", i))
-			continue
-		}
-		byHash[k.SHA256] = k
-	}
-	if len(errs) > 0 {
+	if errs := core.ValidateKeys(keys); len(errs) > 0 {
 		return nil, fmt.Errorf("invalid keys: %w", errors.Join(errs...))
+	}
+	byHash := make(map[string]core.Key, len(keys))
+	for _, k := range keys {
+		byHash[k.SHA256] = k
 	}
 	return &Keyring{byHash: byHash}, nil
 }

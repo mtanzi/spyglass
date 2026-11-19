@@ -2,8 +2,6 @@ package main
 
 import (
 	"crypto/rand"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
@@ -12,11 +10,11 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/mtanzi/spyglass/internal/core"
 	"go.yaml.in/yaml/v3"
 )
 
 const (
-	keyPrefix   = "lp_"
 	keyBytes    = 32
 	base62      = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 	base62Width = 43 // 62^43 > 2^256, so 32 bytes always fit
@@ -83,13 +81,7 @@ func newKey(r io.Reader) (string, error) {
 		n.DivMod(n, base, mod)
 		enc[i] = base62[mod.Int64()]
 	}
-	return keyPrefix + string(enc), nil
-}
-
-// keyHash returns the lowercase hex SHA-256 of the key as presented.
-func keyHash(key string) string {
-	sum := sha256.Sum256([]byte(key))
-	return hex.EncodeToString(sum[:])
+	return core.KeyPrefix + string(enc), nil
 }
 
 type keyEntry struct {
@@ -100,7 +92,7 @@ type keyEntry struct {
 // formatKeygen renders the plaintext on one marked line, then the keys entry
 // as YAML to paste under keys:.
 func formatKeygen(name, key string) (string, error) {
-	entry, err := yaml.Marshal([]keyEntry{{Name: name, SHA256: keyHash(key)}})
+	entry, err := yaml.Marshal([]keyEntry{{Name: name, SHA256: core.HashKey(key)}})
 	if err != nil {
 		return "", fmt.Errorf("render keys entry: %w", err)
 	}
