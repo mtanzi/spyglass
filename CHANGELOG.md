@@ -2,6 +2,13 @@
 
 Notable changes to Spyglass. Release 0.1.0 and earlier are described in their [GitHub release notes](https://github.com/mtanzi/spyglass/releases).
 
+## [0.6.1](https://github.com/mtanzi/spyglass/compare/v0.6.0...v0.6.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* **ui:** label main-thread calls as main in the Calls Agent column and filter ([#150](https://github.com/mtanzi/spyglass/issues/150)) ([fd6d88e](https://github.com/mtanzi/spyglass/commit/fd6d88e0be5d92f2a00e78f9eb4a541537860916))
+
 ## [0.6.0](https://github.com/mtanzi/spyglass/compare/v0.5.0...v0.6.0) (2026-11-18)
 
 ### Added
