@@ -1,8 +1,6 @@
 package proxy
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"net/http"
 	"strings"
 	"testing"
@@ -15,15 +13,10 @@ type fakeKeys map[string]core.Key
 
 func (f fakeKeys) Lookup(h string) (core.Key, bool) { k, ok := f[h]; return k, ok }
 
-func hashOf(s string) string {
-	h := sha256.Sum256([]byte(s))
-	return hex.EncodeToString(h[:])
-}
-
 func TestAuthenticate(t *testing.T) {
 	keys := fakeKeys{
-		hashOf("lp_good"): {Name: "good"},
-		hashOf("lp_off"):  {Name: "off", Disabled: true},
+		core.HashKey("lp_good"): {Name: "good"},
+		core.HashKey("lp_off"):  {Name: "off", Disabled: true},
 	}
 	hdr := func(kv ...string) http.Header {
 		h := http.Header{}
@@ -79,8 +72,8 @@ func TestAuthenticate(t *testing.T) {
 
 func TestAuthenticateModes(t *testing.T) {
 	keys := fakeKeys{
-		hashOf("lp_good"): {Name: "good"},
-		hashOf("lp_off"):  {Name: "off", Disabled: true},
+		core.HashKey("lp_good"): {Name: "good"},
+		core.HashKey("lp_off"):  {Name: "off", Disabled: true},
 	}
 	cases := []struct {
 		name     string

@@ -2,8 +2,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -50,10 +48,9 @@ func TestKeygenFormatGolden(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sum := sha256.Sum256([]byte(key))
 	want := plaintextPrefix + key + "\n\n" +
 		"keys entry (add under keys: in the config):\n" +
-		"- name: fm:task-1\n  sha256: " + hex.EncodeToString(sum[:]) + "\n"
+		"- name: fm:task-1\n  sha256: " + core.HashKey(key) + "\n"
 	if got != want {
 		t.Fatalf("output:\n%s\nwant:\n%s", got, want)
 	}
@@ -79,8 +76,7 @@ func TestKeygenHashMatchesPrintedKey(t *testing.T) {
 	if !keyRE.MatchString(key) {
 		t.Fatalf("key %q malformed", key)
 	}
-	sum := sha256.Sum256([]byte(key))
-	if want := "sha256: " + hex.EncodeToString(sum[:]); !strings.Contains(out, want) {
+	if want := "sha256: " + core.HashKey(key); !strings.Contains(out, want) {
 		t.Fatalf("output lacks %q:\n%s", want, out)
 	}
 }

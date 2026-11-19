@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"flag"
 	"fmt"
 	"io"
@@ -40,7 +38,7 @@ providers:
 keys:
   - name: alice
     sha256: %s
-`, upstream, hashKey(testClientKey))
+`, upstream, core.HashKey(testClientKey))
 	h := config.NewHolder("cfg.yaml", config.Options{
 		ReadFile: func(string) ([]byte, error) { return []byte(yaml), nil },
 		LookupEnv: func(k string) (string, bool) {
@@ -231,9 +229,4 @@ func metricsGolden(fams []*dto.MetricFamily) string {
 	}
 	sort.Strings(lines)
 	return strings.Join(lines, "")
-}
-
-func hashKey(s string) string {
-	h := sha256.Sum256([]byte(s))
-	return hex.EncodeToString(h[:])
 }

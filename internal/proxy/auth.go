@@ -1,8 +1,6 @@
 package proxy
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"net/http"
 	"strings"
 
@@ -10,15 +8,6 @@ import (
 	"github.com/mtanzi/spyglass/internal/core"
 	"github.com/mtanzi/spyglass/internal/family/anthropic"
 )
-
-// KeyLookup finds a virtual key by the lowercase hex SHA-256 of its plaintext.
-// keyring.Keyring implements it.
-type KeyLookup interface {
-	Lookup(sha256 string) (core.Key, bool)
-}
-
-// virtualKeyPrefix starts every virtual key the keygen command issues.
-const virtualKeyPrefix = "lp_"
 
 // Authenticate checks the virtual key a request presents. Where the key is
 // read from depends on the provider's auth_mode: in proxy_key mode it is
@@ -37,7 +26,7 @@ const virtualKeyPrefix = "lp_"
 // DisabledKeyError. The presented key is hashed at once and never logged,
 // stored or returned. The client's own credential in passthrough mode is only
 // inspected for the lp_ prefix; it is never hashed, kept or logged.
-func Authenticate(h http.Header, keys KeyLookup, mode, requestID string) (name string, errResp anthropic.ErrorResponse, ok bool) {
+func Authenticate(h http.Header, keys config.KeyIndex, mode, requestID string) (name string, errResp anthropic.ErrorResponse, ok bool) {
 	var presented string
 	switch mode {
 	case config.AuthClientPassthrough:
@@ -54,8 +43,7 @@ func Authenticate(h http.Header, keys KeyLookup, mode, requestID string) (name s
 	if presented == "" {
 		return "", anthropic.MissingOrInvalidKeyError(requestID), false
 	}
-	sum := sha256.Sum256([]byte(presented))
-	key, found := keys.Lookup(hex.EncodeToString(sum[:]))
+	key, found := keys.Lookup(core.HashKey(presented))
 	if !found {
 		return "", anthropic.MissingOrInvalidKeyError(requestID), false
 	}
@@ -73,12 +61,12 @@ func misplacedKey(h http.Header) bool {
 		if scheme, token, found := strings.Cut(v, " "); found && strings.EqualFold(scheme, "Bearer") {
 			v = strings.TrimSpace(token)
 		}
-		if strings.HasPrefix(v, virtualKeyPrefix) {
+		if strings.HasPrefix(v, core.KeyPrefix) {
 			return true
 		}
 	}
 	for _, v := range h.Values("X-Api-Key") {
-		if strings.HasPrefix(strings.TrimSpace(v), virtualKeyPrefix) {
+		if strings.HasPrefix(strings.TrimSpace(v), core.KeyPrefix) {
 			return true
 		}
 	}

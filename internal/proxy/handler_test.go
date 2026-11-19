@@ -96,7 +96,7 @@ providers:
 keys:
   - name: alice
     sha256: %s
-%s`, e.baseURL, e.authMode, idleLine, hashOf(clientKey), e.pricing)
+%s`, e.baseURL, e.authMode, idleLine, core.HashKey(clientKey), e.pricing)
 }
 
 // setBaseURL changes the upstream the next Reload points at.

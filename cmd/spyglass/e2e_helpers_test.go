@@ -123,7 +123,7 @@ func (e *e2eEnv) Key(name string) string { return e.keys[name] }
 func (e *e2eEnv) holder() *config.Holder {
 	var keys strings.Builder
 	for name, k := range e.keys {
-		fmt.Fprintf(&keys, "  - name: %s\n    sha256: %s\n", name, keyHash(k))
+		fmt.Fprintf(&keys, "  - name: %s\n    sha256: %s\n", name, core.HashKey(k))
 	}
 	yaml := fmt.Sprintf(`
 database: { url: { env: DB } }
