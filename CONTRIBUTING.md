@@ -64,7 +64,7 @@ The `depguard` rules in `.golangci.yml` encode the table above. CI runs build, v
 
 Every PR carries one review label:
 
-- `review: tier A`: no human code review needed. Docs, tests and fixtures, plus small application changes we are confident do not break the application, for example a narrow bug fix covered by tests, or a build or config tweak with no behaviour change. Never auth, migrations, the API spec, config defaults, compose files or `.github/`.
+- `review: tier A`: no human code review needed. Docs, tests and fixtures, plus small application changes we are confident do not break the application, for example a narrow bug fix covered by tests, or a build or config tweak with no behaviour change. Never auth, migrations, the API spec, config defaults, compose files or `.github/`. The one exception is the Release Please release PR, which changes only `.release-please-manifest.json` and `CHANGELOG.md` and is labelled Tier A automatically (see Releases).
 - `review: tier B`: light human review.
 - `review: tier C`: full human review, for example changes to CI, auth, storage or who can merge.
 
@@ -91,8 +91,8 @@ An auto-merged PR gets GitHub auto-merge (squash), pinned to the head commit, an
 Releases are automated with [Release Please](https://github.com/googleapis/release-please-action) (`.github/workflows/release-please.yml`, `release-please-config.json`, `.release-please-manifest.json`). A release is a merge, not a hand-made tag.
 
 1. Squash-merged PR titles on `main` follow Conventional Commits (`feat(web): ...`, `fix: ...`). After each merge, Release Please keeps one open release PR that bumps the version in `.release-please-manifest.json` and adds the new entries to `CHANGELOG.md`. `feat` bumps the minor version, `fix` the patch version. Before 1.0 a breaking change (`feat!:` or a `BREAKING CHANGE:` footer) also bumps the minor version (`bump-minor-pre-major`).
-2. Review the release PR, edit the generated changelog text if needed, and merge it. Release Please then creates the tag `vX.Y.Z` (no component prefix) and the GitHub release.
-3. In the same workflow run, the `release` job calls `.github/workflows/release.yml`: security gates, then the image (checked and smoke tested before push, tagged with the version only, never `latest`), then the binaries attached to the release.
+2. Release Please labels the release PR `review: tier A` (`extra-label` in `release-please-config.json`, added next to its own `autorelease: pending` label). The `tier-a-automerge` workflow then enables auto-merge (squash), and the PR merges by itself once the required checks pass. Release Please then creates the tag `vX.Y.Z` (no component prefix) and the GitHub release. To edit the generated changelog text before the merge, remove the `review: tier A` label or disable auto-merge on the PR, edit `CHANGELOG.md`, and merge it by hand.
+3. In the same workflow run, the `release` job calls `.github/workflows/release.yml`: security gates, then the image (checked and smoke tested before push, tagged with the version only, never `latest`), then the binaries attached to the release. The security gates run after the merge, so a failed gate leaves the tag and the GitHub release without an image. Fix the cause, then repeat the publish with the `Release` workflow dispatch (below).
 
 A tag made with the built-in `GITHUB_TOKEN` does not trigger other workflows, so `release.yml` no longer runs on a tag push. It is a reusable workflow called from `release-please.yml` when `release_created` is true.
 
