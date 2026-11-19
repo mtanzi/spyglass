@@ -41,7 +41,7 @@ func TestClassifyOutcome(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ClassifyOutcome(tt.status, tt.kind)
+			got := ClassifyOutcome(tt.status, tt.kind, "")
 			if got != tt.want {
 				t.Errorf("ClassifyOutcome(%d, %d) = %q, want %q", tt.status, tt.kind, got, tt.want)
 			}
@@ -63,7 +63,7 @@ func TestClassifyOutcomeTotal(t *testing.T) {
 	seen := map[ErrorClass]bool{}
 	for kind := FailureNone; kind <= FailureInternal; kind++ {
 		for status := 100; status < 600; status++ {
-			got := ClassifyOutcome(status, kind)
+			got := ClassifyOutcome(status, kind, "")
 			if got == "" {
 				if kind != FailureNone || status >= http.StatusBadRequest {
 					t.Fatalf("ClassifyOutcome(%d, %d) is empty for a failure", status, kind)
@@ -83,5 +83,31 @@ func TestClassifyOutcomeTotal(t *testing.T) {
 	}
 	if len(ErrorClasses()) != 7 {
 		t.Errorf("vocabulary has %d classes, want 7: adding one is a deliberate change", len(ErrorClasses()))
+	}
+}
+
+// TestClassifyOutcomePrecedence pins the rule through the one entry point: a
+// failure kind decides alone, else a status of 400 or more, else the class of
+// an error event inside the stream, else the empty class.
+func TestClassifyOutcomePrecedence(t *testing.T) {
+	tests := []struct {
+		name     string
+		status   int
+		kind     FailureKind
+		inStream ErrorClass
+		want     ErrorClass
+	}{
+		{"failure beats status", 429, FailureClientAbort, "", ErrorClassClientAbort},
+		{"failure beats in-stream error", 200, FailureIdleTimeout, ErrorClassUpstream5xx, ErrorClassTimeout},
+		{"status beats in-stream error", 429, FailureNone, ErrorClassUpstream5xx, ErrorClassRateLimited},
+		{"in-stream error on success status", 200, FailureNone, ErrorClassRateLimited, ErrorClassRateLimited},
+		{"nothing applies", 200, FailureNone, "", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ClassifyOutcome(tt.status, tt.kind, tt.inStream); got != tt.want {
+				t.Errorf("ClassifyOutcome(%d, %d, %q) = %q, want %q", tt.status, tt.kind, tt.inStream, got, tt.want)
+			}
+		})
 	}
 }
