@@ -11,7 +11,8 @@ func TestHashKey(t *testing.T) {
 	if got := HashKey("abc"); got != want {
 		t.Fatalf("HashKey(abc) = %s, want %s", got, want)
 	}
-	if HashKey("lp_x") != HashKey("lp_x") || HashKey("lp_x") == HashKey("lp_y") {
+	first, second := HashKey("lp_x"), HashKey("lp_x")
+	if first != second || first == HashKey("lp_y") {
 		t.Fatal("HashKey must be deterministic and input-sensitive")
 	}
 	if !keyHashRE.MatchString(HashKey("")) {
