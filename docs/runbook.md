@@ -68,6 +68,35 @@ docker compose kill -s HUP spyglass
 
 A reload that finds a duplicate name, a duplicate hash or a malformed hash is rejected whole, and the proxy keeps the previous keys. Check `spyglass_config_reloads_total{result="failure"}` or the log after every reload. Listener addresses, TLS files, the database URL, `database.max_conns`, `queue_capacity`, `retention.calls`, `server.drain_timeout` and `log.*` need a restart; a reload that changes them logs a warning and keeps the running values.
 
+### Keys for firstmate crewmates
+
+Give each firstmate crewmate its own key, named `fm:<task-id>` (ADR 0040). `<task-id>` is the firstmate task id exactly as it appears in the task list and in `state/fleet-ledger.jsonl`: letters, digits, `.`, `_` and `-`.
+
+1. Run `keygen --name fm:<task-id>` (see [Generate a key](#generate-a-key)).
+2. Append the printed `keys:` entry to `config.yaml`: one config entry per key.
+3. Reload with `SIGHUP` (see [Add, revoke and rotate](#add-revoke-and-rotate)).
+4. Give the plaintext to that crewmate only, as its virtual key.
+
+The name is stable: never reuse it for another task and never rename it, because history and the cost report group calls by key name. Revoke the entry when the task is cleaned up.
+
+`spyglass-report --tasks firstmate:<ledger>` maps the key name to the task by adding the prefix: the ledger task `fix-login` owns the calls of key `fm:fix-login`, made within that task's time window. A call from a key with no matching task is listed as a call with no task. Per-task key injection at launch is deferred (ADR 0041).
+
+## Cost per task and per merged PR
+
+`spyglass-report` joins a task list with the call log and prints the cost per task and the cost per merged PR (ADR 0040). It reads calls from the admin API (`SPYGLASS_ADMIN_URL`, default `http://127.0.0.1:9090`, or `--admin-url`), never from the database. Build it with `go build -o bin/spyglass-report ./cmd/spyglass-report`.
+
+A call belongs to a task when the call's key name equals the task's key and the call time lies in the task window, from its start up to but not including its end. A task with no end is still open. Calls that no task claims, and tasks with no calls, are listed in the report. A call without a known price is counted as unpriced, not as zero.
+
+```
+spyglass-report --tasks firstmate:state/fleet-ledger.jsonl
+spyglass-report --tasks file:tasks.csv --format json
+```
+
+- `--tasks firstmate:<path>` reads a firstmate fleet ledger. Each task's key is `fm:<task-id>`.
+- `--tasks file:<path>` reads a `.csv` or `.json` file. CSV has a header row; JSON is an array of objects. The fields are `id`, `start` (RFC 3339), optional `end`, optional `merged_pr` and optional `key` (default: the task id).
+- `--from` and `--to` (RFC 3339) bound the calls read. The default is from the earliest task start until now.
+- `--format table|json|csv`. The default is `table`. JSON and CSV give costs in micro-USD.
+
 ## Rotate secrets
 
 - **Provider key:** write the new key to `secrets/anthropic_api_key`, then reload with `SIGHUP`. A Docker file secret is a bind mount of the host file, so the container sees the new content. If the editor replaced the file by a new inode and the container still sees the old content, run `docker compose up -d --force-recreate spyglass`.

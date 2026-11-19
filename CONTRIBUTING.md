@@ -19,6 +19,7 @@ One Go module, one static binary `spyglass` built from `cmd/spyglass`. Everythin
 | `store/postgres` | Postgres adapter | `core`, drivers (`pgx`, goose); its tests and `pgtest` also `testcontainers-go` |
 | `store/storetest` | Shared store contract tests | `core`, `store/postgres` |
 | `cli` | Agent-facing CLI: read-only client of the admin API, commands and output (ADR 0055) | standard library, `toon`; tests also the root `api` package (embedded spec), `jsonschema`, `yaml` |
+| `costreport` (+ `firstmate`, `taskfile`) | Cost attribution and the task-source and output adapters of `spyglass-report` (ADR 0040) | standard library, `core` |
 | `toon` | Encode-only TOON 3.3 encoder for the CLI output | standard library only |
 | `fakeupstream` | Fake Anthropic upstream that replays fixtures (test support only) | standard library only |
 

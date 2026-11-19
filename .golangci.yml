@@ -131,6 +131,14 @@ linters:
             - github.com/jackc/pgx
             - github.com/pressly/goose
             - github.com/testcontainers/testcontainers-go
+        costreport:
+          list-mode: strict
+          files:
+            - "**/internal/costreport/**"
+          allow:
+            - $gostd
+            - github.com/mtanzi/spyglass/internal/core
+            - github.com/mtanzi/spyglass/internal/costreport
         toon:
           list-mode: strict
           files:
