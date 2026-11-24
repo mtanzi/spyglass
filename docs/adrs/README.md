@@ -110,6 +110,7 @@ An ADR changes status when a decision is made. Record the outcome in the ADR and
 | [0056](0056-session-unpriced-calls.md) | Unpriced calls per session | Completed | 0020, 0021, 0024, 0052 |
 | [0057](0057-cost-per-prompt-endpoint.md) | Cost per prompt endpoint | Completed | 0014, 0019, 0021, 0024, 0035, 0047, 0052 |
 | [0058](0058-align-web-ui-with-modern-web-guidance.md) | Align the web UI with the modern web guidance | Completed | 0029, 0030, 0033, 0052, 0053 |
+| [0059](0059-cost-views-on-the-overview-dashboard.md) | Cost views on the overview dashboard | Proposed | 0002, 0010, 0014, 0017, 0019, 0021, 0024, 0035, 0040, 0049, 0052, 0053, 0056, 0057, 0058 |
 
 ## Suggested implementation order
 
@@ -126,7 +127,8 @@ The phase numbers below are the v1 plan, with these meanings: 1 proxy core, 2 co
 9. **Amendments to Completed ADRs:** 0047 (credential modes) and 0048 (call record and filter changes) are Completed: they changed code that had already landed, and their "Work required" lists landed with the ADRs they edit in place: 0047 with 0012, 0048 with 0010, 0014, 0016, 0019 and 0020. 0048 lands before 0025, whose stream carries `call.finished` only. 0049 (precedence and corrections) is Completed: it needs no code. 0050 (upstream identity encoding) is Completed: it landed after 0011 and 0013. 0051 (recorder isolates unwritable records) is Completed: it amends 0016 and the `WriteBatch` error contract of 0003 and 0017.
 10. **Agent-facing CLI (after v1):** 0056 (the `unpriced_calls` field on the session summary), then 0055, after 0054 (the `spyglass` binary name) and the admin API of 0023 and 0024. 0055 covers the shared decisions and phase 1 (orient and look up). Install for an agent (`setup hooks`, agent skill) and the analysis commands are listed under "Later" in 0055, and each becomes its own ADR when its trigger is met.
 11. **Cost per prompt (after v1):** 0057 (`GET /admin/usage/prompts`, so the cost view's prompt table covers the whole range), after 0035 and 0024.
-12. **Deferred:** 0041 (per-task key injection) is out of v1. Its trigger is "manual key issuing becomes the bottleneck".
+12. **Cost views on the overview (after v1):** 0059 (project detection at ingest and a one-off backfill, five cost aggregate endpoints under `/admin/usage/`, and the cost section of the overview), after 0052, 0056 and 0057. It is Proposed: a project is the name derived from Claude Code's working directory at ingest (only the name is stored), with an `x-spyglass-project` header first and a configured `keys[].project` above detection, and a tool's cost is an estimate, an equal split of the requesting call's cost. The final look is a later design phase.
+13. **Deferred:** 0041 (per-task key injection) is out of v1. Its trigger is "manual key issuing becomes the bottleneck".
 
 The test harness of 0018 and the fixtures of 0038 are used by most other ADRs, so start them early.
 
