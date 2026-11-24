@@ -394,6 +394,18 @@ type toolCostsJSON struct {
 	ToolCount int            `json:"tool_count"`
 }
 
+type punchcardCellJSON struct {
+	Weekday int `json:"weekday"`
+	Hour    int `json:"hour"`
+	Calls   int `json:"calls"`
+	costFieldsJSON
+}
+
+type punchcardJSON struct {
+	TZ    string              `json:"tz"`
+	Cells []punchcardCellJSON `json:"cells"`
+}
+
 type usageSeriesJSON struct {
 	GroupBy *core.UsageGroup  `json:"group_by"`
 	Grain   core.Grain        `json:"grain"`

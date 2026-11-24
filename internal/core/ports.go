@@ -44,4 +44,7 @@ type CallReader interface {
 	// ToolCosts ranks the tools of the matching calls by the cost of the calls
 	// that requested them, split equally among a call's tool uses (ADR 0059).
 	ToolCosts(ctx context.Context, q ToolCostQuery) (ToolCosts, error)
+	// Punchcard returns the cost of the matching calls by weekday and hour of
+	// day on the wall clock of a time zone, empty cells left out (ADR 0059).
+	Punchcard(ctx context.Context, q PunchcardQuery) ([]PunchcardCell, error)
 }

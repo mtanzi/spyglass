@@ -415,6 +415,51 @@ paths:
           $ref: "#/components/responses/Error"
         "500":
           $ref: "#/components/responses/Error"
+  /admin/usage/punchcard:
+    get:
+      operationId: getPunchcard
+      summary: Cost by weekday and hour of day
+      description: |
+        Cost of the calls that match the call-log filters, grouped by weekday and
+        hour of day on the wall clock of the time zone `tz`. A cell is a local
+        clock reading, such as "Tuesday, 14:00 to 14:59": on a DST change the
+        repeated hour adds into one cell and the skipped hour adds nothing. Only
+        non-empty cells are returned, at most 168, ordered by weekday (1 is
+        Monday, 7 is Sunday) and then hour. Cost follows the usage rules: unknown
+        is not zero. A long range can take several seconds.
+      parameters:
+        - $ref: "#/components/parameters/From"
+        - $ref: "#/components/parameters/To"
+        - $ref: "#/components/parameters/Tz"
+        - $ref: "#/components/parameters/Key"
+        - $ref: "#/components/parameters/Client"
+        - $ref: "#/components/parameters/Provider"
+        - $ref: "#/components/parameters/Model"
+        - $ref: "#/components/parameters/Endpoint"
+        - $ref: "#/components/parameters/Streamed"
+        - $ref: "#/components/parameters/Status"
+        - $ref: "#/components/parameters/ErrorClass"
+        - $ref: "#/components/parameters/Session"
+        - $ref: "#/components/parameters/Agent"
+        - $ref: "#/components/parameters/AgentType"
+        - $ref: "#/components/parameters/Prompt"
+        - $ref: "#/components/parameters/RequestClass"
+        - $ref: "#/components/parameters/Project"
+        - $ref: "#/components/parameters/Tool"
+        - $ref: "#/components/parameters/ToolError"
+        - $ref: "#/components/parameters/LatencyMsGte"
+        - $ref: "#/components/parameters/CostMicroUsdGte"
+      responses:
+        "200":
+          description: The cells.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Punchcard"
+        "400":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
   /admin/usage/sessions:
     get:
       operationId: getSessionCosts
@@ -1313,6 +1358,25 @@ components:
           description: The most costly tools, known cost first, highest first, then unknown cost.
           items: { $ref: "#/components/schemas/ToolCost" }
         tool_count: { type: integer, description: "Every tool of the matching calls, including those past `limit`." }
+    PunchcardCell:
+      description: The calls that fall in one weekday and hour of day in the requested time zone.
+      allOf:
+        - $ref: "#/components/schemas/CostFields"
+        - type: object
+          required: [weekday, hour, calls]
+          properties:
+            weekday: { type: integer, minimum: 1, maximum: 7, description: "1 is Monday, 7 is Sunday." }
+            hour: { type: integer, minimum: 0, maximum: 23, description: "Hour of day on the wall clock of the zone." }
+            calls: { type: integer }
+    Punchcard:
+      type: object
+      required: [tz, cells]
+      properties:
+        tz: { type: string, description: "The time zone the weekday and hour are read in." }
+        cells:
+          type: array
+          description: One row per non-empty cell, ordered by weekday and then hour. At most 168.
+          items: { $ref: "#/components/schemas/PunchcardCell" }
     ConfigView:
       type: object
       required: [providers, pricing, keys]

@@ -18,16 +18,17 @@ import (
 // viewSpy wraps the canned reader and records what the view handlers pass in.
 type viewSpy struct {
 	*coretest.Reader
-	sessionFilter core.SessionFilter
-	toolFilter    core.ToolCallFilter
-	usageQuery    core.UsageQuery
-	promptQuery   core.PromptCostQuery
-	monthlyQuery  core.MonthlyCostQuery
-	sessionCostQ  core.SessionCostQuery
-	toolCostQuery core.ToolCostQuery
-	page          core.Page
-	sessionKey    string
-	calls         int
+	sessionFilter  core.SessionFilter
+	toolFilter     core.ToolCallFilter
+	usageQuery     core.UsageQuery
+	promptQuery    core.PromptCostQuery
+	monthlyQuery   core.MonthlyCostQuery
+	sessionCostQ   core.SessionCostQuery
+	toolCostQuery  core.ToolCostQuery
+	punchcardQuery core.PunchcardQuery
+	page           core.Page
+	sessionKey     string
+	calls          int
 }
 
 func (s *viewSpy) ListSessions(ctx context.Context, f core.SessionFilter, p core.Page) ([]core.SessionSummary, *core.Cursor, error) {
@@ -435,6 +436,50 @@ func TestGetToolCosts(t *testing.T) {
 	}
 }
 
+func (s *viewSpy) Punchcard(ctx context.Context, q core.PunchcardQuery) ([]core.PunchcardCell, error) {
+	s.punchcardQuery = q
+	s.calls++
+	return s.Reader.Punchcard(ctx, q)
+}
+
+func TestGetPunchcard(t *testing.T) {
+	cost := core.MicroUSD(2_500)
+	rd := &viewSpy{Reader: &coretest.Reader{Cells: []core.PunchcardCell{
+		{Weekday: 2, Hour: 14, Calls: 4, CostTotals: core.CostTotals{Cost: &cost, UnpricedCalls: 1, APIEquivalent: true}},
+		{Weekday: 7, Hour: 0, Calls: 2, CostTotals: core.CostTotals{UnpricedCalls: 2}},
+	}}}
+	rr := get(newTestMux(t, rd, config.View{}), "/admin/usage/punchcard?tz=Asia/Kolkata&key=alice&status=529")
+	if rr.Code != 200 {
+		t.Fatalf("status = %d\n%s", rr.Code, rr.Body)
+	}
+	body := decode[punchcardJSON](t, rr)
+	if body.TZ != "Asia/Kolkata" || len(body.Cells) != 2 {
+		t.Fatalf("body = %+v", body)
+	}
+	if c := body.Cells[0]; c.Weekday != 2 || c.Hour != 14 || c.Calls != 4 || c.CostMicroUSD == nil || *c.CostMicroUSD != 2500 ||
+		c.UnpricedCalls != 1 || !c.APIEquivalent {
+		t.Errorf("cell 0 = %+v", c)
+	}
+	if c := body.Cells[1]; c.CostMicroUSD != nil || c.UnpricedCalls != 2 || c.APIEquivalent {
+		t.Errorf("an all-unpriced cell has a null cost, not zero: %+v", c)
+	}
+	// The cost fields sit in the cell object, not under a key of their own.
+	if !strings.Contains(rr.Body.String(), `"cost_micro_usd":null`) || !strings.Contains(rr.Body.String(), `"weekday":7,"hour":0,"calls":2`) {
+		t.Errorf("wire form: %s", rr.Body)
+	}
+	q := rd.punchcardQuery
+	if q.TZ != "Asia/Kolkata" || len(q.Filter.Keys) != 1 || len(q.Filter.Statuses) != 1 || !q.Filter.To.Equal(testNow) ||
+		!q.Filter.From.Equal(testNow.Add(-24*time.Hour)) {
+		t.Errorf("query = %+v", q)
+	}
+
+	rd = &viewSpy{Reader: &coretest.Reader{}}
+	rr = get(newTestMux(t, rd, config.View{}), "/admin/usage/punchcard")
+	if !strings.Contains(rr.Body.String(), `"cells":[]`) || rd.punchcardQuery.TZ != "UTC" {
+		t.Errorf("defaults: %s, tz %q", rr.Body, rd.punchcardQuery.TZ)
+	}
+}
+
 func TestGetPromptCosts(t *testing.T) {
 	cost := core.MicroUSD(1_500)
 	rd := &viewSpy{Reader: &coretest.Reader{Prompts: core.PromptCosts{
@@ -531,6 +576,14 @@ func TestViewEndpointErrors(t *testing.T) {
 		{"tools reader refuses the query", &coretest.Reader{Err: core.ErrInvalidFilter}, "/admin/usage/tools", 400, ErrInvalidParameter, ""},
 		{"tools store failure", &coretest.Reader{Err: boom}, "/admin/usage/tools", 500, ErrInternal, ""},
 		{"tools no reader", nil, "/admin/usage/tools", 503, ErrInternal, ""},
+		{"punchcard unknown zone", &coretest.Reader{}, "/admin/usage/punchcard?tz=Mars/Olympus", 400, ErrInvalidParameter, "tz"},
+		{"punchcard empty zone", &coretest.Reader{}, "/admin/usage/punchcard?tz=", 400, ErrInvalidParameter, "tz"},
+		{"punchcard repeated zone", &coretest.Reader{}, "/admin/usage/punchcard?tz=UTC&tz=Europe/Rome", 400, ErrInvalidParameter, "tz"},
+		{"punchcard rejects a limit", &coretest.Reader{}, "/admin/usage/punchcard?limit=5", 400, ErrInvalidParameter, "limit"},
+		{"punchcard rejects group_by", &coretest.Reader{}, "/admin/usage/punchcard?group_by=key", 400, ErrInvalidParameter, "group_by"},
+		{"punchcard reader refuses the query", &coretest.Reader{Err: core.ErrInvalidFilter}, "/admin/usage/punchcard", 400, ErrInvalidParameter, ""},
+		{"punchcard store failure", &coretest.Reader{Err: boom}, "/admin/usage/punchcard", 500, ErrInternal, ""},
+		{"punchcard no reader", nil, "/admin/usage/punchcard", 503, ErrInternal, ""},
 		{"prompt costs store failure", &coretest.Reader{Err: boom}, "/admin/usage/prompts", 500, ErrInternal, ""},
 		{"prompt costs no reader", nil, "/admin/usage/prompts", 503, ErrInternal, ""},
 	}

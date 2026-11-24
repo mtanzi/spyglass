@@ -272,3 +272,30 @@ func (h *handlers) getToolCosts(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, out)
 }
+
+// getPunchcard serves GET /admin/usage/punchcard.
+func (h *handlers) getPunchcard(w http.ResponseWriter, r *http.Request) {
+	if h.calls == nil {
+		notWired(w)
+		return
+	}
+	q, perr := parsePunchcardParams(r.URL.Query(), h.now())
+	if perr != nil {
+		writeError(w, perr)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), aggregateTimeout)
+	defer cancel()
+	cells, err := h.calls.Punchcard(ctx, q)
+	if err != nil {
+		readError(w, r, err, "usage")
+		return
+	}
+	out := punchcardJSON{TZ: q.TZ, Cells: make([]punchcardCellJSON, 0, len(cells))}
+	for _, c := range cells {
+		out.Cells = append(out.Cells, punchcardCellJSON{
+			Weekday: c.Weekday, Hour: c.Hour, Calls: c.Calls, costFieldsJSON: toCostFields(c.CostTotals),
+		})
+	}
+	writeJSON(w, http.StatusOK, out)
+}
