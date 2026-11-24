@@ -54,6 +54,11 @@ type CallRecord struct {
 	ContextCompacted bool
 	TraceID          string
 
+	// Project is the derived project name of the call (ADR 0059): the header
+	// x-spyglass-project, else the project of the key, else the directory name
+	// the extractor read. Never a path. Empty means no project.
+	Project string
+
 	Family            string
 	Endpoint          string
 	AuthMode          string // proxy_key or client_passthrough

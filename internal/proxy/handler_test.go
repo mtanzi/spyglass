@@ -74,6 +74,7 @@ type env struct {
 	idle      string    // provider idle_timeout; empty keeps the default
 	extractor Extractor // nil uses the anthropic extractor
 	pricing   string    // YAML for the pricing key, appended to the config
+	keyProj   string    // project of the key alice; empty sets none
 	metrics   *Metrics  // nil records no metrics
 	handler   *Handler  // set by start
 }
@@ -85,6 +86,10 @@ func (e *env) yaml() string {
 	if e.idle != "" {
 		idleLine = "\n    idle_timeout: " + e.idle
 	}
+	projectLine := ""
+	if e.keyProj != "" {
+		projectLine = "\n    project: " + e.keyProj
+	}
 	return fmt.Sprintf(`
 database: { url: { env: DB } }
 providers:
@@ -95,8 +100,8 @@ providers:
     credential: { env: PROVKEY }%s
 keys:
   - name: alice
-    sha256: %s
-%s`, e.baseURL, e.authMode, idleLine, core.HashKey(clientKey), e.pricing)
+    sha256: %s%s
+%s`, e.baseURL, e.authMode, idleLine, core.HashKey(clientKey), projectLine, e.pricing)
 }
 
 // setBaseURL changes the upstream the next Reload points at.

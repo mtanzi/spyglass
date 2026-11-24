@@ -33,13 +33,15 @@ var correlationFields = []struct {
 	{"X-Claude-Code-Compaction", func(c *core.CallRecord, v string) { c.Compaction = v == "true" }, isBool},
 	{"X-Claude-Code-Context-Compacted", func(c *core.CallRecord, v string) { c.ContextCompacted = v == "true" }, isBool},
 	{"X-Claude-Code-Prev-Tool-Durations", func(c *core.CallRecord, v string) { c.PrevToolDurations = v }, nil},
+	{"X-Spyglass-Project", func(c *core.CallRecord, v string) { c.Project = v }, func(v string) bool { _, ok := core.ProjectName(v); return ok }},
 	{"Traceparent", func(c *core.CallRecord, v string) { c.TraceID = v[3:35] }, isTraceparent},
 }
 
 // Correlate reads the harness headers of h into rec. It reads only the headers
 // in the table and User-Agent, never a credential header, and never fails: an
-// unknown or malformed value is left unset. It does not change h, so the
-// headers are forwarded upstream unchanged.
+// unknown or malformed value is left unset. It does not change h; the handler
+// removes x-spyglass-project, which is not a harness header, before the
+// upstream request.
 func Correlate(h http.Header, rec *core.CallRecord) {
 	for _, f := range correlationFields {
 		v := strings.TrimSpace(h.Get(f.header))

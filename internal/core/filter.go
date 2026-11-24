@@ -17,6 +17,7 @@ type CallFilter struct {
 	From, To       time.Time // half-open [From, To)
 	Keys           []string  // key names
 	Clients        []string
+	Projects       []string
 	Providers      []string
 	Models         []string
 	Endpoints      []string
@@ -55,6 +56,7 @@ func (f CallFilter) Match(c CallRecord, tools []ToolCall) bool {
 	switch {
 	case !in(f.Keys, c.KeyName),
 		!in(f.Clients, c.Client),
+		!in(f.Projects, c.Project),
 		!in(f.Providers, c.Provider),
 		!in(f.Models, c.Model),
 		!in(f.Endpoints, c.Endpoint),

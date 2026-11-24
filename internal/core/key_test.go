@@ -29,6 +29,11 @@ func TestValidateKeys(t *testing.T) {
 	}{
 		{"valid", []Key{{Name: "a", SHA256: a}, {Name: "b", SHA256: b}}, nil},
 		{"empty", nil, nil},
+		{"project", []Key{{Name: "a", SHA256: a, Project: "spyglass"}}, nil},
+		{"project of 128 characters", []Key{{Name: "a", SHA256: a, Project: strings.Repeat("p", 128)}}, nil},
+		{"project too long", []Key{{Name: "a", SHA256: a, Project: strings.Repeat("p", 129)}}, []string{"keys[0]: project must be 1 to 128 printable characters"}},
+		{"project with a control character", []Key{{Name: "a", SHA256: a, Project: "a\tb"}}, []string{"keys[0]: project must be"}},
+		{"project with a space at the end", []Key{{Name: "a", SHA256: a, Project: "a "}}, []string{"keys[0]: project must be"}},
 		{"missing name", []Key{{SHA256: a}}, []string{"keys[0]: name is required"}},
 		{"duplicate name", []Key{{Name: "x", SHA256: a}, {Name: "x", SHA256: b}}, []string{`keys[1]: duplicate name "x" (also keys[0])`}},
 		{"bad hash", []Key{{Name: "x", SHA256: "ABC"}}, []string{"keys[0]: sha256 must be 64 lowercase hex characters"}},

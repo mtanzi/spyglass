@@ -26,6 +26,7 @@ keys:                           # virtual keys: names and SHA-256 hashes, never 
   # PLACEHOLDER hashes match no key. Replace each with the entry that `spyglass keygen --name <name>` prints.
   - name: my-laptop
     sha256: 0000000000000000000000000000000000000000000000000000000000000001   # placeholder: matches no key
+    # project: my-project       # optional: the project of every call of this key; ranks above the one detected from the request
   - name: ci
     sha256: 0000000000000000000000000000000000000000000000000000000000000002   # placeholder: matches no key
     disabled: true              # revoked: requests with this key get 401

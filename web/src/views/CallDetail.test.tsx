@@ -27,6 +27,7 @@ function detail(over: Partial<CallDetail> = {}): CallDetail {
     agent_type: '',
     prompt_id: 'p-1',
     request_class: '',
+    project: 'spyglass',
     compaction: false,
     context_compacted: false,
     trace_id: '',
@@ -114,12 +115,14 @@ test('overview shows who, outcome and links the session to V2', async () => {
   expect(screen.getByText('end_turn')).toBeTruthy()
   expect(screen.queryByText('Usage estimated')).toBeNull()
   expect(screen.getAllByText('Content is not stored')).toHaveLength(1)
+  expect(within(screen.getByRole('complementary', { name: 'Call summary' })).getByText('Project', { selector: 'dt' }).nextSibling?.textContent).toBe('spyglass')
 })
 
 test('partial data renders as unknown, with visible badges', async () => {
   stubApi(
     detail({
       session_key: '',
+      project: '',
       upstream_request_id: '',
       error_type: '',
       stop_reason: '',
@@ -136,6 +139,7 @@ test('partial data renders as unknown, with visible badges', async () => {
   await screen.findByText('Usage estimated')
   expect(screen.getByText('Extraction partial')).toBeTruthy()
   expect(screen.queryByRole('link', { name: /sess/ })).toBeNull()
+  expect(within(screen.getByRole('complementary', { name: 'Call summary' })).getByText('Project', { selector: 'dt' }).nextSibling?.textContent).toBe('unknown')
   // Status, error type and stop reason of the response; the time to first token.
   expect(within(screen.getByRole('article', { name: 'Response' })).getAllByText('unknown').length).toBeGreaterThanOrEqual(3)
   expect(within(screen.getByRole('region', { name: 'Timing' })).getAllByText('unknown')).toHaveLength(1)

@@ -152,11 +152,12 @@ The correlation step reads harness headers into the call record. It never parses
 | `compaction`, `context_compacted` | `x-claude-code-compaction`, `x-claude-code-context-compacted` (hint headers). Both are stored as booleans; the UI compaction marker uses `context_compacted` |
 | `prev_tool_durations` | `x-claude-code-prev-tool-durations`, raw value, stored on the call row (hint header) |
 | `trace_id` | W3C `traceparent` |
+| `project` | The `x-spyglass-project` header, else the `project` of the key in the config (`keys[].project`), else the final directory name of the working directory in Claude Code's system prompt, which the extractor reads (ADR 0059); otherwise null. The header has the rules of the other correlation headers and at most 128 printable characters |
 | `client`, `client_raw` | `User-Agent` normalized to its product token (`claude-cli/2.1.290` becomes `claude-cli`), raw value kept (gap review R17) |
 
 - The Claude Code header names and semantics come from Anthropic's [gateway compatibility guide](https://code.claude.com/docs/en/llm-gateway-protocol). The session and agent IDs are always sent. The rows marked "hint header" arrive behind a custom base URL only when the client sets `CLAUDE_CODE_GATEWAY_HINT_HEADERS=1`. Firstmate crewmates set it (resolved decision D5, [ADR 0042](../adrs/0042-claude-code-hint-headers-for-crewmates.md)).
-- Correlation headers are forwarded upstream unchanged, so the proxy stays transparent.
-- **No session derivation in v1.** Claude Code always sends `x-claude-code-session-id`. A call without it has no session: `session_key` is null, and the call shows in the call log but in no session. The extractor hashes no tools, system prompt or message.
+- Correlation headers are forwarded upstream unchanged, so the proxy stays transparent. The one exception is `x-spyglass-project`, which is for the proxy and is removed.
+- **No session derivation in v1.** Claude Code always sends `x-claude-code-session-id`. A call without it has no session: `session_key` is null, and the call shows in the call log but in no session. The extractor hashes no tools, system prompt or message. It does read the `system` field, at most its first 32 KiB, for the working directory line of Claude Code's environment block, and keeps only the final directory name as the project (ADR 0059); the system prompt text and the path are discarded.
 - Session headers of other harnesses (Codex, OpenCode) are a v2 item ([Later versions](#later-versions)).
 
 #### Forwarding and the config snapshot
@@ -514,6 +515,7 @@ CREATE TABLE calls (
   prompt_id           text, request_class text,
   compaction          boolean, context_compacted boolean,
   trace_id            text,
+  project             text,                    -- derived name, never a path (ADR 0059); null when none
   family              text NOT NULL,           -- 'anthropic' in v1
   endpoint            text NOT NULL,
   auth_mode           text NOT NULL,           -- mode used for the request: 'proxy_key' | 'client_passthrough'

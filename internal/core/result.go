@@ -31,6 +31,7 @@ type CallSummary struct {
 	SessionKey string
 	AgentID    string
 	PromptID   string
+	Project    string
 	Provider   string
 	Model      string
 	Status     int

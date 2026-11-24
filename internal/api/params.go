@@ -31,7 +31,7 @@ type callParams struct {
 var knownCallParams = map[string]bool{
 	"from": true, "to": true, "key": true, "client": true, "provider": true, "model": true,
 	"endpoint": true, "streamed": true, "status": true, "error_class": true, "session": true,
-	"agent": true, "agent_type": true, "prompt": true, "request_class": true, "tool": true,
+	"agent": true, "agent_type": true, "prompt": true, "request_class": true, "project": true, "tool": true,
 	"tool_error": true, "latency_ms_gte": true, "cost_micro_usd_gte": true, "limit": true, "cursor": true,
 }
 
@@ -134,8 +134,9 @@ func parseCallFilter(q url.Values, now time.Time, known map[string]bool) (core.C
 	f.ErrorClasses = q["error_class"]
 	f.AgentTypes = q["agent_type"]
 	f.RequestClasses = q["request_class"]
+	f.Projects = q["project"]
 	f.Tools = q["tool"]
-	if err := nonEmpty(q, "key", "client", "provider", "model", "endpoint", "error_class", "agent_type", "request_class", "tool"); err != nil {
+	if err := nonEmpty(q, "key", "client", "provider", "model", "endpoint", "error_class", "agent_type", "request_class", "project", "tool"); err != nil {
 		return f, err
 	}
 	for _, v := range q["status"] {

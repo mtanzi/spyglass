@@ -102,7 +102,7 @@ func TestResponsesConformToOpenAPI(t *testing.T) {
 	next := core.Cursor{TS: testNow.Add(-time.Hour), ID: id}
 	full := core.CallRecord{
 		ID: id, TS: testNow, KeyName: "alice", Client: "claude-code", ClientRaw: "claude-cli/2.1", ClientRequestID: "r1",
-		SessionKey: "s", AgentID: "a", ParentAgentID: "p", AgentType: "Explore", PromptID: "pr", RequestClass: "main",
+		SessionKey: "s", AgentID: "a", ParentAgentID: "p", AgentType: "Explore", PromptID: "pr", Project: "spyglass", RequestClass: "main",
 		Compaction: true, ContextCompacted: true, TraceID: "t", Family: "anthropic", Endpoint: "/v1/messages",
 		AuthMode: "proxy_key", Provider: "anthropic", Model: "claude-opus-4-8", UpstreamRequestID: "req_1",
 		Status: 200, ErrorClass: "", ErrorType: "", StopReason: "end_turn", Streamed: true,

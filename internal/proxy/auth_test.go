@@ -44,15 +44,15 @@ func TestAuthenticate(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			name, resp, ok := Authenticate(c.h, keys, config.AuthProxyKey, "req_1")
+			key, resp, ok := Authenticate(c.h, keys, config.AuthProxyKey, "req_1")
 			if c.wantMsg == "" {
-				if !ok || name != c.wantName {
-					t.Fatalf("got %q ok=%v; want %q", name, ok, c.wantName)
+				if !ok || key.Name != c.wantName {
+					t.Fatalf("got %q ok=%v; want %q", key.Name, ok, c.wantName)
 				}
 				return
 			}
-			if ok || name != "" {
-				t.Fatalf("got %q ok=%v; want failure", name, ok)
+			if ok || key.Name != "" {
+				t.Fatalf("got %q ok=%v; want failure", key.Name, ok)
 			}
 			if resp.Status != http.StatusUnauthorized {
 				t.Errorf("status = %d", resp.Status)
@@ -107,10 +107,10 @@ func TestAuthenticateModes(t *testing.T) {
 			for i := 0; i < len(c.kv); i += 2 {
 				h.Set(c.kv[i], c.kv[i+1])
 			}
-			name, resp, ok := Authenticate(h, keys, c.mode, "req_1")
+			key, resp, ok := Authenticate(h, keys, c.mode, "req_1")
 			if c.wantMsg == "" {
-				if !ok || name != c.wantName {
-					t.Fatalf("got %q ok=%v; want %q", name, ok, c.wantName)
+				if !ok || key.Name != c.wantName {
+					t.Fatalf("got %q ok=%v; want %q", key.Name, ok, c.wantName)
 				}
 				return
 			}

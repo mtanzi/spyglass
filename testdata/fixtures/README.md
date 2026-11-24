@@ -29,6 +29,13 @@ whole body for a non-streamed exchange. A test can change the timing per call
 with `fakeupstream.Reply`: `Split` (fixed-size chunks that cut events), `Delay`,
 `Pings`, `AbortAfter`, `Status` and `Headers`.
 
+`claude_code_project` is a hand-written exchange, not a capture: its request has a
+system prompt in text blocks, the second one shaped like the environment block of
+Claude Code (`Primary working directory:`, `Is a git repository:`, `Platform:`),
+which the extractor reads to name the project (ADR 0059). That block lists no git
+remote. The capture tool scrubs system prompts, so a refresh cannot carry it;
+change this fixture by hand.
+
 `claude-code-headers.json` holds two header sets of a Claude Code client, one
 without and one with the hint headers (ADR 0010). The values are placeholders
 until a real capture replaces them.

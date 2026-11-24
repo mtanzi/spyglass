@@ -505,3 +505,97 @@ func TestToolHalfOrderAndEndpoint(t *testing.T) {
 		t.Errorf("count_tokens results = %+v", rec.ToolResults)
 	}
 }
+
+// A Claude Code request names its working directory in the system prompt. The
+// project is the final directory name and never the path (ADR 0059).
+func TestExtractProject(t *testing.T) {
+	env := func(line string) string { return "# Environment\n - " + line + "\n - Platform: linux" }
+	block := func(text string) string {
+		b, _ := json.Marshal(text)
+		return `{"type":"text","text":` + string(b) + `}`
+	}
+	str := func(text string) string {
+		b, _ := json.Marshal(text)
+		return `{"model":"m","system":` + string(b) + `}`
+	}
+	blocks := func(texts ...string) string {
+		var parts []string
+		for _, s := range texts {
+			parts = append(parts, block(s))
+		}
+		return `{"model":"m","system":[` + strings.Join(parts, ",") + `]}`
+	}
+	pad := strings.Repeat("x", 40<<10)
+
+	tests := []struct {
+		name string
+		body string
+		want string
+	}{
+		{"string system", str(env("Primary working directory: /home/ann/code/spyglass")), "spyglass"},
+		{"text blocks", blocks("You are an agent.", env("Primary working directory: /home/ann/code/spyglass")), "spyglass"},
+		{"older env block", str("<env>\nWorking directory: /srv/app/billing\nPlatform: linux\n</env>"), "billing"},
+		{"trailing slash", str(env("Primary working directory: /home/ann/code/spyglass/")), "spyglass"},
+		{"windows path", str(env(`Primary working directory: C:\Users\ann\code\spyglass`)), "spyglass"},
+		{"windows drive root", str(env(`Primary working directory: C:\`)), ""},
+		{"unix root", str(env("Primary working directory: /")), ""},
+		{"name with a space", str(env("Primary working directory: /home/ann/my project")), "my project"},
+		{"additional directories are not the project", str("# Environment\n - Additional working directories:\n  - /home/ann/other\n"), ""},
+		{"primary wins over a later line", str(env("Primary working directory: /a/first") + "\n - Working directory: /a/second"), "first"},
+		{"no match", str("You are a helpful assistant."), ""},
+		{"no system field", `{"model":"m","messages":[]}`, ""},
+		{"system of another type", `{"model":"m","system":42}`, ""},
+		{"name over 128 characters", str(env("Primary working directory: /a/" + strings.Repeat("n", 129))), ""},
+		{"name of 128 characters", str(env("Primary working directory: /a/" + strings.Repeat("n", 128))), strings.Repeat("n", 128)},
+		{"control character in the name", str(env("Primary working directory: /a/bad\x07name")), ""},
+		{"line after the first 32 KiB", str(pad + "\n" + env("Primary working directory: /a/late")), ""},
+		{"line before the 32 KiB bound", str(env("Primary working directory: /a/early") + "\n" + pad), "early"},
+		{"line cut by the 32 KiB bound", str(pad[:32<<10-30] + "\n - Primary working directory: /a/projec" + pad), ""},
+		{"block after the first 32 KiB", blocks(pad, env("Primary working directory: /a/late")), ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := core.CallRecord{Endpoint: "/v1/messages"}
+			ExtractRequest(&rec, []byte(tt.body))
+			if rec.Project != tt.want {
+				t.Errorf("project = %q, want %q", rec.Project, tt.want)
+			}
+			if rec.ExtractionPartial {
+				t.Error("detection marked the record partial")
+			}
+		})
+	}
+}
+
+// A project the header or the key already set is never replaced by detection.
+func TestExtractProjectKeepsAnEarlierProject(t *testing.T) {
+	body := `{"model":"m","system":"# Environment\n - Primary working directory: /a/detected\n"}`
+	rec := core.CallRecord{Endpoint: "/v1/messages", Project: "from-header"}
+	ExtractRequest(&rec, []byte(body))
+	if rec.Project != "from-header" {
+		t.Errorf("project = %q, want from-header", rec.Project)
+	}
+}
+
+// A body that is not JSON gives no project, and the request still succeeds.
+func TestExtractProjectOfABrokenBody(t *testing.T) {
+	rec := core.CallRecord{Endpoint: "/v1/messages"}
+	ExtractRequest(&rec, []byte(`{"system": "Primary working directory: /a/x`))
+	if rec.Project != "" || !rec.ExtractionPartial {
+		t.Errorf("project %q partial %v, want none and partial (a body that is not JSON)", rec.Project, rec.ExtractionPartial)
+	}
+}
+
+// The environment block of the Claude Code fixture gives the directory name,
+// not the path. It carries no git remote, so no repository name is read.
+func TestFixtureProject(t *testing.T) {
+	for _, f := range loadFixtures(t) {
+		want := ""
+		if f.name == "claude_code_project" {
+			want = "spyglass-demo"
+		}
+		if got := f.extract().Project; got != want {
+			t.Errorf("%s: project = %q, want %q", f.name, got, want)
+		}
+	}
+}

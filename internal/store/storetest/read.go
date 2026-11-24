@@ -270,7 +270,7 @@ var readCases = []testCase{
 		cost := *c.Cost
 		wantFull := core.CallSummary{
 			ID: c.ID, TS: c.TS, KeyName: c.KeyName, Client: c.Client, SessionKey: c.SessionKey, AgentID: c.AgentID,
-			PromptID: c.PromptID, Provider: c.Provider, Model: c.Model, Status: c.Status, ErrorClass: c.ErrorClass, StopReason: c.StopReason,
+			PromptID: c.PromptID, Project: c.Project, Provider: c.Provider, Model: c.Model, Status: c.Status, ErrorClass: c.ErrorClass, StopReason: c.StopReason,
 			Streamed: c.Streamed, TTFT: c.TTFT, Duration: c.Duration, Usage: c.Usage, Cost: &cost, ToolCount: len(c.ToolUses),
 			ContextCompacted: c.ContextCompacted,
 		}
@@ -423,7 +423,7 @@ func fullRecord(g *Gen) core.CallRecord {
 		ID: g.ID(ts), TS: ts,
 		KeyName: "alice", Client: "claude-code", ClientRaw: "claude-cli/2.1.0 (external, cli)", ClientRequestID: "req-client-1",
 		SessionKey: "sess-1", AgentID: "agent-1", ParentAgentID: "agent-0", AgentType: "subagent", PromptID: "prompt-1",
-		RequestClass: "main", Compaction: true, ContextCompacted: true, TraceID: "trace-1",
+		Project: "spyglass", RequestClass: "main", Compaction: true, ContextCompacted: true, TraceID: "trace-1",
 		Family: "anthropic", Endpoint: "/v1/messages", AuthMode: "client_passthrough", Provider: "anthropic",
 		Model: "claude-opus-5-5", UpstreamRequestID: "req_up_1",
 		Status: 529, ErrorClass: "upstream_overloaded", ErrorType: "overloaded_error", StopReason: "max_tokens", Streamed: true,
@@ -454,6 +454,7 @@ func filterDataset(g *Gen) []core.CallRecord {
 	return []core.CallRecord{
 		mut(0, func(c *core.CallRecord) {
 			c.SessionKey, c.AgentID, c.AgentType, c.PromptID, c.RequestClass = "s1", "a1", "main", "p1", "main"
+			c.Project = "billing"
 			c.Cost = new(core.MicroUSD(1000))
 			g.WithUse("toolu_1", "Bash")(c)
 		}),
@@ -467,6 +468,7 @@ func filterDataset(g *Gen) []core.CallRecord {
 		mut(2, func(c *core.CallRecord) {
 			c.Provider, c.Model, c.Endpoint = "other", "claude-sonnet-5-5", "/v1/messages/count_tokens"
 			c.SessionKey, c.PromptID, c.RequestClass = "s2", "p2", "compaction"
+			c.Project = "billing"
 			c.Cost = new(core.MicroUSD(5000))
 			g.WithResult("toolu_2", false)(c)
 			g.WithUse("toolu_3", "Bash")(c)
@@ -480,6 +482,7 @@ func filterDataset(g *Gen) []core.CallRecord {
 		}),
 		mut(4, func(c *core.CallRecord) {
 			c.Client, c.Streamed = "sdk", false
+			c.Project = "web"
 			c.Cost = new(core.MicroUSD(0))
 			c.Duration = time.Second
 			g.WithUse("toolu_5", "Read")(c)
@@ -504,6 +507,9 @@ var filterCases = []struct {
 	{"keys", func(f *core.CallFilter) { f.Keys = []string{"bob", "carol"} }},
 	{"clients", func(f *core.CallFilter) { f.Clients = []string{"sdk", "claude-code"} }},
 	{"clients_unknown", func(f *core.CallFilter) { f.Clients = []string{""} }},
+	{"projects", func(f *core.CallFilter) { f.Projects = []string{"web", "billing"} }},
+	{"projects_one", func(f *core.CallFilter) { f.Projects = []string{"web"} }},
+	{"projects_unknown", func(f *core.CallFilter) { f.Projects = []string{""} }},
 	{"providers", func(f *core.CallFilter) { f.Providers = []string{"other"} }},
 	{"models", func(f *core.CallFilter) { f.Models = []string{"claude-sonnet-5-5", "claude-haiku-5-5"} }},
 	{"models_unknown", func(f *core.CallFilter) { f.Models = []string{""} }},

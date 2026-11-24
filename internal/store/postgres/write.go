@@ -23,7 +23,7 @@ const maxParams = 65535
 var callColumns = []string{
 	"id", "ts", "key_name", "client", "client_raw", "client_request_id",
 	"session_key", "agent_id", "parent_agent_id", "agent_type", "prompt_id", "request_class",
-	"compaction", "context_compacted", "trace_id",
+	"compaction", "context_compacted", "trace_id", "project",
 	"family", "endpoint", "auth_mode", "provider", "model", "upstream_request_id",
 	"status", "error_class", "error_type", "stop_reason", "streamed",
 	"ttfb_ms", "ttft_ms", "duration_ms", "ended_at",
@@ -104,7 +104,7 @@ func callRow(c *core.CallRecord) []any {
 	return []any{
 		uuid(c.ID), c.TS, clean(c.KeyName), text(c.Client), text(c.ClientRaw), text(c.ClientRequestID),
 		text(c.SessionKey), text(c.AgentID), text(c.ParentAgentID), text(c.AgentType), text(c.PromptID), text(c.RequestClass),
-		c.Compaction, c.ContextCompacted, text(c.TraceID),
+		c.Compaction, c.ContextCompacted, text(c.TraceID), text(c.Project),
 		clean(c.Family), clean(c.Endpoint), clean(c.AuthMode), clean(c.Provider), text(c.Model), text(c.UpstreamRequestID),
 		status(c.Status), text(c.ErrorClass), text(c.ErrorType), text(c.StopReason), c.Streamed,
 		millis(c.TTFB), millis(c.TTFT), millis(c.Duration), timestamp(c.EndedAt),
