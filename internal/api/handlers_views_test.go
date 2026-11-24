@@ -22,6 +22,7 @@ type viewSpy struct {
 	toolFilter    core.ToolCallFilter
 	usageQuery    core.UsageQuery
 	promptQuery   core.PromptCostQuery
+	monthlyQuery  core.MonthlyCostQuery
 	page          core.Page
 	sessionKey    string
 	calls         int
@@ -289,6 +290,54 @@ func (s *viewSpy) PromptCosts(ctx context.Context, q core.PromptCostQuery) (core
 	return s.Reader.PromptCosts(ctx, q)
 }
 
+func (s *viewSpy) MonthlyCosts(ctx context.Context, q core.MonthlyCostQuery) ([]core.MonthCost, error) {
+	s.monthlyQuery = q
+	s.calls++
+	return s.Reader.MonthlyCosts(ctx, q)
+}
+
+func TestGetMonthlyCosts(t *testing.T) {
+	cost := core.MicroUSD(2_500)
+	start := time.Date(2026, 10, 31, 11, 0, 0, 0, time.UTC) // November 1, 00:00 in Auckland
+	rd := &viewSpy{Reader: &coretest.Reader{Months: []core.MonthCost{
+		{Month: "2026-11", Start: start, End: start.AddDate(0, 0, 30), Calls: 4, Partial: true,
+			CostTotals: core.CostTotals{Cost: &cost, UnpricedCalls: 1, APIEquivalent: true}},
+		{Month: "2026-12", Start: start.AddDate(0, 0, 30), End: start.AddDate(0, 0, 61), Calls: 2,
+			CostTotals: core.CostTotals{UnpricedCalls: 2}},
+	}}}
+	rr := get(newTestMux(t, rd, config.View{}),
+		"/admin/usage/months?from=2026-10-01T00:00:00Z&to=2026-12-05T00:00:00Z&tz=Pacific/Auckland&key=alice&status=529")
+	if rr.Code != 200 {
+		t.Fatalf("status = %d\n%s", rr.Code, rr.Body)
+	}
+	body := decode[monthlyCostsJSON](t, rr)
+	if body.TZ != "Pacific/Auckland" || len(body.Months) != 2 {
+		t.Fatalf("body = %+v", body)
+	}
+	if m := body.Months[0]; m.Month != "2026-11" || m.Calls != 4 || !m.Partial || m.CostMicroUSD == nil || *m.CostMicroUSD != 2500 ||
+		m.UnpricedCalls != 1 || !m.APIEquivalent || !m.Start.Equal(start) {
+		t.Errorf("month 0 = %+v", m)
+	}
+	if m := body.Months[1]; m.CostMicroUSD != nil || m.UnpricedCalls != 2 || m.Partial {
+		t.Errorf("an all-unpriced month has a null cost, not zero: %+v", m)
+	}
+	// The cost fields sit in the month object, not under a key of their own.
+	if !strings.Contains(rr.Body.String(), `"cost_micro_usd":null`) || !strings.Contains(rr.Body.String(), `"start":"2026-10-31T11:00:00Z"`) {
+		t.Errorf("wire form: %s", rr.Body)
+	}
+	q := rd.monthlyQuery
+	if q.TZ != "Pacific/Auckland" || len(q.Filter.Keys) != 1 || len(q.Filter.Statuses) != 1 ||
+		!q.Filter.From.Equal(time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)) || !q.Filter.To.Equal(time.Date(2026, 12, 5, 0, 0, 0, 0, time.UTC)) {
+		t.Errorf("query = %+v", q)
+	}
+
+	rd = &viewSpy{Reader: &coretest.Reader{}}
+	rr = get(newTestMux(t, rd, config.View{}), "/admin/usage/months")
+	if !strings.Contains(rr.Body.String(), `"months":[]`) || rd.monthlyQuery.TZ != "UTC" {
+		t.Errorf("defaults: %s, tz %q", rr.Body, rd.monthlyQuery.TZ)
+	}
+}
+
 func TestGetPromptCosts(t *testing.T) {
 	cost := core.MicroUSD(1_500)
 	rd := &viewSpy{Reader: &coretest.Reader{Prompts: core.PromptCosts{
@@ -361,6 +410,15 @@ func TestViewEndpointErrors(t *testing.T) {
 		{"prompt costs limit above the maximum", &coretest.Reader{}, "/admin/usage/prompts?limit=501", 400, ErrInvalidParameter, "limit"},
 		{"prompt costs rejects a cursor", &coretest.Reader{}, "/admin/usage/prompts?cursor=x", 400, ErrInvalidParameter, "cursor"},
 		{"prompt costs rejects group_by", &coretest.Reader{}, "/admin/usage/prompts?group_by=key", 400, ErrInvalidParameter, "group_by"},
+		{"months unknown zone", &coretest.Reader{}, "/admin/usage/months?tz=Mars/Olympus", 400, ErrInvalidParameter, "tz"},
+		{"months empty zone", &coretest.Reader{}, "/admin/usage/months?tz=", 400, ErrInvalidParameter, "tz"},
+		{"months repeated zone", &coretest.Reader{}, "/admin/usage/months?tz=UTC&tz=Europe/Rome", 400, ErrInvalidParameter, "tz"},
+		{"months more than 36", &coretest.Reader{}, "/admin/usage/months?from=2023-11-01T00:00:00Z&to=2026-12-01T00:00:00Z", 400, ErrInvalidParameter, "from"},
+		{"months rejects a limit", &coretest.Reader{}, "/admin/usage/months?limit=5", 400, ErrInvalidParameter, "limit"},
+		{"months rejects group_by", &coretest.Reader{}, "/admin/usage/months?group_by=key", 400, ErrInvalidParameter, "group_by"},
+		{"months reader refuses the query", &coretest.Reader{Err: core.ErrInvalidFilter}, "/admin/usage/months", 400, ErrInvalidParameter, ""},
+		{"months store failure", &coretest.Reader{Err: boom}, "/admin/usage/months", 500, ErrInternal, ""},
+		{"months no reader", nil, "/admin/usage/months", 503, ErrInternal, ""},
 		{"prompt costs store failure", &coretest.Reader{Err: boom}, "/admin/usage/prompts", 500, ErrInternal, ""},
 		{"prompt costs no reader", nil, "/admin/usage/prompts", 503, ErrInternal, ""},
 	}
@@ -386,6 +444,7 @@ func TestBadParametersNeverReachTheReader(t *testing.T) {
 	h := newTestMux(t, rd, config.View{})
 	for _, target := range []string{
 		"/admin/sessions?nope=1", "/admin/tool-calls?status=x", "/admin/tool-calls/summary?limit=1", "/admin/usage?group_by=x", "/admin/usage?grain=x",
+		"/admin/usage/months?tz=Mars/Olympus",
 	} {
 		if rr := get(h, target); rr.Code != 400 {
 			t.Errorf("%s: status %d", target, rr.Code)

@@ -80,6 +80,7 @@ func NewMux(o Options) *http.ServeMux {
 	mux.HandleFunc("GET /admin/tool-calls/summary", h.toolSummary)
 	mux.HandleFunc("GET /admin/usage", h.getUsage)
 	mux.HandleFunc("GET /admin/usage/prompts", h.getPromptCosts)
+	mux.HandleFunc("GET /admin/usage/months", h.getMonthlyCosts)
 	mux.HandleFunc("GET /admin/stream", h.stream)
 	mux.HandleFunc("GET /admin/config", h.getConfig)
 	mux.HandleFunc("GET /admin/openapi.json", h.getOpenAPI)
