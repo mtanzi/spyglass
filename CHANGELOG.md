@@ -2,6 +2,13 @@
 
 Notable changes to Spyglass. Release 0.1.0 and earlier are described in their [GitHub release notes](https://github.com/mtanzi/spyglass/releases).
 
+## [0.8.0](https://github.com/mtanzi/spyglass/compare/v0.7.0...v0.8.0) (2026-11-24)
+
+
+### Features
+
+* **api:** add GET /admin/usage/months with time zone support ([#164](https://github.com/mtanzi/spyglass/issues/164)) ([f689ee6](https://github.com/mtanzi/spyglass/commit/f689ee6ba194b9bd52a6fb4f3197f96eada432dc))
+
 ## [0.7.0](https://github.com/mtanzi/spyglass/compare/v0.6.1...v0.7.0) (2026-11-19)
 
 
