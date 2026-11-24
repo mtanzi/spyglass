@@ -1,8 +1,10 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/mtanzi/spyglass/internal/core"
 )
@@ -182,6 +184,38 @@ func (h *handlers) getPromptCosts(w http.ResponseWriter, r *http.Request) {
 			jp.CostMicroUSD = &c
 		}
 		out.Prompts = append(out.Prompts, jp)
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// aggregateTimeout bounds one cost aggregate. The admin plane has no global
+// write timeout (ADR 0006), so the handler sets one (ADR 0059).
+const aggregateTimeout = 30 * time.Second
+
+// getMonthlyCosts serves GET /admin/usage/months.
+func (h *handlers) getMonthlyCosts(w http.ResponseWriter, r *http.Request) {
+	if h.calls == nil {
+		notWired(w)
+		return
+	}
+	q, perr := parseMonthlyCostParams(r.URL.Query(), h.now())
+	if perr != nil {
+		writeError(w, perr)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), aggregateTimeout)
+	defer cancel()
+	months, err := h.calls.MonthlyCosts(ctx, q)
+	if err != nil {
+		readError(w, r, err, "usage")
+		return
+	}
+	out := monthlyCostsJSON{TZ: q.TZ, Months: make([]monthCostJSON, 0, len(months))}
+	for _, m := range months {
+		out.Months = append(out.Months, monthCostJSON{
+			Month: m.Month, Start: m.Start.UTC(), End: m.End.UTC(), Calls: m.Calls,
+			costFieldsJSON: toCostFields(m.CostTotals), Partial: m.Partial,
+		})
 	}
 	writeJSON(w, http.StatusOK, out)
 }

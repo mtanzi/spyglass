@@ -235,6 +235,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/usage/months": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cost per calendar month
+         * @description Cost of the calls of each calendar month in the time zone `tz`, computed
+         *     over every call that matches the call-log filters. There is one row per
+         *     month of `[from, to)`, oldest first, and months with no calls are
+         *     included with `calls: 0` and a cost of zero: this endpoint fills the gaps
+         *     the usage series leaves. A range of more than 36 months is a `400`.
+         *     `start` and `end` are the whole month as UTC instants; `partial` is true
+         *     when the range cuts the month. Cost follows the usage rules: unknown is
+         *     not zero. A long range can take several seconds.
+         */
+        get: operations["getMonthlyCosts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/config": {
         parameters: {
             query?: never;
@@ -624,6 +651,42 @@ export interface components {
             /** @description Matching calls that carry no prompt id. */
             calls_without_prompt: number;
         };
+        /**
+         * @description The cost half of an aggregate row. Unknown is not zero: the cost sums the
+         *     priced calls, and `unpriced_calls` counts the calls it leaves out.
+         */
+        CostFields: {
+            /** @description Sum over the calls with a known cost. Null when no call of the row is priced. */
+            cost_micro_usd: number | null;
+            /** @description Calls with no cost, left out of cost_micro_usd. */
+            unpriced_calls: number;
+            /** @description A priced call went through a client_passthrough provider, so part of the cost is what the API would bill, not what the person pays. */
+            api_equivalent: boolean;
+        };
+        /** @description The calls of one calendar month in the requested time zone. */
+        MonthCost: components["schemas"]["CostFields"] & {
+            /** @description Calendar month in the requested zone, such as 2026-11. */
+            month: string;
+            /**
+             * Format: date-time
+             * @description First instant of the whole month, UTC.
+             */
+            start: string;
+            /**
+             * Format: date-time
+             * @description First instant after the whole month, UTC.
+             */
+            end: string;
+            calls: number;
+            /** @description The requested range cuts this month. */
+            partial: boolean;
+        };
+        MonthlyCosts: {
+            /** @description The time zone the months are cut in. */
+            tz: string;
+            /** @description One row per calendar month of the range, oldest first, gaps filled. At most 36. */
+            months: components["schemas"]["MonthCost"][];
+        };
         ConfigView: {
             providers: components["schemas"]["ProviderView"][];
             pricing: components["schemas"]["PricingView"][];
@@ -675,6 +738,11 @@ export interface components {
         From: string;
         /** @description End of the time range, exclusive, RFC 3339. Default is now. */
         To: string;
+        /**
+         * @description IANA time zone name, such as `Europe/Rome`, that months are cut in.
+         *     Default `UTC`. An unknown name is a `400`.
+         */
+        Tz: string;
         /** @description Virtual key name. Repeat to match several. */
         Key: string[];
         /** @description Client name. Repeat to match several. */
@@ -1208,6 +1276,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PromptCosts"];
+                };
+            };
+            400: components["responses"]["Error"];
+            500: components["responses"]["Error"];
+        };
+    };
+    getMonthlyCosts: {
+        parameters: {
+            query?: {
+                /** @description Start of the time range, inclusive, RFC 3339. Default is 24 hours before `to`. */
+                from?: components["parameters"]["From"];
+                /** @description End of the time range, exclusive, RFC 3339. Default is now. */
+                to?: components["parameters"]["To"];
+                /**
+                 * @description IANA time zone name, such as `Europe/Rome`, that months are cut in.
+                 *     Default `UTC`. An unknown name is a `400`.
+                 */
+                tz?: components["parameters"]["Tz"];
+                /** @description Virtual key name. Repeat to match several. */
+                key?: components["parameters"]["Key"];
+                /** @description Client name. Repeat to match several. */
+                client?: components["parameters"]["Client"];
+                /** @description Provider name. Repeat to match several. */
+                provider?: components["parameters"]["Provider"];
+                /** @description Model as the client asked for it. Repeat to match several. */
+                model?: components["parameters"]["Model"];
+                /** @description Request path, for example /v1/messages. Repeat to match several. */
+                endpoint?: components["parameters"]["Endpoint"];
+                /** @description Only streamed (true) or only non-streamed (false) calls. */
+                streamed?: components["parameters"]["Streamed"];
+                /** @description HTTP status returned to the client. Repeat to match several. */
+                status?: components["parameters"]["Status"];
+                /** @description Error class. Repeat to match several. */
+                error_class?: components["parameters"]["ErrorClass"];
+                /** @description Session key. */
+                session?: components["parameters"]["Session"];
+                /** @description Agent id. */
+                agent?: components["parameters"]["Agent"];
+                /** @description Agent type. Repeat to match several. */
+                agent_type?: components["parameters"]["AgentType"];
+                /** @description Prompt id. */
+                prompt?: components["parameters"]["Prompt"];
+                /** @description Request class. Repeat to match several. */
+                request_class?: components["parameters"]["RequestClass"];
+                /** @description Calls that made a tool call with this tool name. Repeat to match several. */
+                tool?: components["parameters"]["Tool"];
+                /**
+                 * @description Calls that made a tool call whose paired result has this is_error value.
+                 *     Combined with `tool`, both must hold on the same tool call.
+                 */
+                tool_error?: components["parameters"]["ToolError"];
+                /** @description Calls whose total duration is at least this many milliseconds. */
+                latency_ms_gte?: components["parameters"]["LatencyMsGte"];
+                /** @description Calls with a known cost of at least this many micro-USD. */
+                cost_micro_usd_gte?: components["parameters"]["CostMicroUsdGte"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The months. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthlyCosts"];
                 };
             };
             400: components["responses"]["Error"];

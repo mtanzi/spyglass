@@ -39,6 +39,7 @@ var groups = []group{
 	{"tools", toolCases},
 	{"sessions", sessionCases},
 	{"usage", usageCases},
+	{"months", monthCases},
 	{"no_bodies", noBodiesCases},
 }
 

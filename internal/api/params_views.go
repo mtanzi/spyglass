@@ -70,6 +70,47 @@ var knownPromptCostParams = func() map[string]bool {
 	return m
 }()
 
+// DefaultZone is the time zone of a monthly cost query that names none.
+const DefaultZone = "UTC"
+
+// The monthly-cost query takes the call-log filter and tz, and no page.
+var knownMonthlyCostParams = func() map[string]bool {
+	m := map[string]bool{"tz": true}
+	for k := range knownCallParams {
+		if k != "limit" && k != "cursor" {
+			m[k] = true
+		}
+	}
+	return m
+}()
+
+// parseMonthlyCostParams maps a query string onto a core.MonthlyCostQuery. tz
+// is an IANA zone name and defaults to DefaultZone. The range may cover at most
+// core.MaxMonths calendar months in that zone.
+func parseMonthlyCostParams(q url.Values, now time.Time) (core.MonthlyCostQuery, *apiError) {
+	var mq core.MonthlyCostQuery
+	var err *apiError
+	if mq.Filter, err = parseCallFilter(q, now, knownMonthlyCostParams); err != nil {
+		return mq, err
+	}
+	tz, set, err := single(q, "tz")
+	if err != nil {
+		return mq, err
+	}
+	if !set {
+		tz = DefaultZone
+	}
+	loc, lerr := core.LoadZone(tz)
+	if lerr != nil {
+		return mq, badParam("tz", fmt.Sprintf("%q is not an IANA time zone name", tz))
+	}
+	mq.TZ = tz
+	if len(core.MonthsOf(mq.Filter.From, mq.Filter.To, loc, core.MaxMonths+1)) > core.MaxMonths {
+		return mq, badParam("from", fmt.Sprintf("the range covers more than %d months", core.MaxMonths))
+	}
+	return mq, nil
+}
+
 // parsePromptCostParams maps a query string onto a core.PromptCostQuery. limit
 // is optional, from 1 to MaxLimit, and defaults to DefaultLimit.
 func parsePromptCostParams(q url.Values, now time.Time) (core.PromptCostQuery, *apiError) {
