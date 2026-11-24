@@ -339,6 +339,37 @@ type promptCostsJSON struct {
 	CallsWithoutPrompt int              `json:"calls_without_prompt"`
 }
 
+// costFieldsJSON is the cost half of an aggregate row, flattened into it. It
+// is the CostFields schema of the API document.
+type costFieldsJSON struct {
+	CostMicroUSD  *int64 `json:"cost_micro_usd"`
+	UnpricedCalls int    `json:"unpriced_calls"`
+	APIEquivalent bool   `json:"api_equivalent"`
+}
+
+func toCostFields(c core.CostTotals) costFieldsJSON {
+	j := costFieldsJSON{UnpricedCalls: c.UnpricedCalls, APIEquivalent: c.APIEquivalent}
+	if c.Cost != nil {
+		v := int64(*c.Cost)
+		j.CostMicroUSD = &v
+	}
+	return j
+}
+
+type monthCostJSON struct {
+	Month string    `json:"month"`
+	Start time.Time `json:"start"`
+	End   time.Time `json:"end"`
+	Calls int       `json:"calls"`
+	costFieldsJSON
+	Partial bool `json:"partial"`
+}
+
+type monthlyCostsJSON struct {
+	TZ     string          `json:"tz"`
+	Months []monthCostJSON `json:"months"`
+}
+
 type usageSeriesJSON struct {
 	GroupBy *core.UsageGroup  `json:"group_by"`
 	Grain   core.Grain        `json:"grain"`

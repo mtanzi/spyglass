@@ -36,4 +36,7 @@ type CallReader interface {
 	Usage(ctx context.Context, q UsageQuery) ([]UsageBucket, error) // tokens, cost, latency percentiles
 	// PromptCosts ranks the prompts of the matching calls by cost (ADR 0057).
 	PromptCosts(ctx context.Context, q PromptCostQuery) (PromptCosts, error)
+	// MonthlyCosts returns one row per calendar month of the range in a time
+	// zone, gaps filled, oldest first (ADR 0059).
+	MonthlyCosts(ctx context.Context, q MonthlyCostQuery) ([]MonthCost, error)
 }
