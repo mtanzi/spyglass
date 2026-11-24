@@ -33,8 +33,10 @@ const sessionColumns = `c.session_key,
 	` + usageSums + `, ` + costSum + `, count(*) FILTER (WHERE c.cost_usd IS NULL),
 	coalesce(sum(c.duration_ms), 0)::bigint, array_agg(c.id)`
 
-const sessionFields = `s(session_key, key_name, client, first_ts, last_ts, last_id, ended_at, calls, prompts,
-	errors, agents, models, input_uncached, cache_read, cache_write_5m, cache_write_1h, output, reasoning, cost, unpriced, llm_ms, call_ids)`
+const sessionFieldNames = `session_key, key_name, client, first_ts, last_ts, last_id, ended_at, calls, prompts,
+	errors, agents, models, input_uncached, cache_read, cache_write_5m, cache_write_1h, output, reasoning, cost, unpriced, llm_ms, call_ids`
+
+const sessionFields = `s(` + sessionFieldNames + `)`
 
 const sessionSelect = `s.session_key, s.key_name, s.client, s.first_ts, s.last_ts, s.last_id, s.ended_at, s.calls, s.prompts,
 	(SELECT count(DISTINCT t.tool_call_id) FROM tool_events t WHERE t.call_id = ANY(s.call_ids)),
@@ -54,7 +56,11 @@ type session struct {
 	lastID core.ID
 }
 
-func scanSession(r pgx.CollectableRow) (session, error) {
+func scanSession(r pgx.CollectableRow) (session, error) { return scanSessionWith(r) }
+
+// scanSessionWith scans the columns of sessionSelect, then any extra columns
+// the query adds after them into extra.
+func scanSessionWith(r pgx.CollectableRow, extra ...any) (session, error) {
 	var (
 		s                                session
 		key, name                        string
@@ -67,8 +73,9 @@ func scanSession(r pgx.CollectableRow) (session, error) {
 		models                           []string
 		in, cr, cw5, cw1, out, rs, costM = new(int64), new(int64), new(int64), new(int64), new(int64), new(int64), (*int64)(nil)
 	)
-	if err := r.Scan(&key, &name, &client, &first, &last, &lastID, &end, &calls, &prompts, &tools, &errs, &agents, &models,
-		in, cr, cw5, cw1, out, rs, &costM, &unpriced, &llmMS); err != nil {
+	dest := append([]any{&key, &name, &client, &first, &last, &lastID, &end, &calls, &prompts, &tools, &errs, &agents, &models,
+		in, cr, cw5, cw1, out, rs, &costM, &unpriced, &llmMS}, extra...)
+	if err := r.Scan(dest...); err != nil {
 		return s, err
 	}
 	s.SessionSummary = core.SessionSummary{

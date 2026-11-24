@@ -23,6 +23,7 @@ type viewSpy struct {
 	usageQuery    core.UsageQuery
 	promptQuery   core.PromptCostQuery
 	monthlyQuery  core.MonthlyCostQuery
+	sessionCostQ  core.SessionCostQuery
 	page          core.Page
 	sessionKey    string
 	calls         int
@@ -338,6 +339,55 @@ func TestGetMonthlyCosts(t *testing.T) {
 	}
 }
 
+func (s *viewSpy) SessionCosts(ctx context.Context, q core.SessionCostQuery) (core.SessionCosts, error) {
+	s.sessionCostQ = q
+	s.calls++
+	return s.Reader.SessionCosts(ctx, q)
+}
+
+func TestGetSessionCosts(t *testing.T) {
+	c := core.MicroUSD(4_200)
+	rd := &viewSpy{Reader: &coretest.Reader{SessionCst: core.SessionCosts{
+		SessionCount: 9,
+		Sessions: []core.SessionCost{
+			{SessionSummary: core.SessionSummary{SessionKey: "s1", KeyName: "alice", Calls: 3, Errors: 1, Cost: &c, UnpricedCalls: 1,
+				ToolCallCount: 2, Models: []string{"m"}}, APIEquivalent: true},
+			{SessionSummary: core.SessionSummary{SessionKey: "s2", Calls: 1, UnpricedCalls: 1}},
+		},
+	}}}
+	rr := get(newTestMux(t, rd, config.View{}), "/admin/usage/sessions?limit=2&status=529&from=2026-10-01T00:00:00Z&to=2026-11-01T00:00:00Z")
+	if rr.Code != 200 {
+		t.Fatalf("status = %d\n%s", rr.Code, rr.Body)
+	}
+	body := decode[sessionCostsJSON](t, rr)
+	if body.SessionCount != 9 || len(body.Sessions) != 2 {
+		t.Fatalf("body = %+v", body)
+	}
+	if s := body.Sessions[0]; s.SessionKey != "s1" || s.Key != "alice" || s.Calls != 3 || s.Errors != 1 || s.ToolCalls != 2 ||
+		s.CostMicroUSD == nil || *s.CostMicroUSD != 4200 || s.UnpricedCalls != 1 || !s.APIEquivalent {
+		t.Errorf("session 0 = %+v", s)
+	}
+	if s := body.Sessions[1]; s.CostMicroUSD != nil || s.APIEquivalent || s.Models == nil {
+		t.Errorf("an all-unpriced session has a null cost, not zero, and models is an array: %+v", s)
+	}
+	// The summary fields and the flag share one object.
+	if !strings.Contains(rr.Body.String(), `"cost_micro_usd":null`) || !strings.Contains(rr.Body.String(), `"api_equivalent":true`) ||
+		strings.Contains(rr.Body.String(), `"SessionSummary"`) {
+		t.Errorf("wire form: %s", rr.Body)
+	}
+	q := rd.sessionCostQ
+	if q.Limit != 2 || len(q.Filter.Statuses) != 1 || !q.Filter.From.Equal(time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)) ||
+		!q.Filter.To.Equal(time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)) {
+		t.Errorf("query = %+v", q)
+	}
+
+	rd = &viewSpy{Reader: &coretest.Reader{}}
+	rr = get(newTestMux(t, rd, config.View{}), "/admin/usage/sessions")
+	if !strings.Contains(rr.Body.String(), `"sessions":[]`) || rd.sessionCostQ.Limit != core.DefaultRanked {
+		t.Errorf("defaults: %s, limit %d", rr.Body, rd.sessionCostQ.Limit)
+	}
+}
+
 func TestGetPromptCosts(t *testing.T) {
 	cost := core.MicroUSD(1_500)
 	rd := &viewSpy{Reader: &coretest.Reader{Prompts: core.PromptCosts{
@@ -419,6 +469,14 @@ func TestViewEndpointErrors(t *testing.T) {
 		{"months reader refuses the query", &coretest.Reader{Err: core.ErrInvalidFilter}, "/admin/usage/months", 400, ErrInvalidParameter, ""},
 		{"months store failure", &coretest.Reader{Err: boom}, "/admin/usage/months", 500, ErrInternal, ""},
 		{"months no reader", nil, "/admin/usage/months", 503, ErrInternal, ""},
+		{"session costs limit 0", &coretest.Reader{}, "/admin/usage/sessions?limit=0", 400, ErrInvalidParameter, "limit"},
+		{"session costs limit above 100", &coretest.Reader{}, "/admin/usage/sessions?limit=101", 400, ErrInvalidParameter, "limit"},
+		{"session costs rejects a cursor", &coretest.Reader{}, "/admin/usage/sessions?cursor=x", 400, ErrInvalidParameter, "cursor"},
+		{"session costs rejects tz", &coretest.Reader{}, "/admin/usage/sessions?tz=UTC", 400, ErrInvalidParameter, "tz"},
+		{"session costs rejects group_by", &coretest.Reader{}, "/admin/usage/sessions?group_by=key", 400, ErrInvalidParameter, "group_by"},
+		{"session costs reader refuses the query", &coretest.Reader{Err: core.ErrInvalidFilter}, "/admin/usage/sessions", 400, ErrInvalidParameter, ""},
+		{"session costs store failure", &coretest.Reader{Err: boom}, "/admin/usage/sessions", 500, ErrInternal, ""},
+		{"session costs no reader", nil, "/admin/usage/sessions", 503, ErrInternal, ""},
 		{"prompt costs store failure", &coretest.Reader{Err: boom}, "/admin/usage/prompts", 500, ErrInternal, ""},
 		{"prompt costs no reader", nil, "/admin/usage/prompts", 503, ErrInternal, ""},
 	}
@@ -444,7 +502,7 @@ func TestBadParametersNeverReachTheReader(t *testing.T) {
 	h := newTestMux(t, rd, config.View{})
 	for _, target := range []string{
 		"/admin/sessions?nope=1", "/admin/tool-calls?status=x", "/admin/tool-calls/summary?limit=1", "/admin/usage?group_by=x", "/admin/usage?grain=x",
-		"/admin/usage/months?tz=Mars/Olympus",
+		"/admin/usage/months?tz=Mars/Olympus", "/admin/usage/sessions?limit=0",
 	} {
 		if rr := get(h, target); rr.Code != 400 {
 			t.Errorf("%s: status %d", target, rr.Code)

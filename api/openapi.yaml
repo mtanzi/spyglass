@@ -410,6 +410,54 @@ paths:
           $ref: "#/components/responses/Error"
         "500":
           $ref: "#/components/responses/Error"
+  /admin/usage/sessions:
+    get:
+      operationId: getSessionCosts
+      summary: Most costly sessions
+      description: |
+        Sessions, which are groups of calls with the same session key, ranked by
+        cost over the calls that match the call-log filters. Each row has the
+        fields of the session list and the session view, counted over the
+        matching calls of `[from, to)`, so the cost, `unpriced_calls` and
+        `errors` of a session are the numbers those views show for the same
+        range. Calls without a session header belong to no session. At most
+        `limit` sessions are returned, known cost first, highest first, then
+        unknown cost; ties go to the session with more calls, then to the lower
+        session key. `session_count` is the number of sessions there are, so a
+        client can say when the list is shorter than the whole. A long range can
+        take several seconds.
+      parameters:
+        - $ref: "#/components/parameters/From"
+        - $ref: "#/components/parameters/To"
+        - $ref: "#/components/parameters/Key"
+        - $ref: "#/components/parameters/Client"
+        - $ref: "#/components/parameters/Provider"
+        - $ref: "#/components/parameters/Model"
+        - $ref: "#/components/parameters/Endpoint"
+        - $ref: "#/components/parameters/Streamed"
+        - $ref: "#/components/parameters/Status"
+        - $ref: "#/components/parameters/ErrorClass"
+        - $ref: "#/components/parameters/Session"
+        - $ref: "#/components/parameters/Agent"
+        - $ref: "#/components/parameters/AgentType"
+        - $ref: "#/components/parameters/Prompt"
+        - $ref: "#/components/parameters/RequestClass"
+        - $ref: "#/components/parameters/Tool"
+        - $ref: "#/components/parameters/ToolError"
+        - $ref: "#/components/parameters/LatencyMsGte"
+        - $ref: "#/components/parameters/CostMicroUsdGte"
+        - $ref: "#/components/parameters/RankedLimit"
+      responses:
+        "200":
+          description: The sessions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionCosts"
+        "400":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
   /admin/config:
     get:
       operationId: getConfig
@@ -568,6 +616,11 @@ components:
       in: query
       description: Page size. Default 50, maximum 500.
       schema: { type: integer, minimum: 1, maximum: 500 }
+    RankedLimit:
+      name: limit
+      in: query
+      description: Number of rows of a ranked list. Default 10, maximum 100.
+      schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
     Cursor:
       name: cursor
       in: query
@@ -1131,6 +1184,27 @@ components:
           type: array
           description: One row per calendar month of the range, oldest first, gaps filled. At most 36.
           items: { $ref: "#/components/schemas/MonthCost" }
+    SessionCost:
+      description: |
+        One session of a cost ranking: the session summary over the matching
+        calls, and whether its cost includes an API-equivalent call.
+      allOf:
+        - $ref: "#/components/schemas/SessionSummary"
+        - type: object
+          required: [api_equivalent]
+          properties:
+            api_equivalent:
+              type: boolean
+              description: A priced call of the session went through a client_passthrough provider, so part of the cost is what the API would bill, not what the person pays.
+    SessionCosts:
+      type: object
+      required: [sessions, session_count]
+      properties:
+        sessions:
+          type: array
+          description: At most `limit` sessions. Known cost first, highest first, then unknown cost; ties by calls, then session key.
+          items: { $ref: "#/components/schemas/SessionCost" }
+        session_count: { type: integer, description: "Every session of the matching calls, including those past `limit`." }
     ConfigView:
       type: object
       required: [providers, pricing, keys]

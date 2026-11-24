@@ -111,6 +111,38 @@ func parseMonthlyCostParams(q url.Values, now time.Time) (core.MonthlyCostQuery,
 	return mq, nil
 }
 
+// The session-cost query takes the call-log filter and a limit, and no cursor
+// and no tz: a session does not depend on the calendar.
+var knownSessionCostParams = func() map[string]bool {
+	m := map[string]bool{}
+	for k := range knownCallParams {
+		if k != "cursor" {
+			m[k] = true
+		}
+	}
+	return m
+}()
+
+// parseSessionCostParams maps a query string onto a core.SessionCostQuery.
+// limit is optional, from 1 to core.MaxRanked, and defaults to
+// core.DefaultRanked.
+func parseSessionCostParams(q url.Values, now time.Time) (core.SessionCostQuery, *apiError) {
+	var sq core.SessionCostQuery
+	var err *apiError
+	if sq.Filter, err = parseCallFilter(q, now, knownSessionCostParams); err != nil {
+		return sq, err
+	}
+	limit, err := intParam(q, "limit", 1, core.MaxRanked)
+	if err != nil {
+		return sq, err
+	}
+	sq.Limit = int(limit)
+	if _, set := q["limit"]; !set {
+		sq.Limit = core.DefaultRanked
+	}
+	return sq, nil
+}
+
 // parsePromptCostParams maps a query string onto a core.PromptCostQuery. limit
 // is optional, from 1 to MaxLimit, and defaults to DefaultLimit.
 func parsePromptCostParams(q url.Values, now time.Time) (core.PromptCostQuery, *apiError) {

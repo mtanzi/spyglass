@@ -354,6 +354,17 @@ func toCostFields(c core.CostTotals) costFieldsJSON {
 	return j
 }
 
+// sessionCostJSON is a session summary with the cost flag of the ranking, flattened.
+type sessionCostJSON struct {
+	sessionSummaryJSON
+	APIEquivalent bool `json:"api_equivalent"`
+}
+
+type sessionCostsJSON struct {
+	Sessions     []sessionCostJSON `json:"sessions"`
+	SessionCount int               `json:"session_count"`
+}
+
 type monthCostJSON struct {
 	Month string    `json:"month"`
 	Start time.Time `json:"start"`
