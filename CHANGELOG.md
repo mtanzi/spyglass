@@ -2,6 +2,13 @@
 
 Notable changes to Spyglass. Release 0.1.0 and earlier are described in their [GitHub release notes](https://github.com/mtanzi/spyglass/releases).
 
+## [0.14.1](https://github.com/mtanzi/spyglass/compare/v0.14.0...v0.14.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **store:** read tool results once in the tools cost query ([#180](https://github.com/mtanzi/spyglass/issues/180)) ([9214cfb](https://github.com/mtanzi/spyglass/commit/9214cfbd842f027e4bc2a514111c8d24341ea92e))
+
 ## [0.14.0](https://github.com/mtanzi/spyglass/compare/v0.13.0...v0.14.0) (2026-11-25)
 
 
