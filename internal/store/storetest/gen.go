@@ -113,6 +113,9 @@ func WithID(id core.ID) CallOpt { return func(c *core.CallRecord) { c.ID = id } 
 // WithKey sets the key name.
 func WithKey(name string) CallOpt { return func(c *core.CallRecord) { c.KeyName = name } }
 
+// WithProject sets the derived project of the call.
+func WithProject(name string) CallOpt { return func(c *core.CallRecord) { c.Project = name } }
+
 // WithSession sets the session key.
 func WithSession(key string) CallOpt { return func(c *core.CallRecord) { c.SessionKey = key } }
 

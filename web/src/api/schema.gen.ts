@@ -363,6 +363,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/usage/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Most costly projects
+         * @description Projects ranked by cost over the calls that match the call-log filters.
+         *     A call's project is derived at ingest (ADR 0059) and is null for a call
+         *     that has none. At most `limit` projects are returned, known cost first,
+         *     highest first, then unknown cost; ties go to the project with more
+         *     calls, then to the lower name. `project_count` is the number of
+         *     projects there are, so a client can say when the list is shorter than
+         *     the whole. `unassigned` is the calls with no project: it is not a
+         *     project and is never ranked. A long range can take several seconds.
+         */
+        get: operations["getProjectCosts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/config": {
         parameters: {
             query?: never;
@@ -842,6 +869,32 @@ export interface components {
             tz: string;
             /** @description One row per non-empty cell, ordered by weekday and then hour. At most 168. */
             cells: components["schemas"]["PunchcardCell"][];
+        };
+        /** @description The matching calls of one project. */
+        ProjectCost: components["schemas"]["CostFields"] & {
+            project: string;
+            calls: number;
+            /** @description Distinct session keys of the project's calls. A call with no session key is in no session. */
+            sessions: number;
+        };
+        /**
+         * @description The matching calls that have no project. Not a project: it never ranks.
+         *     With no such call it has `calls: 0` and a cost of zero; with calls that
+         *     are all unpriced, the cost is null.
+         */
+        UnassignedCost: {
+            calls: number;
+            /** @description Sum over the calls with a known cost. Null when calls are present and none is priced. */
+            cost_micro_usd: number | null;
+            /** @description Calls with no cost, left out of cost_micro_usd. */
+            unpriced_calls: number;
+        };
+        ProjectCosts: {
+            /** @description At most `limit` projects. Known cost first, highest first, then unknown cost; ties by calls, then name. */
+            projects: components["schemas"]["ProjectCost"][];
+            /** @description Every project of the matching calls, including those past `limit`. Does not count the calls with no project. */
+            project_count: number;
+            unassigned: components["schemas"]["UnassignedCost"];
         };
         ConfigView: {
             providers: components["schemas"]["ProviderView"][];
@@ -1722,6 +1775,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ToolCosts"];
+                };
+            };
+            400: components["responses"]["Error"];
+            500: components["responses"]["Error"];
+        };
+    };
+    getProjectCosts: {
+        parameters: {
+            query?: {
+                /** @description Start of the time range, inclusive, RFC 3339. Default is 24 hours before `to`. */
+                from?: components["parameters"]["From"];
+                /** @description End of the time range, exclusive, RFC 3339. Default is now. */
+                to?: components["parameters"]["To"];
+                /** @description Virtual key name. Repeat to match several. */
+                key?: components["parameters"]["Key"];
+                /** @description Client name. Repeat to match several. */
+                client?: components["parameters"]["Client"];
+                /** @description Provider name. Repeat to match several. */
+                provider?: components["parameters"]["Provider"];
+                /** @description Model as the client asked for it. Repeat to match several. */
+                model?: components["parameters"]["Model"];
+                /** @description Request path, for example /v1/messages. Repeat to match several. */
+                endpoint?: components["parameters"]["Endpoint"];
+                /** @description Only streamed (true) or only non-streamed (false) calls. */
+                streamed?: components["parameters"]["Streamed"];
+                /** @description HTTP status returned to the client. Repeat to match several. */
+                status?: components["parameters"]["Status"];
+                /** @description Error class. Repeat to match several. */
+                error_class?: components["parameters"]["ErrorClass"];
+                /** @description Session key. */
+                session?: components["parameters"]["Session"];
+                /** @description Agent id. */
+                agent?: components["parameters"]["Agent"];
+                /** @description Agent type. Repeat to match several. */
+                agent_type?: components["parameters"]["AgentType"];
+                /** @description Prompt id. */
+                prompt?: components["parameters"]["Prompt"];
+                /** @description Request class. Repeat to match several. */
+                request_class?: components["parameters"]["RequestClass"];
+                /** @description Project of the call (ADR 0059). Repeat to match several. */
+                project?: components["parameters"]["Project"];
+                /** @description Calls that made a tool call with this tool name. Repeat to match several. */
+                tool?: components["parameters"]["Tool"];
+                /**
+                 * @description Calls that made a tool call whose paired result has this is_error value.
+                 *     Combined with `tool`, both must hold on the same tool call.
+                 */
+                tool_error?: components["parameters"]["ToolError"];
+                /** @description Calls whose total duration is at least this many milliseconds. */
+                latency_ms_gte?: components["parameters"]["LatencyMsGte"];
+                /** @description Calls with a known cost of at least this many micro-USD. */
+                cost_micro_usd_gte?: components["parameters"]["CostMicroUsdGte"];
+                /** @description Number of rows of a ranked list. Default 10, maximum 100. */
+                limit?: components["parameters"]["RankedLimit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The projects. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectCosts"];
                 };
             };
             400: components["responses"]["Error"];

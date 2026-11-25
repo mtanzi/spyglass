@@ -177,6 +177,10 @@ func TestResponsesConformToOpenAPI(t *testing.T) {
 		{Weekday: 1, Hour: 0, Calls: 3, CostTotals: core.CostTotals{Cost: &cost, UnpricedCalls: 1, APIEquivalent: true}},
 		{Weekday: 7, Hour: 23, Calls: 2, CostTotals: core.CostTotals{UnpricedCalls: 2}},
 	}
+	rd.ProjectCst = core.ProjectCosts{ProjectCount: 3, Projects: []core.ProjectCost{
+		{Project: "spyglass", Calls: 4, Sessions: 2, CostTotals: core.CostTotals{Cost: new(core.MicroUSD), APIEquivalent: true}},
+		{Project: "billing", Calls: 1, Sessions: 1, CostTotals: core.CostTotals{UnpricedCalls: 1}},
+	}, Unassigned: core.UnassignedCost{Calls: 2, UnpricedCalls: 2}}
 	h := newTestMux(t, rd, view)
 
 	samples := []struct {
@@ -227,6 +231,10 @@ func TestResponsesConformToOpenAPI(t *testing.T) {
 		{"/admin/usage/punchcard?tz=Asia/Kolkata&model=a&status=529&session=s", "/admin/usage/punchcard", 200},
 		{"/admin/usage/punchcard?tz=Nowhere/Land", "/admin/usage/punchcard", 400},
 		{"/admin/usage/punchcard?limit=5", "/admin/usage/punchcard", 400},
+		{"/admin/usage/projects", "/admin/usage/projects", 200},
+		{"/admin/usage/projects?limit=2&project=spyglass&model=a&status=529&session=s&from=2026-08-01T00:00:00Z", "/admin/usage/projects", 200},
+		{"/admin/usage/projects?limit=101", "/admin/usage/projects", 400},
+		{"/admin/usage/projects?tz=UTC", "/admin/usage/projects", 400},
 		{"/admin/calls?nope=1", "/admin/calls", 400},
 		{"/admin/calls?cursor=zzz", "/admin/calls", 400},
 		{"/admin/calls/not-an-id", "/admin/calls/{id}", 400},
@@ -256,6 +264,7 @@ func TestResponsesConformToOpenAPI(t *testing.T) {
 		{"/admin/usage/sessions", "/admin/usage/sessions"},
 		{"/admin/usage/tools", "/admin/usage/tools"},
 		{"/admin/usage/punchcard", "/admin/usage/punchcard"},
+		{"/admin/usage/projects", "/admin/usage/projects"},
 	} {
 		rr := httptest.NewRecorder()
 		failing.ServeHTTP(rr, httptest.NewRequest("GET", sm.target, nil))
@@ -280,6 +289,7 @@ func TestSpecQueryParametersMatchParser(t *testing.T) {
 		"/admin/usage/sessions":     knownSessionCostParams,
 		"/admin/usage/tools":        knownToolCostParams,
 		"/admin/usage/punchcard":    knownPunchcardParams,
+		"/admin/usage/projects":     knownProjectCostParams,
 		"/admin/stream":             knownStreamParams,
 	} {
 		op := s.doc["paths"].(map[string]any)[path].(map[string]any)["get"].(map[string]any)
@@ -354,7 +364,7 @@ func TestSpecRoutesMatchMux(t *testing.T) {
 		"/admin/calls", "/admin/calls/{id}", "/admin/config", "/admin/openapi.json", "/admin/sessions",
 		"/admin/sessions/{key}", "/admin/stream", "/admin/tool-calls", "/admin/tool-calls/summary", "/admin/usage",
 		"/admin/usage/prompts", "/admin/usage/months", "/admin/usage/sessions", "/admin/usage/tools",
-		"/admin/usage/punchcard",
+		"/admin/usage/punchcard", "/admin/usage/projects",
 	}
 	for _, p := range want {
 		if _, ok := paths[p]; !ok {
