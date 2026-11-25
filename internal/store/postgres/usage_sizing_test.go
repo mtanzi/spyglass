@@ -154,4 +154,11 @@ func TestUsageSizing(t *testing.T) {
 		got, err := s.ToolCosts(ctx, core.ToolCostQuery{Filter: f, Limit: 10})
 		return len(got.Tools), err
 	})
+	// The tools panel takes every call-log filter; one session is the narrow case.
+	one := f
+	one.SessionKey = "session-3"
+	measure("tools limit=10 session", func() (int, error) {
+		got, err := s.ToolCosts(ctx, core.ToolCostQuery{Filter: one, Limit: 10})
+		return len(got.Tools), err
+	})
 }
