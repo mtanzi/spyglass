@@ -226,6 +226,29 @@ At the upper end that is about 20 million `calls` rows over 400 days, 0.14 to 0.
 
 Each query reads every row of the range (one pass, one sort per group for the percentiles), so the time grows with rows in range, not with the number of buckets, apart from the output size of a session grouping. The ungrouped and per-key 30-day views sit at the 1 s usage trigger for rollup tables in [backend.md](backend.md#storage-and-scale). Re-run it with `SPYGLASS_SIZING_ROWS=1500000 go test -run TestUsageSizing -v ./internal/store/postgres`. Partitioning and rollups come back at the triggers in [backend.md](backend.md#storage-and-scale).
 
+**Measured cost queries** ([ADR 0059](../adrs/0059-cost-views-on-the-overview-dashboard.md), phase 9). The five queries of the overview, over the same 30-day range, with the same setup as above. This run also seeds a `project` on 90% of the calls (40 projects) and `tool_events`: 60% of the calls request 1 to 3 tool uses of 12 tools, each with a result half 2 s later, which is 3.6 million events for 1.5 million calls. `calls` was 709 MB with indexes (366 MB heap). Five runs each, with the limits the overview uses. The run was on battery power under `caffeinate`; the fastest and median times of each query are within 4% of each other. The usage aggregates in the same run came out within 15% of the table above (1.5 million rows: 0.8 s for the ungrouped day view, 1.7 s for the session grouping).
+
+| Query | Rows returned | Median at 1.5 million rows | Slowest | Median at 4.5 million rows |
+|---|---|---|---|---|
+| months, `tz=UTC` | 1 | 0.95 s | 0.97 s | 2.2 s |
+| months, `tz=Europe/Rome` | 2 | 1.11 s | 1.95 s | 3.3 s |
+| punchcard, `tz=UTC` | 168 | 0.37 s | 0.37 s | 2.2 s |
+| punchcard, `tz=Europe/Rome` | 168 | 1.26 s | 1.26 s | 3.8 s |
+| projects, limit 10 | 10 | 2.4 s | 2.5 s | 6.6 s |
+| sessions, limit 5 | 5 | 1.7 s | 2.1 s | 5.4 s |
+| tools, limit 10 | 10 | 16.6 s | 17.6 s | 58 s (slowest 70 s) |
+
+The 4.5 million row run is the same 30 days with three times the rows; it stands for the 3-month default period at 50,000 calls a day (12,000 calls a day gives about 1.1 million rows in 3 months, so read the 1.5 million column for it). Time grows about linearly with the rows, which the usage aggregates also do (2.0 s to 4.3 s over the same step). The one exception is the UTC punchcard, which is 6 times slower at 3 times the rows; the cause was not examined. Reading the hour and weekday in a zone other than UTC costs about three times more than in UTC at 1.5 million rows.
+
+What follows from the numbers, for ADR 0059 (decision 5):
+
+- **The tools query is the problem, not the aggregates.** It takes 16.6 s at 1.5 million rows and 58 s at 4.5 million rows, which is above the 30 s query timeout of the handler. `EXPLAIN (ANALYZE)` shows why: for each of the 1.8 million tool uses, the lateral lookup of the first result runs a separate index probe on `tool_events_tool_call_id_idx` (6.9 million buffer hits and 2.9 million reads, 1.8 million loops of a sort over one row), and that is almost all of the time. The generated tool call ids are nearly in insert order, and real `toolu_` ids are random, so the heap reads of the real lookup are likely to be worse than this figure. No index or rollup of the ADR fixes it as written. A covering partial index, `(tool_call_id, ts, call_id, idx) INCLUDE (bytes, is_error) WHERE kind = 'result'`, took the 1.5 million row query from 14.2 s to 10.9 s in a scratch database (not enough, and it costs a write on every tool result). Reading the first result of each tool call id once in a `DISTINCT ON` over the range and joining it took it to 5.2 s with no index. The hourly rollup cannot hold it (ADR 0059 keeps tools on raw rows, and the rollup's columns hold no tool). **A rewrite of the result pairing is due before the tools panel ships, and it needs its own measurement.** Until then the tools query is not safe at 3 months.
+- **The rollup is due at the top of the sizing range.** At 12,000 calls a day (about 1.1 million rows in 3 months) months, the punchcard and projects take 0.7 to 1.8 s, around the 1 s trigger. At 50,000 calls a day (4.5 million rows) months and punchcard take 2.2 to 3.8 s and projects 6.6 s, over the trigger. Sessions (5.4 s) stay on raw rows by the ADR. The hourly rollup for months, projects and the punchcard is a follow-up for deployments near 50,000 calls a day, not a blocker for the first release.
+- **No index for the other four.** Each reads every row of its range, as the ADR assumed, and `calls_ts_id_idx` already serves the range bound. This measurement did not try the `(ts) INCLUDE (cost_usd, session_key, project)` index of ADR 0059, so it shows no need for it and does not rule it out.
+- **The default period stays at 3 months for the other four queries**: at the 50,000 calls a day ceiling they take 2.2 to 6.6 s, inside the 30 s timeout, and they load after the first paint. A 12 month period is 4 times that (about 9 to 26 s), so the "can take longer" note of the ADR is needed, and the 30 s cap can cut the projects query at 12 months. The tools panel cannot use that default until its query is rewritten.
+
+Re-run it with `SPYGLASS_SIZING_ROWS=1500000 go test -run TestUsageSizing -v ./internal/store/postgres`. The 4.5 million row run needs about 2.1 GB for `calls` and about 11 minutes.
+
 ## Backups
 
 | Data | Importance | Backup |
