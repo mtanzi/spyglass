@@ -19,8 +19,9 @@ import (
 // cost, unpriced count and error count are the numbers the list and the session
 // view show for the same calls. The aggregate is ranked and cut to q.Limit in
 // SQL, and only those sessions get their tool calls counted and their tool time
-// summed, both over the tool calls of the matching calls. The count of every session of the range comes from a window over the
-// groups before the cut.
+// summed, both over the tool calls of the matching calls. The count of every
+// session of the matching calls comes from a window over the groups before the
+// cut.
 func (s *Store) SessionCosts(ctx context.Context, q core.SessionCostQuery) (core.SessionCosts, error) {
 	if err := q.Validate(); err != nil {
 		return core.SessionCosts{}, err
