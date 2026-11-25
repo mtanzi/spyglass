@@ -1,19 +1,20 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
-import type { ReactNode } from 'react'
 import type { QueryOf } from '../api/client'
 import { readQueryOptions } from '../api/queries'
 import { ActivityChart } from '../components/ActivityChart'
 import { StatusBadge, Tag } from '../components/Badge'
 import { InfoNote } from '../components/InfoNote'
+import { Maybe } from '../components/Maybe'
+import { Panel, QueryState } from '../components/Panel'
+import { RankedList } from '../components/RankedList'
 import { Sparkline } from '../components/Sparkline'
-import { EmptyState, ErrorMessage, LoadingState } from '../components/states'
+import { EmptyState, ErrorMessage } from '../components/states'
 import { TimeRangePicker } from '../components/TimeRangePicker'
 import { useLiveCalls } from '../hooks/useLiveCalls'
 import type { LiveStatus } from '../hooks/useLiveCalls'
 import {
-  UNKNOWN,
   formatCostMicroUsd,
   formatCount,
   formatDurationMs,
@@ -21,8 +22,8 @@ import {
   PASSTHROUGH_NOTE,
   zeroAsUnknown,
 } from '../lib/format'
-import { DASHBOARD_RANGES } from '../search/routes'
-import type { ActivityMetric, DashboardRange, DashboardSearch } from '../search/routes'
+import { DASHBOARD_RANGES, DEFAULT_COST_RANGE } from '../search/routes'
+import type { ActivityMetric, CostRange, DashboardRange, DashboardSearch } from '../search/routes'
 import { resolveTimeRange } from '../search/timeRange'
 import { mergeRows, tokensIn } from './callLogRows'
 import type { CallSummary } from './callLogRows'
@@ -43,6 +44,7 @@ import {
   totals,
 } from './dashboardData'
 import type { Change, GroupTotal, Measure, Totals, UsageBucket } from './dashboardData'
+import { CostSection } from './CostSection'
 import { formatRatio, sessionDurationMs } from './SessionList'
 
 const FEED_SIZE = 8
@@ -55,47 +57,6 @@ const STREAM_LABELS: Record<Exclude<LiveStatus, 'off'>, string> = {
   reconnecting: 'Reconnecting…',
   closed: 'Stream closed',
   connecting: 'Connecting…',
-}
-
-function Maybe({ text }: { text: string }) {
-  return text === UNKNOWN ? <span className="unknown">{UNKNOWN}</span> : <>{text}</>
-}
-
-function Panel({
-  id,
-  title,
-  action,
-  className,
-  children,
-}: {
-  id: string
-  title: string
-  action?: ReactNode
-  className?: string
-  children: ReactNode
-}) {
-  return (
-    <section className={className ? `panel ${className}` : 'panel'} aria-labelledby={id}>
-      <div className="panel-head">
-        <h2 id={id}>{title}</h2>
-        {action}
-      </div>
-      {children}
-    </section>
-  )
-}
-
-/** Loading, error and content of a panel from one query. */
-function QueryState({
-  query,
-  children,
-}: {
-  query: { isPending: boolean; isError: boolean; error: unknown; refetch: () => unknown }
-  children: () => ReactNode
-}) {
-  if (query.isError) return <ErrorMessage error={query.error} onRetry={() => void query.refetch()} />
-  if (query.isPending) return <LoadingState />
-  return <>{children()}</>
 }
 
 type Bad = 'up' | 'down' | 'none'
@@ -187,42 +148,6 @@ function Tiles({
   )
 }
 
-/** A ranked list with a bar per row; the bar is the share of the known cost of the list. */
-function RankedList({
-  label,
-  rows,
-  total,
-  link,
-}: {
-  label: string
-  rows: GroupTotal[]
-  total: number
-  link?: (group: string) => ReactNode
-}) {
-  if (rows.length === 0) return <EmptyState>No calls in this range.</EmptyState>
-  const max = Math.max(1, ...rows.map((r) => r.cost ?? 0))
-  return (
-    <ol className="ranked" aria-label={label}>
-      {rows.map((r) => {
-        const name = formatText(r.group)
-        const share = r.cost !== null && total > 0 ? `${((r.cost / total) * 100).toFixed(0)}%` : ''
-        return (
-          <li key={r.group}>
-            <span className="ranked-name">{link && r.group !== '' ? link(r.group) : <Tag text={name} className="mono" />}</span>
-            <span className="ranked-value num">
-              <Maybe text={formatCostMicroUsd(r.cost)} />
-              {share && <span className="dim"> · {share}</span>}
-            </span>
-            <span className="ranked-bar" aria-hidden="true">
-              <span style={{ width: `${(((r.cost ?? 0) / max) * 100).toFixed(1)}%` }} />
-            </span>
-          </li>
-        )
-      })}
-    </ol>
-  )
-}
-
 function knownCost(rows: GroupTotal[]): number {
   return rows.reduce((sum, r) => sum + (r.cost ?? 0), 0)
 }
@@ -237,9 +162,12 @@ export function DashboardView() {
   const navigate = useNavigate({ from: '/' })
   const range: DashboardRange = search.range ?? DEFAULT
   const metric: ActivityMetric = search.metric ?? 'calls'
+  const costRange: CostRange = search.cost_range ?? DEFAULT_COST_RANGE
 
   // The window is fixed per range and `now`, so the query keys are stable until Refresh.
   const [now, setNow] = useState(() => new Date())
+  // The cost section keeps its own clock: a change of the dashboard range must not refetch its heavy aggregates.
+  const [costNow, setCostNow] = useState(() => new Date())
   const window = useMemo(() => resolveTimeRange({ range }, now), [range, now])
   const prevWindow = useMemo(() => previousWindow(window), [window])
   const grain = RANGE_GRAIN[range]
@@ -299,7 +227,14 @@ export function DashboardView() {
       <div className="view-header">
         <h1 id="view-title" tabIndex={-1}>Overview</h1>
         <span className="dim">Updated {now.toLocaleTimeString()}</span>
-        <button type="button" onClick={() => setNow(new Date())}>
+        <button
+          type="button"
+          onClick={() => {
+            const at = new Date()
+            setNow(at)
+            setCostNow(at)
+          }}
+        >
           Refresh
         </button>
       </div>
@@ -398,6 +333,13 @@ export function DashboardView() {
         </Panel>
 
       </div>
+
+      <CostSection
+        range={costRange}
+        onRangeChange={(next) => setSearch({ cost_range: next === DEFAULT_COST_RANGE ? undefined : next })}
+        now={costNow}
+        ready={current.isSuccess || current.isError}
+      />
 
       <div className="dash-grid dash-grid-2">
         <Panel

@@ -388,6 +388,7 @@ main:focus { outline: none; }
 .ranked-name a { color: var(--fg); text-decoration: none; }
 .ranked-name a:hover { text-decoration: underline; }
 .ranked-value { font-size: var(--text-sm); white-space: nowrap; }
+.ranked-note { grid-column: 1 / -1; color: var(--muted); font-size: var(--text-xs); }
 .ranked-bar { grid-column: 1 / -1; height: 3px; background: var(--bg-active); border-radius: 2px; overflow: hidden; }
 .ranked-bar > span { display: block; height: 100%; background: var(--accent); }
 .activity-chart { margin: 0; }
@@ -413,6 +414,28 @@ main:focus { outline: none; }
 .fill-5 { fill: var(--series-5); }
 .error-overlay polyline { fill: none; stroke: var(--error); stroke-width: 1.5; stroke-dasharray: 4 3; }
 .error-overlay rect { fill: var(--error); }
+
+/* Cost section of the overview (ADR 0059): functional styling; the final look is a later phase. */
+.cost-section { margin-bottom: 12px; }
+.cost-section > .panel-head { margin-bottom: 8px; }
+.cost-section > .panel-head .segmented { margin-left: auto; }
+.cost-section > .panel-head .segmented + small { margin-left: 0; }
+.cost-note { margin: 0 0 8px; }
+.cost-tiles { margin-bottom: 12px; }
+.cost-tiles .kpi-value { font-size: var(--text-lg); font-weight: 500; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.cost-tiles .kpi-sub { font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.cost-tiles .state { padding: 4px 0; }
+.unassigned { margin: 8px 0 0; }
+.month-chart { margin: 0; }
+.month-chart svg { display: block; width: 100%; height: auto; max-height: 240px; }
+.month-baseline { stroke: var(--border); stroke-width: 1; }
+.month-bar { fill: var(--bar-strong); stroke: none; }
+.month-bar-best { fill: var(--accent); stroke: var(--fg); stroke-width: 2; }
+.month-bar-partial { stroke: var(--fg); stroke-width: 1.5; stroke-dasharray: 4 3; fill-opacity: 0.55; }
+.month-value, .month-axis, .month-note, .month-best { fill: var(--fg); font-size: 11px; font-variant-numeric: tabular-nums; }
+.month-axis, .month-note { fill: var(--muted); font-size: 10px; }
+.month-best { font-weight: 600; font-size: 10px; }
+.month-group:hover .month-bar { fill: var(--accent); }
 
 /* Cost and cache page, and the read-only config page (ADR 0035). */
 .kpi-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -440,5 +463,7 @@ main:focus { outline: none; }
   :focus-visible { outline-color: Highlight; }
   .app-sidebar a[aria-current='page'] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
   .state-loading::before { border-color: GrayText; border-top-color: Highlight; }
-  .swatch, .bar-cell .bar, .volume-chart .bar, .ranked-bar > span, .sparkline polyline, .sparkline circle { forced-color-adjust: none; }
+  .swatch, .bar-cell .bar, .volume-chart .bar, .ranked-bar > span, .sparkline polyline, .sparkline circle, .month-bar { forced-color-adjust: none; }
+  .month-value, .month-axis, .month-note, .month-best { fill: CanvasText; }
+  .month-baseline { stroke: CanvasText; }
 }

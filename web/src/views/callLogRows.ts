@@ -53,6 +53,7 @@ export function filterQuery(search: CallsSearch): CallsQuery {
     prompt: search.prompt?.[0],
     agent_type: search.agent_type,
     request_class: search.request_class,
+    project: search.project,
     tool: search.tool,
     tool_error: search.tool_error,
     latency_ms_gte: search.latency_ms_gte,

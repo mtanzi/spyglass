@@ -9,6 +9,7 @@ import { call } from './callLogRows.test'
 import type { CallSummary } from './callLogRows'
 import { bucket } from './dashboardFixtures.test-util'
 import type { UsageBucket } from './dashboardData'
+import type { MonthRow, ProjectsResponse } from './costOverviewData'
 
 class FakeEventSource {
   static CLOSED = 2
@@ -47,7 +48,38 @@ interface Fixture {
   calls: CallSummary[]
   sessions: object[]
   authMode: string
+  months: MonthRow[]
+  projects: ProjectsResponse
+  sessionCount: number
+  /** Cost-section paths that answer with an error. */
+  failing: string[]
+  /** The headline usage query never answers, so the tiles do not render. */
+  holdHeadline: boolean
 }
+
+const month = (m: string, over: Partial<MonthRow> = {}): MonthRow => {
+  const [y, mo] = m.split('-').map(Number)
+  return {
+    month: m,
+    start: new Date(Date.UTC(y, mo - 1, 1)).toISOString(),
+    end: new Date(Date.UTC(y, mo, 1)).toISOString(),
+    calls: 10,
+    cost_micro_usd: 1_000_000,
+    unpriced_calls: 0,
+    api_equivalent: false,
+    partial: false,
+    ...over,
+  }
+}
+const projectRow = (project: string, cost: number | null, over: object = {}) => ({
+  project,
+  calls: 5,
+  sessions: 2,
+  cost_micro_usd: cost,
+  unpriced_calls: 0,
+  api_equivalent: false,
+  ...over,
+})
 
 const defaults: Fixture = {
   current: [
@@ -72,6 +104,20 @@ const defaults: Fixture = {
     provider: [bucket({ group: 'anthropic', cost_micro_usd: 6_000_000 })],
   },
   authMode: 'proxy_key',
+  // September $3, October $6, November so far $1: October is the most costly month, $6 of $10.
+  months: [
+    month('2026-09', { calls: 20, cost_micro_usd: 3_000_000 }),
+    month('2026-10', { calls: 30, cost_micro_usd: 6_000_000, unpriced_calls: 3 }),
+    month('2026-11', { calls: 4, cost_micro_usd: 1_000_000, partial: true }),
+  ],
+  projects: {
+    projects: [projectRow('spyglass', 5_000_000), projectRow('docs-site', 1_500_000, { unpriced_calls: 2 })],
+    project_count: 2,
+    unassigned: { calls: 7, cost_micro_usd: 3_500_000, unpriced_calls: 0 },
+  },
+  sessionCount: 5,
+  failing: [],
+  holdHeadline: false,
   calls: [call('c1', { ts: '2026-11-01T11:59:00Z', model: 'claude-opus', status: 429, error_class: 'rate_limited' })],
   sessions: [
     {
@@ -102,8 +148,18 @@ function stubApi(over: Partial<Fixture> = {}) {
       urls.push(url)
       const q = new URL(url, 'http://x').searchParams
       const json = (body: unknown) => new Response(JSON.stringify(body))
+      const costPath = ['months', 'projects', 'sessions'].find((p) => url.startsWith(`/admin/usage/${p}`))
+      if (costPath !== undefined) {
+        if (f.failing.includes(costPath)) {
+          return new Response(JSON.stringify({ error: { type: 'invalid_parameter', message: 'bad', parameter: costPath } }), { status: 400 })
+        }
+        if (costPath === 'months') return json({ tz: q.get('tz'), months: f.months })
+        if (costPath === 'projects') return json(f.projects)
+        return json({ sessions: [], session_count: f.sessionCount })
+      }
       if (url.startsWith('/admin/usage')) {
         const group = q.get('group_by')
+        if (f.holdHeadline && !group && q.get('from') === CURRENT_FROM) return new Promise<Response>(() => {})
         const buckets = group ? (f.byGroup[group] ?? []) : q.get('from') === CURRENT_FROM ? f.current : f.previous
         return json({ group_by: group, grain: q.get('grain'), buckets })
       }
@@ -265,4 +321,265 @@ test('the overview has no accessibility violations', async () => {
   vi.useRealTimers()
   const results = await axe.run(container, { rules: { 'color-contrast': { enabled: false } } })
   expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([])
+})
+
+// The cost section (ADR 0059).
+
+const costUrls = (urls: string[], path: string) => urls.filter((u) => u.startsWith(`/admin/usage/${path}?`))
+const param = (url: string, name: string) => new URL(url, 'http://x').searchParams.get(name)
+const localParts = (iso: string | null) => {
+  const d = new Date(iso ?? '')
+  return [d.getFullYear(), d.getMonth() + 1, d.getDate(), d.getHours(), d.getMinutes()]
+}
+const costTile = (label: string) => screen.getByText(label, { selector: 'dt' }).parentElement as HTMLElement
+
+test('the cost section does not ask for data before the headline tiles have rendered', async () => {
+  const urls = stubApi({ holdHeadline: true })
+  await renderAt('/ui/')
+  await screen.findByRole('list', { name: 'Errors by class' })
+  // The tiles have not rendered, so the heavy queries have not started.
+  expect(costUrls(urls, 'months')).toHaveLength(0)
+  expect(costUrls(urls, 'projects')).toHaveLength(0)
+})
+
+test('the default period is three calendar months up to now, cut in the browser zone', async () => {
+  const urls = stubApi()
+  await renderAt('/ui/')
+  await screen.findByRole('list', { name: 'Cost per project' })
+  const [months] = costUrls(urls, 'months')
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  expect(param(months, 'tz')).toBe(zone)
+  // 1 November 2026 back to September: the start of the local month.
+  expect(localParts(param(months, 'from'))).toEqual([2026, 9, 1, 0, 0])
+  expect(param(months, 'to')).toBe(new Date(NOW).toISOString())
+  expect(screen.getByText(`Months in ${zone}`)).toBeTruthy()
+  const [projects] = costUrls(urls, 'projects')
+  expect(param(projects, 'limit')).toBe('10')
+  expect(param(projects, 'from')).toBe(param(months, 'from'))
+  expect(param(costUrls(urls, 'sessions')[0], 'limit')).toBe('1')
+})
+
+test('the period is in the URL, is announced, and leaves the dashboard range alone', async () => {
+  const urls = stubApi()
+  const { router } = await renderAt('/ui/')
+  await screen.findByRole('list', { name: 'Cost per project' })
+  expect(screen.getByRole('button', { name: '3 months' }).getAttribute('aria-pressed')).toBe('true')
+  expect(screen.queryByText(/longer period can take longer/)).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: '6 months' }))
+  await waitFor(() => expect(router.state.matches.at(-1)?.search).toEqual({ cost_range: '6m' }))
+  expect(screen.getByText('Showing the last 6 months')).toBeTruthy()
+  await waitFor(() => expect(costUrls(urls, 'months')).toHaveLength(2))
+  expect(localParts(param(costUrls(urls, 'months')[1], 'from'))).toEqual([2026, 6, 1, 0, 0])
+  expect(screen.getByText(/longer period can take longer/)).toBeTruthy()
+  // A dashboard range change moves the activity windows and not the cost aggregates.
+  fireEvent.click(screen.getByRole('button', { name: '7d' }))
+  await waitFor(() => expect(router.state.matches.at(-1)?.search).toEqual({ range: '7d', cost_range: '6m' }))
+  await waitFor(() => expect(urls.some((u) => u.includes('from=2026-10-25T12%3A00%3A00.000Z'))).toBe(true))
+  expect(costUrls(urls, 'months')).toHaveLength(2)
+  // Back to the default: the parameter leaves the URL.
+  fireEvent.click(screen.getByRole('button', { name: '3 months' }))
+  await waitFor(() => expect(router.state.matches.at(-1)?.search).toEqual({ range: '7d' }))
+})
+
+test('the tiles name the most costly month and project with their share of the period', async () => {
+  stubApi()
+  await renderAt('/ui/')
+  await screen.findByRole('list', { name: 'Cost per project' })
+  // October is $6 of the $10 known: 60%, and three of its calls are unpriced.
+  const monthTile = costTile('Most costly month')
+  expect(monthTile.textContent).toContain('October 2026')
+  expect(monthTile.textContent).toContain('$6.00 · 60% of the period · partial')
+  // The project has $5 of the $10 of the whole period, projects past the list and calls with no project included.
+  const projectTile = costTile('Most costly project')
+  expect(projectTile.textContent).toContain('spyglass')
+  expect(projectTile.textContent).toContain('$5.00 · 50% of the period')
+  // The router writes a list parameter as JSON, as every other link to the call log does.
+  expect(within(projectTile).getByRole('link', { name: 'Call log' }).getAttribute('href')).toContain('project=%5B%22spyglass%22%5D')
+})
+
+test('the month chart and its table fallback hold the same numbers', async () => {
+  stubApi()
+  await renderAt('/ui/')
+  const chart = await screen.findByRole('img', { name: 'Cost per month: $10.00 in 3 months; most costly October 2026, $6.00' })
+  // Text marks, so the maximum and the running month are not told by colour or outline alone.
+  expect(within(chart).getByText('highest')).toBeTruthy()
+  expect(chart.textContent).toContain('so far')
+  expect(chart.textContent).toContain('partial')
+  const table = screen.getByRole('table', { name: 'Cost per month', hidden: true })
+  const rows = within(table).getAllByRole('row', { hidden: true }).slice(1)
+  expect(rows.map((r) => Array.from(r.children).map((c) => c.textContent))).toEqual([
+    ['September 2026', '20', '$3.00', '0'],
+    ['October 2026', '30', '$6.00', '3'],
+    ['November 2026 so far', '4', '$1.00', '0'],
+  ])
+})
+
+test('projects are ranked, link to the call log, and the calls with none get a row of their own', async () => {
+  stubApi()
+  const { router } = await renderAt('/ui/')
+  const list = await screen.findByRole('list', { name: 'Cost per project' })
+  expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+    'spyglass$5.00 · 50%',
+    'docs-site$1.50 · 15%partial: 2 unpriced',
+  ])
+  // Not a project, so not in the ranking, but its calls and cost are not lost.
+  expect(screen.getByText(/No project/).parentElement?.textContent).toBe('No project: $3.50 · 7 calls')
+  fireEvent.click(within(list).getByRole('link', { name: 'docs-site' }))
+  await waitFor(() => expect(router.state.location.pathname).toBe('/calls'))
+  const search = router.state.matches.at(-1)?.search as { project: string[]; from: string; to: string }
+  expect(search.project).toEqual(['docs-site'])
+  expect(localParts(search.from)).toEqual([2026, 9, 1, 0, 0])
+  expect(search.to).toBe(new Date(NOW).toISOString())
+})
+
+test('the project list says how many more projects there are', async () => {
+  stubApi({ projects: { ...defaults.projects, project_count: 14 } })
+  await renderAt('/ui/')
+  await screen.findByRole('list', { name: 'Cost per project' })
+  expect(screen.getByText('12 more')).toBeTruthy()
+})
+
+test('this month at the current pace is a straight line from the month so far', async () => {
+  // 14.5 of the 30 days of November have passed: $1.00 so far becomes $2.07, against $6.00 in October.
+  vi.setSystemTime(new Date('2026-11-15T12:00:00Z'))
+  stubApi()
+  await renderAt('/ui/')
+  await screen.findByRole('list', { name: 'Cost per project' })
+  const pace = costTile('This month at the current pace')
+  expect(pace.querySelector('.kpi-value')?.textContent).toBe('$2.07')
+  expect(pace.textContent).toContain('$1.00 so far in November 2026')
+  expect(pace.textContent).toContain('−66% vs October 2026')
+})
+
+test('the pace waits for the month to be a day old', async () => {
+  stubApi()
+  await renderAt('/ui/')
+  await screen.findByRole('list', { name: 'Cost per project' })
+  const pace = costTile('This month at the current pace')
+  expect(pace.querySelector('.kpi-value')?.textContent).toBe('too early')
+  expect(pace.textContent).toContain('$1.00 so far')
+})
+
+test('the average per session counts the known cost over the sessions, and says it is partial', async () => {
+  stubApi()
+  await renderAt('/ui/')
+  await screen.findByRole('list', { name: 'Cost per project' })
+  // $10.00 over 5 sessions, and over the 51 priced calls of 54: $0.20.
+  const tileText = costTile('Average cost per session')
+  await waitFor(() => expect(tileText.querySelector('.kpi-value')?.textContent).toBe('$2.00'))
+  expect(tileText.textContent).toContain('$0.20 per call')
+  expect(tileText.textContent).toContain('partial: 3 unpriced')
+})
+
+test('a period with no calls says so in every panel and the tiles read no data', async () => {
+  stubApi({
+    months: [month('2026-09', { calls: 0, cost_micro_usd: 0 }), month('2026-10', { calls: 0, cost_micro_usd: 0 }), month('2026-11', { calls: 0, cost_micro_usd: 0, partial: true })],
+    projects: { projects: [], project_count: 0, unassigned: { calls: 0, cost_micro_usd: 0, unpriced_calls: 0 } },
+    sessionCount: 0,
+  })
+  await renderAt('/ui/')
+  await waitFor(() => expect(screen.getAllByText('No calls in the last 3 months.')).toHaveLength(2))
+  for (const label of ['Most costly month', 'Most costly project', 'This month at the current pace', 'Average cost per session']) {
+    expect(costTile(label).textContent).toContain('no data')
+    expect(costTile(label).textContent).not.toContain('$0.00')
+  }
+})
+
+test('when no call has a price the cost is unknown, not zero, and the config page is one link away', async () => {
+  const unknown = { cost_micro_usd: null, unpriced_calls: 10 }
+  stubApi({
+    months: [month('2026-10', { calls: 10, ...unknown }), month('2026-11', { calls: 10, partial: true, ...unknown })],
+    projects: { projects: [projectRow('spyglass', null, { unpriced_calls: 10 })], project_count: 1, unassigned: { calls: 0, cost_micro_usd: 0, unpriced_calls: 0 } },
+  })
+  await renderAt('/ui/')
+  await waitFor(() => expect(screen.getAllByText(/Cost is unknown: no price matched the calls in this period/)).toHaveLength(2))
+  expect(screen.getAllByRole('link', { name: 'Check the pricing in the config' })[0].getAttribute('href')).toBe('/ui/admin/config')
+  expect(costTile('Most costly month').textContent).toContain('unknown')
+  expect(costTile('Most costly project').textContent).toContain('unknown')
+  expect(screen.queryByRole('img', { name: /Cost per month/ })).toBeNull()
+})
+
+test('a month with no calls, padded with a cost of 0 by the API, does not make unpriced calls cost zero', async () => {
+  // GET /admin/usage/months returns every month of the window; a month with no
+  // calls has cost_micro_usd 0. Only the month with calls is unpriced.
+  stubApi({
+    months: [
+      month('2026-09', { calls: 0, cost_micro_usd: 0 }),
+      month('2026-10', { calls: 0, cost_micro_usd: 0 }),
+      month('2026-11', { calls: 5, cost_micro_usd: null, unpriced_calls: 5, partial: true }),
+    ],
+    projects: { projects: [projectRow('spyglass', null, { unpriced_calls: 3 })], project_count: 1, unassigned: { calls: 2, cost_micro_usd: null, unpriced_calls: 2 } },
+    sessionCount: 2,
+  })
+  await renderAt('/ui/')
+  await waitFor(() => expect(screen.getAllByText(/Cost is unknown: no price matched the calls in this period/)).toHaveLength(2))
+  expect(costTile('Average cost per session').textContent).not.toContain('$0.00')
+  expect(costTile('Average cost per session').textContent).toContain('unknown')
+})
+
+test('with no project recorded the panel explains where a project comes from and keeps the unassigned row', async () => {
+  stubApi({ projects: { projects: [], project_count: 0, unassigned: { calls: 7, cost_micro_usd: 3_500_000, unpriced_calls: 0 } } })
+  await renderAt('/ui/')
+  expect(await screen.findByText('No calls have a project yet.')).toBeTruthy()
+  expect(screen.getByText(/x-spyglass-project/)).toBeTruthy()
+  expect(screen.getByText(/keys\[\]\.project/)).toBeTruthy()
+  expect(screen.getByText(/No project/, { selector: 'span' }).parentElement?.textContent).toBe('No project: $3.50 · 7 calls')
+  expect(costTile('Most costly project').textContent).toContain('no project recorded')
+})
+
+test('projects with no price still list, with a priced no-project row, when the period cost is known', async () => {
+  stubApi({
+    months: [month('2026-11', { calls: 17, cost_micro_usd: 3_500_000, unpriced_calls: 10, partial: true })],
+    projects: { projects: [projectRow('spyglass', null, { unpriced_calls: 10 })], project_count: 1, unassigned: { calls: 7, cost_micro_usd: 3_500_000, unpriced_calls: 0 } },
+  })
+  await renderAt('/ui/')
+  const list = await screen.findByRole('list', { name: 'Cost per project' })
+  expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['spyglassunknownpartial: 10 unpriced'])
+  expect(screen.getByText(/No project/, { selector: 'span' }).parentElement?.textContent).toBe('No project: $3.50 · 7 calls')
+  expect(screen.queryByText(/Cost is unknown: no price matched the calls in this period/)).toBeNull()
+})
+
+test('without the period cost the project tile and list show no share', async () => {
+  stubApi({ failing: ['months'] })
+  await renderAt('/ui/')
+  const list = await screen.findByRole('list', { name: 'Cost per project' })
+  expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+    'spyglass$5.00',
+    'docs-site$1.50partial: 2 unpriced',
+  ])
+  const projectTile = costTile('Most costly project')
+  expect(projectTile.textContent).toContain('$5.00')
+  expect(projectTile.textContent).not.toContain('of the period')
+})
+
+test('a month with no calls is a labelled gap,and one month of data still has a most costly month', async () => {
+  stubApi({ months: [month('2026-09', { calls: 0, cost_micro_usd: 0 }), month('2026-10', { calls: 0, cost_micro_usd: 0 }), month('2026-11', { calls: 4, cost_micro_usd: 2_000_000, partial: true })] })
+  await renderAt('/ui/')
+  const chart = await screen.findByRole('img', { name: /Cost per month/ })
+  expect(Array.from(chart.querySelectorAll('.month-value')).map((t) => t.textContent)).toEqual(['no calls', 'no calls', '$2.00'])
+  const table = screen.getByRole('table', { name: 'Cost per month', hidden: true })
+  expect(within(table).getByText('September 2026').closest('tr')?.textContent).toContain('no calls')
+  const tile = costTile('Most costly month')
+  expect(tile.textContent).toContain('November 2026')
+  expect(tile.textContent).toContain('100% of the period')
+})
+
+test('a failing panel shows its own error with Retry and leaves the others alone', async () => {
+  const failing = ['projects']
+  stubApi({ failing })
+  await renderAt('/ui/')
+  const alert = (await screen.findAllByText('The filter "projects" is not valid.'))[0]
+  expect(await screen.findByRole('img', { name: /Cost per month/ })).toBeTruthy()
+  expect(costTile('Most costly month').textContent).toContain('October 2026')
+  expect(costTile('Most costly project').textContent).toContain('The filter "projects" is not valid.')
+  failing.length = 0
+  fireEvent.click(within(alert.closest('[role="alert"]') as HTMLElement).getByRole('button', { name: 'Retry' }))
+  expect(await screen.findByRole('list', { name: 'Cost per project' })).toBeTruthy()
+})
+
+test('API-equivalent cost in the section carries the same note as the breakdowns', async () => {
+  stubApi({ months: defaults.months.map((m) => ({ ...m, api_equivalent: true })) })
+  await renderAt('/ui/')
+  await screen.findByRole('list', { name: 'Cost per project' })
+  expect(screen.getByText(/Includes API-equivalent cost of client_passthrough providers\. client_passthrough:/)).toBeTruthy()
 })
