@@ -2,6 +2,19 @@
 
 Notable changes to Spyglass. Release 0.1.0 and earlier are described in their [GitHub release notes](https://github.com/mtanzi/spyglass/releases).
 
+## [0.9.0](https://github.com/mtanzi/spyglass/compare/v0.8.0...v0.9.0) (2026-11-25)
+
+
+### Features
+
+* **api:** add GET /admin/usage/sessions ranked by cost ([#169](https://github.com/mtanzi/spyglass/issues/169)) ([b78132e](https://github.com/mtanzi/spyglass/commit/b78132e809a051a413041ba6e91b2c275091c504))
+* **proxy:** detect and record the project of each call ([#166](https://github.com/mtanzi/spyglass/issues/166)) ([9f4798b](https://github.com/mtanzi/spyglass/commit/9f4798b3109c67a3ce53a7e65ef90fc8fd2b397b))
+
+
+### Bug Fixes
+
+* **api:** document the project filter on GET /admin/usage/sessions ([#171](https://github.com/mtanzi/spyglass/issues/171)) ([d670797](https://github.com/mtanzi/spyglass/commit/d67079723994feabfab469bdc828768b89560012))
+
 ## [0.8.0](https://github.com/mtanzi/spyglass/compare/v0.7.0...v0.8.0) (2026-11-24)
 
 
