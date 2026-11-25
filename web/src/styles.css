@@ -349,17 +349,16 @@ main:focus { outline: none; }
 .sparkline-error circle { fill: var(--error); }
 .dash-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
 .dash-grid .span-2 { grid-column: span 2; }
+.dash-grid .span-all { grid-column: 1 / -1; }
 .dash-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.dash-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 /* Layout follows the width of the parent, not the viewport (the sidebar takes a share of it). Container thresholds are in rem: em would use the 13px body size here. */
 .dashboard, .summary-strip { container-type: inline-size; }
 @container (max-width: 60rem) {
-  .dash-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dash-grid-2 { grid-template-columns: minmax(0, 1fr); }
 }
 @container (max-width: 45rem) {
   .dash-grid { grid-template-columns: minmax(0, 1fr); }
-  .dash-grid .span-2 { grid-column: auto; }
+  .dash-grid .span-2, .dash-grid .span-all { grid-column: auto; }
 }
 @container (max-width: 40rem) { .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .panel { min-width: 0; padding: 10px 12px; background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius); }
@@ -436,6 +435,20 @@ main:focus { outline: none; }
 .month-axis, .month-note { fill: var(--muted); font-size: 10px; }
 .month-best { font-weight: 600; font-size: 10px; }
 .month-group:hover .month-bar { fill: var(--accent); }
+.punchcard { margin: 0; }
+.punchcard-scroll { overflow-x: auto; }
+.punchcard svg { display: block; width: 100%; min-width: 32rem; height: auto; max-height: 260px; }
+.punch-axis { fill: var(--muted); font-size: 10px; }
+.punch-row { stroke: var(--border-subtle); stroke-width: 1; }
+.punch-dot { fill: var(--accent); stroke: none; }
+.punch-dot-best { stroke: var(--fg); stroke-width: 2; }
+.punch-dot-unknown { fill: none; stroke: var(--muted); stroke-width: 1.5; }
+.punch-cell:hover .punch-dot { stroke: var(--fg); stroke-width: 1.5; }
+.punch-caption { margin-top: 6px; font-size: var(--text-xs); }
+.cost-table th[scope='col'] { white-space: normal; }
+/* Narrow panels: the key clips short and the cost cell wraps, so the cost stays in view. */
+.cost-table .cell-clip { max-width: 6.5rem; }
+.cost-table td.num:last-child { white-space: normal; min-width: 6rem; }
 
 /* Cost and cache page, and the read-only config page (ADR 0035). */
 .kpi-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -463,7 +476,8 @@ main:focus { outline: none; }
   :focus-visible { outline-color: Highlight; }
   .app-sidebar a[aria-current='page'] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
   .state-loading::before { border-color: GrayText; border-top-color: Highlight; }
-  .swatch, .bar-cell .bar, .volume-chart .bar, .ranked-bar > span, .sparkline polyline, .sparkline circle, .month-bar { forced-color-adjust: none; }
-  .month-value, .month-axis, .month-note, .month-best { fill: CanvasText; }
-  .month-baseline { stroke: CanvasText; }
+  .swatch, .bar-cell .bar, .volume-chart .bar, .ranked-bar > span, .sparkline polyline, .sparkline circle, .month-bar, .punch-dot { forced-color-adjust: none; }
+  .month-value, .month-axis, .month-note, .month-best, .punch-axis { fill: CanvasText; }
+  .month-baseline, .punch-row { stroke: CanvasText; }
+  .punch-dot-unknown { stroke: CanvasText; }
 }

@@ -1,14 +1,18 @@
 import type { ResponseOf } from '../api/client'
+import { formatCostMicroUsd } from '../lib/format'
 import type { CostRange } from '../search/routes'
 import { compare } from './dashboardData'
 import type { Change, GroupTotal } from './dashboardData'
 
 // Pure helpers of the cost section on the overview (ADR 0059). Numbers come
-// from GET /admin/usage/months, /projects and /sessions. Unknown is not zero:
+// from GET /admin/usage/months, /projects, /punchcard, /sessions and /tools. Unknown is not zero:
 // a cost the API does not give is null and is never counted as zero.
 
 export type MonthRow = ResponseOf<'/admin/usage/months'>['months'][number]
 export type ProjectsResponse = ResponseOf<'/admin/usage/projects'>
+export type PunchcardCell = ResponseOf<'/admin/usage/punchcard'>['cells'][number]
+export type SessionCostRow = ResponseOf<'/admin/usage/sessions'>['sessions'][number]
+export type ToolCostRow = ResponseOf<'/admin/usage/tools'>['tools'][number]
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -219,4 +223,83 @@ export function averages(months: MonthRow[], sessionCount: number): Averages {
 export function monthWindow(month: MonthRow, now: Date): { from: string; to: string } {
   const end = Date.parse(month.end)
   return { from: month.start, to: end > now.getTime() ? now.toISOString() : month.end }
+}
+
+/** Weekdays as the punchcard orders them: 1 is Monday, 7 is Sunday. */
+export const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const
+
+export function weekdayName(weekday: number): string {
+  return WEEKDAYS[weekday - 1] ?? `Day ${weekday}`
+}
+
+/** "14:00–14:59": the clock hour of a cell, on the wall clock of the zone. */
+export function hourRange(hour: number): string {
+  const h = String(hour).padStart(2, '0')
+  return `${h}:00–${h}:59`
+}
+
+/** "Tuesday 14:00–14:59". */
+export function cellName(cell: Pick<PunchcardCell, 'weekday' | 'hour'>): string {
+  return `${weekdayName(cell.weekday)} ${hourRange(cell.hour)}`
+}
+
+/**
+ * The cell with the highest known cost. A tie goes to the earlier cell (the
+ * API orders cells by weekday, then hour). A cell with unpriced calls stays a
+ * candidate and is marked partial: its cost is a floor.
+ */
+export function mostCostlyCell(cells: PunchcardCell[]): Leader<PunchcardCell> {
+  const withCalls = cells.filter((c) => c.calls > 0)
+  if (withCalls.length === 0) return { kind: 'none' }
+  let best: PunchcardCell | undefined
+  for (const c of withCalls) {
+    if (c.cost_micro_usd === null) continue
+    if (best === undefined || c.cost_micro_usd > (best.cost_micro_usd ?? 0)) best = c
+  }
+  if (best === undefined) return { kind: 'unknown' }
+  return {
+    kind: 'known',
+    row: best,
+    share: shareOf(best.cost_micro_usd, knownTotal(withCalls)),
+    partial: best.unpriced_calls > 0,
+  }
+}
+
+/**
+ * The radius of a marker. The area is proportional to the cost, so the radius
+ * is proportional to its square root and the highest cost gets `maxRadius`.
+ * Null for an unknown cost, which is drawn another way and never as zero.
+ */
+export function markerRadius(cost: number | null, max: number, maxRadius: number): number | null {
+  if (cost === null) return null
+  if (max <= 0 || cost <= 0) return 0
+  return maxRadius * Math.sqrt(cost / max)
+}
+
+/** Cells in the order of the table fallback: known cost first, highest first, then unknown cost; ties go to more calls, then the earlier cell. */
+export function cellsByCost(cells: PunchcardCell[]): PunchcardCell[] {
+  return [...cells].sort((a, b) => {
+    const aUnknown = a.cost_micro_usd === null
+    if (aUnknown !== (b.cost_micro_usd === null)) return aUnknown ? 1 : -1
+    return (
+      (b.cost_micro_usd ?? 0) - (a.cost_micro_usd ?? 0) ||
+      b.calls - a.calls ||
+      a.weekday - b.weekday ||
+      a.hour - b.hour
+    )
+  })
+}
+
+/** What a reader gets from the punchcard in words, for the label of the figure. */
+export function punchcardLabel(cells: PunchcardCell[], best: PunchcardCell | undefined): string {
+  const total = knownTotal(cells)
+  const most = best === undefined ? '' : `; most costly ${cellName(best)}, ${formatCostMicroUsd(best.cost_micro_usd)}`
+  return total === null
+    ? 'Cost by weekday and hour: cost unknown, the figure shows calls only'
+    : `Cost by weekday and hour: ${formatCostMicroUsd(total)} in the period${most}`
+}
+
+/** True when there are rows and none has a known cost. */
+export function allCostsUnknown(rows: { cost_micro_usd: number | null }[]): boolean {
+  return rows.length > 0 && rows.every((r) => r.cost_micro_usd === null)
 }

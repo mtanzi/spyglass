@@ -6,14 +6,17 @@ import type { ReactNode } from 'react'
 import { readQueryOptions } from '../api/queries'
 import { InfoNote } from '../components/InfoNote'
 import { Maybe } from '../components/Maybe'
+import { SessionCostTable, ToolCostTable } from '../components/CostTables'
 import { MonthlyCostChart } from '../components/MonthlyCostChart'
 import { Panel, QueryState } from '../components/Panel'
+import { Punchcard } from '../components/Punchcard'
 import { RankedList } from '../components/RankedList'
 import { EmptyState, ErrorMessage } from '../components/states'
 import { formatCostMicroUsd, formatCount, PASSTHROUGH_NOTE } from '../lib/format'
 import { COST_RANGES } from '../search/routes'
 import type { CostRange } from '../search/routes'
 import {
+  allCostsUnknown,
   averages,
   browserZone,
   costWindow,
@@ -30,6 +33,8 @@ import type { Leader } from './costOverviewData'
 import { formatChange } from './dashboardData'
 
 const PROJECT_COUNT = 10
+const SESSION_COUNT = 10
+const TOOL_COUNT = 10
 // The five aggregates are the heaviest queries of the page: keep an answer for a minute (ADR 0059).
 const STALE_MS = 60_000
 
@@ -104,8 +109,8 @@ function LeaderValue<T>({
  * The cost section of the overview (ADR 0059): months and projects over a
  * period of whole calendar months in the browser's zone, with its own period
  * control. Every panel is its own query, so one failure or one slow
- * aggregate leaves the others as they are. The punchcard, sessions and tools
- * views come in the next phase.
+ * aggregate leaves the others as they are. A panel decides its own empty and
+ * "unknown" states from its own data, never from a query it does not need.
  */
 export function CostSection({
   range,
@@ -127,8 +132,10 @@ export function CostSection({
     ...readQueryOptions('/admin/usage/projects', { query: { ...win, limit: PROJECT_COUNT } }),
     ...read,
   })
-  // One row is enough: the tile needs the number of sessions only.
-  const sessions = useQuery({ ...readQueryOptions('/admin/usage/sessions', { query: { ...win, limit: 1 } }), ...read })
+  const punchcard = useQuery({ ...readQueryOptions('/admin/usage/punchcard', { query: { ...win, tz } }), ...read })
+  // The average-per-session tile reads the session count of the same answer.
+  const sessions = useQuery({ ...readQueryOptions('/admin/usage/sessions', { query: { ...win, limit: SESSION_COUNT } }), ...read })
+  const tools = useQuery({ ...readQueryOptions('/admin/usage/tools', { query: { ...win, limit: TOOL_COUNT } }), ...read })
 
   const monthRows = useMemo(() => months.data?.months ?? [], [months.data])
   const periodCost = knownTotal(monthRows)
@@ -144,7 +151,11 @@ export function CostSection({
     [projects.data, periodCost],
   )
   const apiEquivalent =
-    monthRows.some((m) => m.api_equivalent) || (projects.data?.projects.some((p) => p.api_equivalent) ?? false)
+    monthRows.some((m) => m.api_equivalent) ||
+    (projects.data?.projects.some((p) => p.api_equivalent) ?? false) ||
+    (punchcard.data?.cells.some((c) => c.api_equivalent) ?? false) ||
+    (sessions.data?.sessions.some((x) => x.api_equivalent) ?? false) ||
+    (tools.data?.tools.some((t) => t.api_equivalent) ?? false)
   const period = PERIOD_LABEL[range]
   const windowSearch = { from: win.from, to: win.to }
   const noCalls = `No calls in the last ${period}.`
@@ -158,7 +169,7 @@ export function CostSection({
     <section className="cost-section" aria-labelledby="cost-title">
       <div className="panel-head">
         <h2 id="cost-title">Cost</h2>
-        <small className="dim">{`Months in ${tz}`}</small>
+        <small className="dim">{`Months and hours in ${tz}`}</small>
         <div className="segmented" role="group" aria-label="Cost period">
           {COST_RANGES.map((r) => (
             <button key={r} type="button" aria-pressed={range === r} onClick={() => onRangeChange(r)}>
@@ -319,6 +330,69 @@ export function CostSection({
                     <p className="notice">{`${formatCount(data.project_count - data.projects.length)} more`}</p>
                   )}
                   <UnassignedRow unassigned={unassigned} />
+                </>
+              )
+            }}
+          </QueryState>
+        </Panel>
+      </div>
+
+      <div className="dash-grid">
+        <Panel id="punchcard-title" title="Cost by hour of the week" className="span-all">
+          <QueryState query={punchcard}>
+            {() => {
+              const cells = punchcard.data!.cells
+              if (cells.length === 0) return <EmptyState>{noCalls}</EmptyState>
+              return (
+                <>
+                  <Punchcard cells={cells} tz={punchcard.data!.tz} />
+                  {allCostsUnknown(cells) && (
+                    <p className="notice">
+                      Cost is unknown: no price matched the calls in this period. <Link to="/admin/config">Check the pricing in the config</Link>.
+                    </p>
+                  )}
+                </>
+              )
+            }}
+          </QueryState>
+        </Panel>
+      </div>
+
+      <div className="dash-grid dash-grid-2">
+        <Panel
+          id="costly-sessions-title"
+          title="Most costly sessions"
+          action={<Link to="/sessions" search={windowSearch}>All sessions</Link>}
+        >
+          <QueryState query={sessions}>
+            {() => {
+              const data = sessions.data!
+              if (data.sessions.length === 0) return <EmptyState>{`No sessions in the last ${period}.`}</EmptyState>
+              if (allCostsUnknown(data.sessions)) return allUnknown
+              return (
+                <>
+                  <SessionCostTable sessions={data.sessions} />
+                  {data.session_count > data.sessions.length && (
+                    <p className="notice">{`${formatCount(data.session_count - data.sessions.length)} more`}</p>
+                  )}
+                </>
+              )
+            }}
+          </QueryState>
+        </Panel>
+
+        <Panel id="costly-tools-title" title="Most costly tools" action={<Link to="/tools" search={windowSearch}>All tool calls</Link>}>
+          <QueryState query={tools}>
+            {() => {
+              const data = tools.data!
+              if (data.tools.length === 0) return <EmptyState>No tool calls in this period.</EmptyState>
+              if (allCostsUnknown(data.tools)) return allUnknown
+              return (
+                <>
+                  <ToolCostTable tools={data.tools} window={windowSearch} />
+                  {data.tool_count > data.tools.length && (
+                    <p className="notice">{`${formatCount(data.tool_count - data.tools.length)} more`}</p>
+                  )}
                 </>
               )
             }}
