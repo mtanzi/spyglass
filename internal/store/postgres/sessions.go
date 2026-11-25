@@ -33,8 +33,10 @@ const sessionColumns = `c.session_key,
 	` + usageSums + `, ` + costSum + `, count(*) FILTER (WHERE c.cost_usd IS NULL),
 	coalesce(sum(c.duration_ms), 0)::bigint, array_agg(c.id)`
 
-const sessionFields = `s(session_key, key_name, client, first_ts, last_ts, last_id, ended_at, calls, prompts,
-	errors, agents, models, input_uncached, cache_read, cache_write_5m, cache_write_1h, output, reasoning, cost, unpriced, llm_ms, call_ids)`
+const sessionFieldNames = `session_key, key_name, client, first_ts, last_ts, last_id, ended_at, calls, prompts,
+	errors, agents, models, input_uncached, cache_read, cache_write_5m, cache_write_1h, output, reasoning, cost, unpriced, llm_ms, call_ids`
+
+const sessionFields = `s(` + sessionFieldNames + `)`
 
 const sessionSelect = `s.session_key, s.key_name, s.client, s.first_ts, s.last_ts, s.last_id, s.ended_at, s.calls, s.prompts,
 	(SELECT count(DISTINCT t.tool_call_id) FROM tool_events t WHERE t.call_id = ANY(s.call_ids)),
@@ -54,7 +56,11 @@ type session struct {
 	lastID core.ID
 }
 
-func scanSession(r pgx.CollectableRow) (session, error) {
+func scanSession(r pgx.CollectableRow) (session, error) { return scanSessionWith(r) }
+
+// scanSessionWith scans the columns of sessionSelect, then any extra columns
+// the query adds after them into extra.
+func scanSessionWith(r pgx.CollectableRow, extra ...any) (session, error) {
 	var (
 		s                                session
 		key, name                        string
@@ -67,8 +73,9 @@ func scanSession(r pgx.CollectableRow) (session, error) {
 		models                           []string
 		in, cr, cw5, cw1, out, rs, costM = new(int64), new(int64), new(int64), new(int64), new(int64), new(int64), (*int64)(nil)
 	)
-	if err := r.Scan(&key, &name, &client, &first, &last, &lastID, &end, &calls, &prompts, &tools, &errs, &agents, &models,
-		in, cr, cw5, cw1, out, rs, &costM, &unpriced, &llmMS); err != nil {
+	dest := append([]any{&key, &name, &client, &first, &last, &lastID, &end, &calls, &prompts, &tools, &errs, &agents, &models,
+		in, cr, cw5, cw1, out, rs, &costM, &unpriced, &llmMS}, extra...)
+	if err := r.Scan(dest...); err != nil {
 		return s, err
 	}
 	s.SessionSummary = core.SessionSummary{
@@ -121,7 +128,7 @@ func (s *Store) ListSessions(ctx context.Context, f core.SessionFilter, p core.P
 		out[i] = g.SessionSummary
 		keys[i] = g.SessionKey
 	}
-	if err := fillToolTime(ctx, s.pool, out, keys, f.From, f.To); err != nil {
+	if err := fillToolTime(ctx, s.pool, out, keys, nil, f.From, f.To); err != nil {
 		return nil, nil, fmt.Errorf("postgres: list sessions: %w", err)
 	}
 	return out, next, nil
@@ -135,13 +142,14 @@ type queryer interface {
 // fillToolTime sets ToolTime and ToolTimeEstimated of the sessions, in one
 // query over the paired tool calls of all of them (the pairing of the tool
 // explorer, so header and estimated durations agree with it). A tool call
-// with no known duration adds nothing. It runs on the selected sessions only.
-func fillToolTime(ctx context.Context, q queryer, sessions []core.SessionSummary, keys []string, from, to time.Time) error {
+// with no known duration adds nothing. It runs on the selected sessions only,
+// and on the tool calls of callIDs only when callIDs is not empty.
+func fillToolTime(ctx context.Context, q queryer, sessions []core.SessionSummary, keys []string, callIDs []core.ID, from, to time.Time) error {
 	if len(sessions) == 0 {
 		return nil
 	}
 	w := &where{}
-	union := toolCallsSQL(w, core.ToolCallFilter{From: from, To: to, SessionKeys: keys}, time.Now(), nil, 0)
+	union := toolCallsSQL(w, core.ToolCallFilter{From: from, To: to, SessionKeys: keys, CallIDs: callIDs}, time.Now(), nil, 0)
 	rows, err := q.Query(ctx, `SELECT t.session_key, coalesce(sum(t.dur_ms), 0)::bigint,
 		coalesce(bool_or(t.dur_src = 'estimated'), false)
 		FROM (`+union+`) t WHERE t.session_key IS NOT NULL GROUP BY t.session_key`, w.args...)
@@ -250,7 +258,7 @@ func (s *Store) GetSession(ctx context.Context, key string) (core.SessionDetail,
 	// Every call of the session is in the summary, so the tool window covers
 	// them all: a tool use is timed at the end of its response.
 	tt := []core.SessionSummary{d.SessionSummary}
-	if err := fillToolTime(ctx, tx, tt, []string{key}, d.FirstTS, d.EndedAt.Add(time.Hour)); err != nil {
+	if err := fillToolTime(ctx, tx, tt, []string{key}, nil, d.FirstTS, d.EndedAt.Add(time.Hour)); err != nil {
 		return fail(err)
 	}
 	d.SessionSummary = tt[0]

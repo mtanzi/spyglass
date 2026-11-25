@@ -122,6 +122,10 @@ type ToolCallFilter struct {
 	// readers that summarise several sessions in one query, and has no HTTP
 	// parameter. Empty means no restriction.
 	SessionKeys []string
+	// CallIDs selects tool calls whose use, or whose result for a tool call
+	// with no use, is in one of these calls. Like SessionKeys it has no HTTP
+	// parameter. Empty means no restriction.
+	CallIDs     []ID
 	AgentID     string
 	Tools       []string
 	Sources     []ToolSource
@@ -158,6 +162,8 @@ func (f ToolCallFilter) Match(t ToolCall) bool {
 		!in(f.Statuses, t.Status):
 		return false
 	case !in(f.SessionKeys, t.SessionKey),
+		t.Status != ToolCallResultOnly && !in(f.CallIDs, t.UseCallID),
+		t.Status == ToolCallResultOnly && !in(f.CallIDs, t.ResultCallID),
 		f.SessionKey != "" && f.SessionKey != t.SessionKey,
 		f.AgentID != "" && f.AgentID != t.AgentID:
 		return false

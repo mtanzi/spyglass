@@ -262,6 +262,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/usage/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Most costly sessions
+         * @description Sessions, which are groups of calls with the same session key, ranked by
+         *     cost over the calls that match the call-log filters. Each row has the
+         *     fields of the session list and the session view, counted over the
+         *     matching calls of `[from, to)`. With no call filter set, the cost,
+         *     `unpriced_calls` and `errors` of a session are the numbers those views
+         *     show for the same range; with one, only the matching calls count, while
+         *     those views count every call of a listed session. Calls without a session header belong to no session. At most
+         *     `limit` sessions are returned, known cost first, highest first, then
+         *     unknown cost; ties go to the session with more calls, then to the lower
+         *     session key. `session_count` is the number of sessions there are, so a
+         *     client can say when the list is shorter than the whole. A long range can
+         *     take several seconds.
+         */
+        get: operations["getSessionCosts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/config": {
         parameters: {
             query?: never;
@@ -691,6 +722,20 @@ export interface components {
             /** @description One row per calendar month of the range, oldest first, gaps filled. At most 36. */
             months: components["schemas"]["MonthCost"][];
         };
+        /**
+         * @description One session of a cost ranking: the session summary over the matching
+         *     calls, and whether its cost includes an API-equivalent call.
+         */
+        SessionCost: components["schemas"]["SessionSummary"] & {
+            /** @description A priced call of the session went through a client_passthrough provider, so part of the cost is what the API would bill, not what the person pays. */
+            api_equivalent: boolean;
+        };
+        SessionCosts: {
+            /** @description At most `limit` sessions. Known cost first, highest first, then unknown cost; ties by calls, then session key. */
+            sessions: components["schemas"]["SessionCost"][];
+            /** @description Every session of the matching calls, including those past `limit`. */
+            session_count: number;
+        };
         ConfigView: {
             providers: components["schemas"]["ProviderView"][];
             pricing: components["schemas"]["PricingView"][];
@@ -788,6 +833,8 @@ export interface components {
         CostMicroUsdGte: number;
         /** @description Page size. Default 50, maximum 500. */
         Limit: number;
+        /** @description Number of rows of a ranked list. Default 10, maximum 100. */
+        RankedLimit: number;
         /** @description The `next_cursor` of the previous page. Opaque; do not build it. */
         Cursor: components["schemas"]["Cursor"];
         /** @description Who ran the tool, `client` or `server`. Repeat to match several. */
@@ -1361,6 +1408,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MonthlyCosts"];
+                };
+            };
+            400: components["responses"]["Error"];
+            500: components["responses"]["Error"];
+        };
+    };
+    getSessionCosts: {
+        parameters: {
+            query?: {
+                /** @description Start of the time range, inclusive, RFC 3339. Default is 24 hours before `to`. */
+                from?: components["parameters"]["From"];
+                /** @description End of the time range, exclusive, RFC 3339. Default is now. */
+                to?: components["parameters"]["To"];
+                /** @description Virtual key name. Repeat to match several. */
+                key?: components["parameters"]["Key"];
+                /** @description Client name. Repeat to match several. */
+                client?: components["parameters"]["Client"];
+                /** @description Provider name. Repeat to match several. */
+                provider?: components["parameters"]["Provider"];
+                /** @description Model as the client asked for it. Repeat to match several. */
+                model?: components["parameters"]["Model"];
+                /** @description Request path, for example /v1/messages. Repeat to match several. */
+                endpoint?: components["parameters"]["Endpoint"];
+                /** @description Only streamed (true) or only non-streamed (false) calls. */
+                streamed?: components["parameters"]["Streamed"];
+                /** @description HTTP status returned to the client. Repeat to match several. */
+                status?: components["parameters"]["Status"];
+                /** @description Error class. Repeat to match several. */
+                error_class?: components["parameters"]["ErrorClass"];
+                /** @description Session key. */
+                session?: components["parameters"]["Session"];
+                /** @description Agent id. */
+                agent?: components["parameters"]["Agent"];
+                /** @description Agent type. Repeat to match several. */
+                agent_type?: components["parameters"]["AgentType"];
+                /** @description Prompt id. */
+                prompt?: components["parameters"]["Prompt"];
+                /** @description Request class. Repeat to match several. */
+                request_class?: components["parameters"]["RequestClass"];
+                /** @description Calls that made a tool call with this tool name. Repeat to match several. */
+                tool?: components["parameters"]["Tool"];
+                /**
+                 * @description Calls that made a tool call whose paired result has this is_error value.
+                 *     Combined with `tool`, both must hold on the same tool call.
+                 */
+                tool_error?: components["parameters"]["ToolError"];
+                /** @description Calls whose total duration is at least this many milliseconds. */
+                latency_ms_gte?: components["parameters"]["LatencyMsGte"];
+                /** @description Calls with a known cost of at least this many micro-USD. */
+                cost_micro_usd_gte?: components["parameters"]["CostMicroUsdGte"];
+                /** @description Number of rows of a ranked list. Default 10, maximum 100. */
+                limit?: components["parameters"]["RankedLimit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The sessions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCosts"];
                 };
             };
             400: components["responses"]["Error"];

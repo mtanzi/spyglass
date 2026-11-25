@@ -219,3 +219,28 @@ func (h *handlers) getMonthlyCosts(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, out)
 }
+
+// getSessionCosts serves GET /admin/usage/sessions.
+func (h *handlers) getSessionCosts(w http.ResponseWriter, r *http.Request) {
+	if h.calls == nil {
+		notWired(w)
+		return
+	}
+	q, perr := parseSessionCostParams(r.URL.Query(), h.now())
+	if perr != nil {
+		writeError(w, perr)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), aggregateTimeout)
+	defer cancel()
+	res, err := h.calls.SessionCosts(ctx, q)
+	if err != nil {
+		readError(w, r, err, "usage")
+		return
+	}
+	out := sessionCostsJSON{Sessions: make([]sessionCostJSON, 0, len(res.Sessions)), SessionCount: res.SessionCount}
+	for _, s := range res.Sessions {
+		out.Sessions = append(out.Sessions, sessionCostJSON{toSessionSummary(s.SessionSummary), s.APIEquivalent})
+	}
+	writeJSON(w, http.StatusOK, out)
+}

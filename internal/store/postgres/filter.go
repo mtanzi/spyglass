@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/mtanzi/spyglass/internal/core"
 )
 
@@ -66,6 +68,18 @@ func (w *where) textEq(col, v string) {
 	if v != "" {
 		w.add(col + " = " + w.arg(clean(v)))
 	}
+}
+
+// uuidIn matches col against any of ids.
+func (w *where) uuidIn(col string, ids []core.ID) {
+	if len(ids) == 0 {
+		return
+	}
+	set := make([]pgtype.UUID, len(ids))
+	for i, id := range ids {
+		set[i] = uuid(id)
+	}
+	w.add(col + " = ANY(" + w.arg(set) + "::uuid[])")
 }
 
 func group(parts []string) string {
