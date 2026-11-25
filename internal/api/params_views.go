@@ -70,6 +70,16 @@ var knownPromptCostParams = func() map[string]bool {
 	return m
 }()
 
+// The ranked-aggregate page (ADR 0059) is smaller than the call list: ranked
+// rows are for a dashboard, not for paging.
+const (
+	DefaultRankedLimit = 10
+	MaxRankedLimit     = core.MaxRankedLimit
+)
+
+// The tool-cost query takes the call-log filter and a limit, and no cursor.
+var knownToolCostParams = knownPromptCostParams
+
 // DefaultZone is the time zone of a monthly cost query that names none.
 const DefaultZone = "UTC"
 
@@ -109,6 +119,25 @@ func parseMonthlyCostParams(q url.Values, now time.Time) (core.MonthlyCostQuery,
 		return mq, badParam("from", fmt.Sprintf("the range covers more than %d months", core.MaxMonths))
 	}
 	return mq, nil
+}
+
+// parseToolCostParams maps a query string onto a core.ToolCostQuery. limit is
+// optional, from 1 to MaxRankedLimit, and defaults to DefaultRankedLimit.
+func parseToolCostParams(q url.Values, now time.Time) (core.ToolCostQuery, *apiError) {
+	var tq core.ToolCostQuery
+	var err *apiError
+	if tq.Filter, err = parseCallFilter(q, now, knownToolCostParams); err != nil {
+		return tq, err
+	}
+	limit, err := intParam(q, "limit", 1, MaxRankedLimit)
+	if err != nil {
+		return tq, err
+	}
+	tq.Limit = int(limit)
+	if _, set := q["limit"]; !set {
+		tq.Limit = DefaultRankedLimit
+	}
+	return tq, nil
 }
 
 // parsePromptCostParams maps a query string onto a core.PromptCostQuery. limit

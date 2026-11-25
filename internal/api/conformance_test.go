@@ -165,6 +165,10 @@ func TestResponsesConformToOpenAPI(t *testing.T) {
 		{Month: "2026-10", Start: testNow.AddDate(0, -1, 0), End: testNow, CostTotals: core.CostTotals{Cost: new(core.MicroUSD)}},
 		{Month: "2026-11", Start: testNow, End: testNow.AddDate(0, 1, 0), Calls: 2, CostTotals: core.CostTotals{UnpricedCalls: 2}},
 	}
+	rd.Tools = core.ToolCosts{ToolCount: 3, Tools: []core.ToolCost{
+		{Tool: "Bash", Uses: 4, Errors: 1, ResultBytes: 2048, CostTotals: core.CostTotals{Cost: &cost, UnpricedCalls: 1, APIEquivalent: true}},
+		{Tool: "Read", Uses: 2, CostTotals: core.CostTotals{UnpricedCalls: 2}},
+	}}
 	h := newTestMux(t, rd, view)
 
 	samples := []struct {
@@ -203,6 +207,10 @@ func TestResponsesConformToOpenAPI(t *testing.T) {
 		{"/admin/usage/months?tz=Europe/Rome&from=2026-08-01T00:00:00Z&to=2026-10-20T00:00:00Z&model=a&status=529&session=s", "/admin/usage/months", 200},
 		{"/admin/usage/months?tz=Nowhere/Land", "/admin/usage/months", 400},
 		{"/admin/usage/months?limit=5", "/admin/usage/months", 400},
+		{"/admin/usage/tools", "/admin/usage/tools", 200},
+		{"/admin/usage/tools?limit=100&from=2026-08-01T00:00:00Z&to=2026-10-20T00:00:00Z&model=a&status=529&session=s&tool=Bash", "/admin/usage/tools", 200},
+		{"/admin/usage/tools?limit=101", "/admin/usage/tools", 400},
+		{"/admin/usage/tools?tz=UTC", "/admin/usage/tools", 400},
 		{"/admin/calls?nope=1", "/admin/calls", 400},
 		{"/admin/calls?cursor=zzz", "/admin/calls", 400},
 		{"/admin/calls/not-an-id", "/admin/calls/{id}", 400},
@@ -229,6 +237,7 @@ func TestResponsesConformToOpenAPI(t *testing.T) {
 		{"/admin/usage", "/admin/usage"},
 		{"/admin/usage/prompts", "/admin/usage/prompts"},
 		{"/admin/usage/months", "/admin/usage/months"},
+		{"/admin/usage/tools", "/admin/usage/tools"},
 	} {
 		rr := httptest.NewRecorder()
 		failing.ServeHTTP(rr, httptest.NewRequest("GET", sm.target, nil))
@@ -250,6 +259,7 @@ func TestSpecQueryParametersMatchParser(t *testing.T) {
 		"/admin/usage":              knownUsageParams,
 		"/admin/usage/prompts":      knownPromptCostParams,
 		"/admin/usage/months":       knownMonthlyCostParams,
+		"/admin/usage/tools":        knownToolCostParams,
 		"/admin/stream":             knownStreamParams,
 	} {
 		op := s.doc["paths"].(map[string]any)[path].(map[string]any)["get"].(map[string]any)
@@ -323,7 +333,7 @@ func TestSpecRoutesMatchMux(t *testing.T) {
 	want := []string{
 		"/admin/calls", "/admin/calls/{id}", "/admin/config", "/admin/openapi.json", "/admin/sessions",
 		"/admin/sessions/{key}", "/admin/stream", "/admin/tool-calls", "/admin/tool-calls/summary", "/admin/usage",
-		"/admin/usage/prompts", "/admin/usage/months",
+		"/admin/usage/prompts", "/admin/usage/months", "/admin/usage/tools",
 	}
 	for _, p := range want {
 		if _, ok := paths[p]; !ok {

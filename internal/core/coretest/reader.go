@@ -21,6 +21,7 @@ type Reader struct {
 	Buckets    []core.UsageBucket
 	Prompts    core.PromptCosts
 	Months     []core.MonthCost
+	Tools      core.ToolCosts
 	Next       *core.Cursor
 	Err        error
 }
@@ -79,4 +80,8 @@ func (r *Reader) PromptCosts(context.Context, core.PromptCostQuery) (core.Prompt
 
 func (r *Reader) MonthlyCosts(context.Context, core.MonthlyCostQuery) ([]core.MonthCost, error) {
 	return r.Months, r.Err
+}
+
+func (r *Reader) ToolCosts(context.Context, core.ToolCostQuery) (core.ToolCosts, error) {
+	return r.Tools, r.Err
 }

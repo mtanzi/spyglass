@@ -39,4 +39,7 @@ type CallReader interface {
 	// MonthlyCosts returns one row per calendar month of the range in a time
 	// zone, gaps filled, oldest first (ADR 0059).
 	MonthlyCosts(ctx context.Context, q MonthlyCostQuery) ([]MonthCost, error)
+	// ToolCosts ranks the tools of the matching calls by the cost of the calls
+	// that requested them, split equally among a call's tool uses (ADR 0059).
+	ToolCosts(ctx context.Context, q ToolCostQuery) (ToolCosts, error)
 }

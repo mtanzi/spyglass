@@ -23,6 +23,7 @@ type viewSpy struct {
 	usageQuery    core.UsageQuery
 	promptQuery   core.PromptCostQuery
 	monthlyQuery  core.MonthlyCostQuery
+	toolCostQuery core.ToolCostQuery
 	page          core.Page
 	sessionKey    string
 	calls         int
@@ -338,6 +339,52 @@ func TestGetMonthlyCosts(t *testing.T) {
 	}
 }
 
+func (s *viewSpy) ToolCosts(ctx context.Context, q core.ToolCostQuery) (core.ToolCosts, error) {
+	s.toolCostQuery = q
+	s.calls++
+	return s.Reader.ToolCosts(ctx, q)
+}
+
+func TestGetToolCosts(t *testing.T) {
+	cost := core.MicroUSD(1_500)
+	rd := &viewSpy{Reader: &coretest.Reader{Tools: core.ToolCosts{
+		Tools: []core.ToolCost{
+			{Tool: "Bash", Uses: 5, Errors: 2, ResultBytes: 4096, CostTotals: core.CostTotals{Cost: &cost, UnpricedCalls: 1, APIEquivalent: true}},
+			{Tool: "Read", Uses: 2, CostTotals: core.CostTotals{UnpricedCalls: 2}},
+		},
+		ToolCount: 7,
+	}}}
+	rr := get(newTestMux(t, rd, config.View{}), "/admin/usage/tools?limit=2&status=529&session=s1")
+	if rr.Code != 200 {
+		t.Fatalf("status = %d\n%s", rr.Code, rr.Body)
+	}
+	body := decode[toolCostsJSON](t, rr)
+	if body.ToolCount != 7 || len(body.Tools) != 2 {
+		t.Fatalf("body = %+v", body)
+	}
+	if x := body.Tools[0]; x.Tool != "Bash" || x.Uses != 5 || x.Errors != 2 || x.ResultBytes != 4096 ||
+		x.CostMicroUSD == nil || *x.CostMicroUSD != 1500 || x.UnpricedCalls != 1 || !x.APIEquivalent {
+		t.Errorf("tool 0 = %+v", x)
+	}
+	if x := body.Tools[1]; x.CostMicroUSD != nil || x.UnpricedCalls != 2 || x.APIEquivalent {
+		t.Errorf("an all-unpriced tool has a null cost, not zero: %+v", x)
+	}
+	// The cost fields sit in the tool object, not under a key of their own.
+	if !strings.Contains(rr.Body.String(), `"cost_micro_usd":null`) || !strings.Contains(rr.Body.String(), `"result_bytes":4096`) {
+		t.Errorf("wire form: %s", rr.Body)
+	}
+	q := rd.toolCostQuery
+	if q.Limit != 2 || len(q.Filter.Statuses) != 1 || q.Filter.SessionKey != "s1" || !q.Filter.To.Equal(testNow) {
+		t.Errorf("query = %+v", q)
+	}
+
+	rd = &viewSpy{Reader: &coretest.Reader{}}
+	rr = get(newTestMux(t, rd, config.View{}), "/admin/usage/tools")
+	if !strings.Contains(rr.Body.String(), `"tools":[]`) || rd.toolCostQuery.Limit != DefaultRankedLimit {
+		t.Errorf("defaults: %s, limit %d", rr.Body, rd.toolCostQuery.Limit)
+	}
+}
+
 func TestGetPromptCosts(t *testing.T) {
 	cost := core.MicroUSD(1_500)
 	rd := &viewSpy{Reader: &coretest.Reader{Prompts: core.PromptCosts{
@@ -419,6 +466,13 @@ func TestViewEndpointErrors(t *testing.T) {
 		{"months reader refuses the query", &coretest.Reader{Err: core.ErrInvalidFilter}, "/admin/usage/months", 400, ErrInvalidParameter, ""},
 		{"months store failure", &coretest.Reader{Err: boom}, "/admin/usage/months", 500, ErrInternal, ""},
 		{"months no reader", nil, "/admin/usage/months", 503, ErrInternal, ""},
+		{"tools limit of zero", &coretest.Reader{}, "/admin/usage/tools?limit=0", 400, ErrInvalidParameter, "limit"},
+		{"tools limit above the maximum", &coretest.Reader{}, "/admin/usage/tools?limit=101", 400, ErrInvalidParameter, "limit"},
+		{"tools rejects a cursor", &coretest.Reader{}, "/admin/usage/tools?cursor=x", 400, ErrInvalidParameter, "cursor"},
+		{"tools rejects tz", &coretest.Reader{}, "/admin/usage/tools?tz=UTC", 400, ErrInvalidParameter, "tz"},
+		{"tools reader refuses the query", &coretest.Reader{Err: core.ErrInvalidFilter}, "/admin/usage/tools", 400, ErrInvalidParameter, ""},
+		{"tools store failure", &coretest.Reader{Err: boom}, "/admin/usage/tools", 500, ErrInternal, ""},
+		{"tools no reader", nil, "/admin/usage/tools", 503, ErrInternal, ""},
 		{"prompt costs store failure", &coretest.Reader{Err: boom}, "/admin/usage/prompts", 500, ErrInternal, ""},
 		{"prompt costs no reader", nil, "/admin/usage/prompts", 503, ErrInternal, ""},
 	}

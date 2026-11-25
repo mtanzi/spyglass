@@ -271,6 +271,7 @@ Served on the admin listener under `/admin/`, implemented by the `api` package. 
 | `GET /admin/usage` | Time series computed from raw rows, `group_by` and `grain` | G7 |
 | `GET /admin/usage/prompts` | Cost per prompt over every matching call, most costly first, with `limit` ([ADR 0057](../adrs/0057-cost-per-prompt-endpoint.md)) | |
 | `GET /admin/usage/months` | Cost per calendar month of the range in the `tz` time zone (IANA name, default `UTC`), gaps filled, oldest first, at most 36 months ([ADR 0059](../adrs/0059-cost-views-on-the-overview-dashboard.md)) | |
+| `GET /admin/usage/tools` | The tools of the matching calls ranked by an estimated cost: each call's cost split equally among its tool uses, with `limit` 1 to 100 (default 10). Calls are selected by their own time, so tool costs plus the cost of calls with no tool use equal the total ([ADR 0059](../adrs/0059-cost-views-on-the-overview-dashboard.md)) | |
 | `GET /admin/stream` | SSE live tail of finished calls, with the call-log filters | G13 |
 | `GET /admin/config` | Read-only view of providers and pricing from the config file, and the key names with their `disabled` flag (never a hash) | |
 
