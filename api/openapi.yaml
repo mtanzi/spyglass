@@ -399,6 +399,7 @@ paths:
         - $ref: "#/components/parameters/AgentType"
         - $ref: "#/components/parameters/Prompt"
         - $ref: "#/components/parameters/RequestClass"
+        - $ref: "#/components/parameters/Project"
         - $ref: "#/components/parameters/Tool"
         - $ref: "#/components/parameters/ToolError"
         - $ref: "#/components/parameters/LatencyMsGte"
