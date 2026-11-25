@@ -367,6 +367,27 @@ type sessionCostsJSON struct {
 	SessionCount int               `json:"session_count"`
 }
 
+type projectCostJSON struct {
+	Project  string `json:"project"`
+	Calls    int    `json:"calls"`
+	Sessions int    `json:"sessions"`
+	costFieldsJSON
+}
+
+// unassignedCostJSON is the calls with no project. It has no api_equivalent: the
+// row is a remainder, not a ranked project.
+type unassignedCostJSON struct {
+	Calls         int    `json:"calls"`
+	CostMicroUSD  *int64 `json:"cost_micro_usd"`
+	UnpricedCalls int    `json:"unpriced_calls"`
+}
+
+type projectCostsJSON struct {
+	Projects     []projectCostJSON  `json:"projects"`
+	ProjectCount int                `json:"project_count"`
+	Unassigned   unassignedCostJSON `json:"unassigned"`
+}
+
 type monthCostJSON struct {
 	Month string    `json:"month"`
 	Start time.Time `json:"start"`

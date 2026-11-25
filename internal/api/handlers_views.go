@@ -299,3 +299,35 @@ func (h *handlers) getPunchcard(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, out)
 }
+
+// getProjectCosts serves GET /admin/usage/projects.
+func (h *handlers) getProjectCosts(w http.ResponseWriter, r *http.Request) {
+	if h.calls == nil {
+		notWired(w)
+		return
+	}
+	q, perr := parseProjectCostParams(r.URL.Query(), h.now())
+	if perr != nil {
+		writeError(w, perr)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), aggregateTimeout)
+	defer cancel()
+	res, err := h.calls.ProjectCosts(ctx, q)
+	if err != nil {
+		readError(w, r, err, "usage")
+		return
+	}
+	out := projectCostsJSON{Projects: make([]projectCostJSON, 0, len(res.Projects)), ProjectCount: res.ProjectCount}
+	for _, p := range res.Projects {
+		out.Projects = append(out.Projects, projectCostJSON{
+			Project: p.Project, Calls: p.Calls, Sessions: p.Sessions, costFieldsJSON: toCostFields(p.CostTotals),
+		})
+	}
+	out.Unassigned = unassignedCostJSON{Calls: res.Unassigned.Calls, UnpricedCalls: res.Unassigned.UnpricedCalls}
+	if c := res.Unassigned.Cost; c != nil {
+		v := int64(*c)
+		out.Unassigned.CostMicroUSD = &v
+	}
+	writeJSON(w, http.StatusOK, out)
+}

@@ -362,3 +362,27 @@ func enumParams[T ~string](q url.Values, name string, allowed []T) ([]T, *apiErr
 	}
 	return out, nil
 }
+
+// The project-cost query takes the same parameters as the session-cost query:
+// the call-log filter and a limit, and no cursor and no tz.
+var knownProjectCostParams = knownSessionCostParams
+
+// parseProjectCostParams maps a query string onto a core.ProjectCostQuery.
+// limit is optional, from 1 to core.MaxRanked, and defaults to
+// core.DefaultRanked.
+func parseProjectCostParams(q url.Values, now time.Time) (core.ProjectCostQuery, *apiError) {
+	var pq core.ProjectCostQuery
+	var err *apiError
+	if pq.Filter, err = parseCallFilter(q, now, knownProjectCostParams); err != nil {
+		return pq, err
+	}
+	limit, err := intParam(q, "limit", 1, core.MaxRanked)
+	if err != nil {
+		return pq, err
+	}
+	pq.Limit = int(limit)
+	if _, set := q["limit"]; !set {
+		pq.Limit = core.DefaultRanked
+	}
+	return pq, nil
+}

@@ -24,6 +24,7 @@ type Reader struct {
 	SessionCst core.SessionCosts
 	Tools      core.ToolCosts
 	Cells      []core.PunchcardCell
+	ProjectCst core.ProjectCosts
 	Next       *core.Cursor
 	Err        error
 }
@@ -94,4 +95,8 @@ func (r *Reader) ToolCosts(context.Context, core.ToolCostQuery) (core.ToolCosts,
 
 func (r *Reader) Punchcard(context.Context, core.PunchcardQuery) ([]core.PunchcardCell, error) {
 	return r.Cells, r.Err
+}
+
+func (r *Reader) ProjectCosts(context.Context, core.ProjectCostQuery) (core.ProjectCosts, error) {
+	return r.ProjectCst, r.Err
 }

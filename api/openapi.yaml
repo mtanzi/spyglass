@@ -573,6 +573,52 @@ paths:
           $ref: "#/components/responses/Error"
         "500":
           $ref: "#/components/responses/Error"
+  /admin/usage/projects:
+    get:
+      operationId: getProjectCosts
+      summary: Most costly projects
+      description: |
+        Projects ranked by cost over the calls that match the call-log filters.
+        A call's project is derived at ingest (ADR 0059) and is null for a call
+        that has none. At most `limit` projects are returned, known cost first,
+        highest first, then unknown cost; ties go to the project with more
+        calls, then to the lower name. `project_count` is the number of
+        projects there are, so a client can say when the list is shorter than
+        the whole. `unassigned` is the calls with no project: it is not a
+        project and is never ranked. A long range can take several seconds.
+      parameters:
+        - $ref: "#/components/parameters/From"
+        - $ref: "#/components/parameters/To"
+        - $ref: "#/components/parameters/Key"
+        - $ref: "#/components/parameters/Client"
+        - $ref: "#/components/parameters/Provider"
+        - $ref: "#/components/parameters/Model"
+        - $ref: "#/components/parameters/Endpoint"
+        - $ref: "#/components/parameters/Streamed"
+        - $ref: "#/components/parameters/Status"
+        - $ref: "#/components/parameters/ErrorClass"
+        - $ref: "#/components/parameters/Session"
+        - $ref: "#/components/parameters/Agent"
+        - $ref: "#/components/parameters/AgentType"
+        - $ref: "#/components/parameters/Prompt"
+        - $ref: "#/components/parameters/RequestClass"
+        - $ref: "#/components/parameters/Project"
+        - $ref: "#/components/parameters/Tool"
+        - $ref: "#/components/parameters/ToolError"
+        - $ref: "#/components/parameters/LatencyMsGte"
+        - $ref: "#/components/parameters/CostMicroUsdGte"
+        - $ref: "#/components/parameters/RankedLimit"
+      responses:
+        "200":
+          description: The projects.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectCosts"
+        "400":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
   /admin/config:
     get:
       operationId: getConfig
@@ -1377,6 +1423,39 @@ components:
           type: array
           description: One row per non-empty cell, ordered by weekday and then hour. At most 168.
           items: { $ref: "#/components/schemas/PunchcardCell" }
+    ProjectCost:
+      description: The matching calls of one project.
+      allOf:
+        - $ref: "#/components/schemas/CostFields"
+        - type: object
+          required: [project, calls, sessions]
+          properties:
+            project: { type: string }
+            calls: { type: integer }
+            sessions: { type: integer, description: "Distinct session keys of the project's calls. A call with no session key is in no session." }
+    UnassignedCost:
+      type: object
+      description: |
+        The matching calls that have no project. Not a project: it never ranks.
+        With no such call it has `calls: 0` and a cost of zero; with calls that
+        are all unpriced, the cost is null.
+      required: [calls, cost_micro_usd, unpriced_calls]
+      properties:
+        calls: { type: integer }
+        cost_micro_usd:
+          type: [integer, "null"]
+          description: Sum over the calls with a known cost. Null when calls are present and none is priced.
+        unpriced_calls: { type: integer, description: "Calls with no cost, left out of cost_micro_usd." }
+    ProjectCosts:
+      type: object
+      required: [projects, project_count, unassigned]
+      properties:
+        projects:
+          type: array
+          description: At most `limit` projects. Known cost first, highest first, then unknown cost; ties by calls, then name.
+          items: { $ref: "#/components/schemas/ProjectCost" }
+        project_count: { type: integer, description: "Every project of the matching calls, including those past `limit`. Does not count the calls with no project." }
+        unassigned: { $ref: "#/components/schemas/UnassignedCost" }
     ConfigView:
       type: object
       required: [providers, pricing, keys]

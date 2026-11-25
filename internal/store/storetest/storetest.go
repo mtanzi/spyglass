@@ -43,6 +43,7 @@ var groups = []group{
 	{"session_costs", sessionCostCases},
 	{"tool_costs", toolCostCases},
 	{"punchcard", punchcardCases},
+	{"project_costs", projectCostCases},
 	{"no_bodies", noBodiesCases},
 }
 

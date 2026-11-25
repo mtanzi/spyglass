@@ -26,6 +26,7 @@ type viewSpy struct {
 	sessionCostQ   core.SessionCostQuery
 	toolCostQuery  core.ToolCostQuery
 	punchcardQuery core.PunchcardQuery
+	projectCostQ   core.ProjectCostQuery
 	page           core.Page
 	sessionKey     string
 	calls          int
@@ -480,6 +481,59 @@ func TestGetPunchcard(t *testing.T) {
 	}
 }
 
+func (s *viewSpy) ProjectCosts(ctx context.Context, q core.ProjectCostQuery) (core.ProjectCosts, error) {
+	s.projectCostQ = q
+	s.calls++
+	return s.Reader.ProjectCosts(ctx, q)
+}
+
+func TestGetProjectCosts(t *testing.T) {
+	c, none := core.MicroUSD(4_200), core.MicroUSD(0)
+	rd := &viewSpy{Reader: &coretest.Reader{ProjectCst: core.ProjectCosts{
+		ProjectCount: 12,
+		Projects: []core.ProjectCost{
+			{Project: "spyglass", Calls: 3, Sessions: 2, CostTotals: core.CostTotals{Cost: &c, UnpricedCalls: 1, APIEquivalent: true}},
+			{Project: "billing", Calls: 1, Sessions: 1, CostTotals: core.CostTotals{UnpricedCalls: 1}},
+		},
+		Unassigned: core.UnassignedCost{Calls: 5, Cost: &none, UnpricedCalls: 2},
+	}}}
+	rr := get(newTestMux(t, rd, config.View{}), "/admin/usage/projects?limit=2&status=529&project=spyglass&from=2026-10-01T00:00:00Z&to=2026-11-01T00:00:00Z")
+	if rr.Code != 200 {
+		t.Fatalf("status = %d\n%s", rr.Code, rr.Body)
+	}
+	body := decode[projectCostsJSON](t, rr)
+	if body.ProjectCount != 12 || len(body.Projects) != 2 {
+		t.Fatalf("body = %+v", body)
+	}
+	if p := body.Projects[0]; p.Project != "spyglass" || p.Calls != 3 || p.Sessions != 2 || p.CostMicroUSD == nil || *p.CostMicroUSD != 4200 ||
+		p.UnpricedCalls != 1 || !p.APIEquivalent {
+		t.Errorf("project 0 = %+v", p)
+	}
+	if p := body.Projects[1]; p.CostMicroUSD != nil || p.APIEquivalent {
+		t.Errorf("an all-unpriced project has a null cost, not zero: %+v", p)
+	}
+	if u := body.Unassigned; u.Calls != 5 || u.CostMicroUSD == nil || *u.CostMicroUSD != 0 || u.UnpricedCalls != 2 {
+		t.Errorf("unassigned = %+v", u)
+	}
+	// The unassigned row has no api_equivalent: it is a remainder, not a project.
+	if !strings.Contains(rr.Body.String(), `"unassigned":{"calls":5,"cost_micro_usd":0,"unpriced_calls":2}`) ||
+		!strings.Contains(rr.Body.String(), `"cost_micro_usd":null`) {
+		t.Errorf("wire form: %s", rr.Body)
+	}
+	q := rd.projectCostQ
+	if q.Limit != 2 || len(q.Filter.Statuses) != 1 || len(q.Filter.Projects) != 1 || q.Filter.Projects[0] != "spyglass" ||
+		!q.Filter.From.Equal(time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)) || !q.Filter.To.Equal(time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)) {
+		t.Errorf("query = %+v", q)
+	}
+
+	rd = &viewSpy{Reader: &coretest.Reader{}}
+	rr = get(newTestMux(t, rd, config.View{}), "/admin/usage/projects")
+	if !strings.Contains(rr.Body.String(), `"projects":[]`) || !strings.Contains(rr.Body.String(), `"unassigned":{"calls":0,`) ||
+		rd.projectCostQ.Limit != core.DefaultRanked {
+		t.Errorf("defaults: %s, limit %d", rr.Body, rd.projectCostQ.Limit)
+	}
+}
+
 func TestGetPromptCosts(t *testing.T) {
 	cost := core.MicroUSD(1_500)
 	rd := &viewSpy{Reader: &coretest.Reader{Prompts: core.PromptCosts{
@@ -584,6 +638,13 @@ func TestViewEndpointErrors(t *testing.T) {
 		{"punchcard reader refuses the query", &coretest.Reader{Err: core.ErrInvalidFilter}, "/admin/usage/punchcard", 400, ErrInvalidParameter, ""},
 		{"punchcard store failure", &coretest.Reader{Err: boom}, "/admin/usage/punchcard", 500, ErrInternal, ""},
 		{"punchcard no reader", nil, "/admin/usage/punchcard", 503, ErrInternal, ""},
+		{"project costs limit 0", &coretest.Reader{}, "/admin/usage/projects?limit=0", 400, ErrInvalidParameter, "limit"},
+		{"project costs limit above 100", &coretest.Reader{}, "/admin/usage/projects?limit=101", 400, ErrInvalidParameter, "limit"},
+		{"project costs rejects a cursor", &coretest.Reader{}, "/admin/usage/projects?cursor=x", 400, ErrInvalidParameter, "cursor"},
+		{"project costs rejects tz", &coretest.Reader{}, "/admin/usage/projects?tz=UTC", 400, ErrInvalidParameter, "tz"},
+		{"project costs reader refuses the query", &coretest.Reader{Err: core.ErrInvalidFilter}, "/admin/usage/projects", 400, ErrInvalidParameter, ""},
+		{"project costs store failure", &coretest.Reader{Err: boom}, "/admin/usage/projects", 500, ErrInternal, ""},
+		{"project costs no reader", nil, "/admin/usage/projects", 503, ErrInternal, ""},
 		{"prompt costs store failure", &coretest.Reader{Err: boom}, "/admin/usage/prompts", 500, ErrInternal, ""},
 		{"prompt costs no reader", nil, "/admin/usage/prompts", 503, ErrInternal, ""},
 	}

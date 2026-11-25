@@ -47,4 +47,7 @@ type CallReader interface {
 	// Punchcard returns the cost of the matching calls by weekday and hour of
 	// day on the wall clock of a time zone, empty cells left out (ADR 0059).
 	Punchcard(ctx context.Context, q PunchcardQuery) ([]PunchcardCell, error)
+	// ProjectCosts ranks the projects of the matching calls by cost and
+	// reports the calls that have no project (ADR 0059).
+	ProjectCosts(ctx context.Context, q ProjectCostQuery) (ProjectCosts, error)
 }

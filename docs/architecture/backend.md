@@ -275,6 +275,7 @@ Served on the admin listener under `/admin/`, implemented by the `api` package. 
 | `GET /admin/usage/sessions` | The most costly sessions of the range, known cost first, with `limit` (1 to 100, default 10), `session_count` and the session-list fields counted over the matching calls only ([ADR 0059](../adrs/0059-cost-views-on-the-overview-dashboard.md)) | |
 | `GET /admin/usage/tools` | The tools of the matching calls ranked by an estimated cost: each call's cost split equally among its tool uses, with `limit` 1 to 100 (default 10). Calls are selected by their own time, so tool costs plus the cost of calls with no tool use equal the total ([ADR 0059](../adrs/0059-cost-views-on-the-overview-dashboard.md)) | |
 | `GET /admin/usage/punchcard` | Cost by weekday and hour of day on the wall clock of the `tz` time zone (IANA name, default `UTC`), non-empty cells only, at most 168 ([ADR 0059](../adrs/0059-cost-views-on-the-overview-dashboard.md)) | |
+| `GET /admin/usage/projects` | The most costly projects of the range, known cost first, with `limit` (1 to 100, default 10), `project_count`, sessions per project, and `unassigned` for calls with no project ([ADR 0059](../adrs/0059-cost-views-on-the-overview-dashboard.md)) | |
 | `GET /admin/stream` | SSE live tail of finished calls, with the call-log filters | G13 |
 | `GET /admin/config` | Read-only view of providers and pricing from the config file, and the key names with their `disabled` flag (never a hash) | |
 
