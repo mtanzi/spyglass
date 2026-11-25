@@ -65,7 +65,7 @@ func TestListCalls(t *testing.T) {
 	next := core.Cursor{TS: testNow.Add(-time.Hour), ID: id}
 	rd := &spyReader{Reader: &coretest.Reader{
 		Calls: []core.CallSummary{
-			{ID: id, TS: testNow.Add(-time.Hour), KeyName: "alice", Client: "claude-code", PromptID: "prompt-1", Provider: "anthropic",
+			{ID: id, TS: testNow.Add(-time.Hour), KeyName: "alice", Client: "claude-code", PromptID: "prompt-1", Project: "spyglass", Provider: "anthropic",
 				Model: "claude-opus-4-8", Status: 200, Streamed: true, TTFT: 420 * time.Millisecond, Duration: 5 * time.Second,
 				Usage: core.Usage{InputUncached: 10, Output: 20}, Cost: cost(1234), ToolCount: 2, ContextCompacted: true},
 			{ID: core.NewID(), TS: testNow.Add(-2 * time.Hour), Status: 529},
@@ -87,7 +87,7 @@ func TestListCalls(t *testing.T) {
 		t.Errorf("next_cursor = %q: %+v %v", *body.NextCursor, c, err)
 	}
 	first := body.Calls[0]
-	if first.ID != id.String() || first.Key != "alice" || first.PromptID != "prompt-1" || first.TTFTMs != 420 || first.DurationMs != 5000 ||
+	if first.ID != id.String() || first.Key != "alice" || first.PromptID != "prompt-1" || first.Project != "spyglass" || first.TTFTMs != 420 || first.DurationMs != 5000 ||
 		first.CostMicroUSD == nil || *first.CostMicroUSD != 1234 || !first.ContextCompacted || first.Usage.Output != 20 {
 		t.Errorf("first call = %+v", first)
 	}
@@ -166,7 +166,7 @@ func TestListCallsErrors(t *testing.T) {
 func TestGetCall(t *testing.T) {
 	id := core.NewIDAt(testNow)
 	d := core.CallDetail{CallRecord: core.CallRecord{
-		ID: id, TS: testNow, KeyName: "alice", Model: "claude-opus-4-8", Status: 200, Endpoint: "/v1/messages",
+		ID: id, TS: testNow, KeyName: "alice", Project: "spyglass", Model: "claude-opus-4-8", Status: 200, Endpoint: "/v1/messages",
 		ContextCompacted: true, Duration: 1500 * time.Millisecond, EndedAt: testNow.Add(1500 * time.Millisecond),
 		UsageRaw: json.RawMessage(`{"input_tokens":3}`), PricingVersion: "2026-10-01", Cost: cost(5),
 		ToolUses:    []core.ToolUse{{Source: core.ToolSourceClient, ToolCallID: "toolu_1", Name: "Bash", ArgBytes: 42}},
@@ -179,7 +179,7 @@ func TestGetCall(t *testing.T) {
 		t.Fatalf("status = %d\n%s", rr.Code, rr.Body)
 	}
 	got := decode[callDetailJSON](t, rr)
-	if got.ID != id.String() || got.DurationMs != 1500 || got.EndedAt == nil || !got.ContextCompacted ||
+	if got.ID != id.String() || got.Project != "spyglass" || got.DurationMs != 1500 || got.EndedAt == nil || !got.ContextCompacted ||
 		got.PricingVersion != "2026-10-01" || string(got.UsageRaw) != `{"input_tokens":3}` {
 		t.Errorf("detail = %+v", got)
 	}

@@ -84,6 +84,7 @@ func buildWhere(f core.CallFilter) *where {
 
 	w.textIn("c.key_name", false, f.Keys)
 	w.textIn("c.client", true, f.Clients)
+	w.textIn("c.project", true, f.Projects)
 	w.textIn("c.provider", false, f.Providers)
 	w.textIn("c.model", true, f.Models)
 	w.textIn("c.endpoint", false, f.Endpoints)

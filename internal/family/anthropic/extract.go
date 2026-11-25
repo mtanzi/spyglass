@@ -31,8 +31,8 @@ func (Extractor) Extract(rec *core.CallRecord, request []byte, facts Facts) {
 	extractResponse(rec, facts)
 }
 
-// ExtractRequest fills the request facts of rec: the model and the tool
-// results. Extract calls it. The proxy calls it alone for a call that got no
+// ExtractRequest fills the request facts of rec: the model, the project and the
+// tool results. Extract calls it. The proxy calls it alone for a call that got no
 // response, so the record still says what was asked.
 func ExtractRequest(rec *core.CallRecord, body []byte) {
 	if len(body) == 0 {
@@ -43,6 +43,11 @@ func ExtractRequest(rec *core.CallRecord, body []byte) {
 		return
 	}
 	rec.Model = boundedString(gjson.GetBytes(body, "model"))
+	if rec.Project == "" {
+		// The header and the key rank above detection (ADR 0059), and the
+		// proxy has set them already. The scan runs only when neither did.
+		rec.Project = detectProject(body)
+	}
 	if rec.Endpoint == endpointMessages {
 		rec.ToolResults = requestToolResults(body)
 	}

@@ -14,6 +14,7 @@
   "Compaction": false,
   "ContextCompacted": false,
   "TraceID": "",
+  "Project": "",
   "Family": "anthropic",
   "Endpoint": "/v1/messages",
   "AuthMode": "proxy_key",

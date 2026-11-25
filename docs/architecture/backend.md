@@ -152,11 +152,12 @@ The correlation step reads harness headers into the call record. It never parses
 | `compaction`, `context_compacted` | `x-claude-code-compaction`, `x-claude-code-context-compacted` (hint headers). Both are stored as booleans; the UI compaction marker uses `context_compacted` |
 | `prev_tool_durations` | `x-claude-code-prev-tool-durations`, raw value, stored on the call row (hint header) |
 | `trace_id` | W3C `traceparent` |
+| `project` | The `x-spyglass-project` header, else the `project` of the key in the config (`keys[].project`), else the final directory name of the working directory in Claude Code's system prompt, which the extractor reads (ADR 0059); otherwise null. The header has the rules of the other correlation headers and at most 128 printable characters |
 | `client`, `client_raw` | `User-Agent` normalized to its product token (`claude-cli/2.1.290` becomes `claude-cli`), raw value kept (gap review R17) |
 
 - The Claude Code header names and semantics come from Anthropic's [gateway compatibility guide](https://code.claude.com/docs/en/llm-gateway-protocol). The session and agent IDs are always sent. The rows marked "hint header" arrive behind a custom base URL only when the client sets `CLAUDE_CODE_GATEWAY_HINT_HEADERS=1`. Firstmate crewmates set it (resolved decision D5, [ADR 0042](../adrs/0042-claude-code-hint-headers-for-crewmates.md)).
-- Correlation headers are forwarded upstream unchanged, so the proxy stays transparent.
-- **No session derivation in v1.** Claude Code always sends `x-claude-code-session-id`. A call without it has no session: `session_key` is null, and the call shows in the call log but in no session. The extractor hashes no tools, system prompt or message.
+- Correlation headers are forwarded upstream unchanged, so the proxy stays transparent. The one exception is `x-spyglass-project`, which is for the proxy and is removed.
+- **No session derivation in v1.** Claude Code always sends `x-claude-code-session-id`. A call without it has no session: `session_key` is null, and the call shows in the call log but in no session. The extractor hashes no tools, system prompt or message. It does read the `system` field, at most its first 32 KiB, for the working directory line of Claude Code's environment block, and keeps only the final directory name as the project (ADR 0059); the system prompt text and the path are discarded.
 - Session headers of other harnesses (Codex, OpenCode) are a v2 item ([Later versions](#later-versions)).
 
 #### Forwarding and the config snapshot
@@ -170,7 +171,7 @@ The correlation step reads harness headers into the call record. It never parses
 
 Built on `net/http/httputil.ReverseProxy`. The approaches report verified the relevant behaviour with an experiment (section 6): immediate flushing of `text/event-stream`, cancellation propagation, body closing on client abort, and no measurable added latency.
 
-- **`Rewrite`** sets the upstream URL from the configured provider, applies the credential mode (replace the client credential with the provider key, or pass it through), removes `x-spyglass-key` and the unread `x-llm-proxy-key` of 0.1.0 and sets `Accept-Encoding: identity`, so the upstream sends an uncompressed body that the tap can scan ([ADR 0050](../adrs/0050-upstream-identity-encoding.md)). All other headers and body bytes are forwarded unchanged. `anthropic-version`, `anthropic-beta` and every other `anthropic-*` header are forwarded as open lists, as Anthropic's guide requires.
+- **`Rewrite`** sets the upstream URL from the configured provider, applies the credential mode (replace the client credential with the provider key, or pass it through), removes `x-spyglass-key`, the unread `x-llm-proxy-key` of 0.1.0 and `x-spyglass-project` (ADR 0059), and sets `Accept-Encoding: identity`, so the upstream sends an uncompressed body that the tap can scan ([ADR 0050](../adrs/0050-upstream-identity-encoding.md)). All other headers and body bytes are forwarded unchanged. `anthropic-version`, `anthropic-beta` and every other `anthropic-*` header are forwarded as open lists, as Anthropic's guide requires.
 - **`Transport`** is a plain `http.Transport` with default pool and HTTP/2 settings, one per provider. v1 has no retry and no fallback. An upstream 4xx or 5xx reaches the client unchanged, with `x-request-id` added, and the client applies its own retry rules. Claude Code's retry logic matches on the upstream's error wording, so error bodies are never wrapped (gap review R3).
 - **Response headers** pass through unchanged, in particular `content-type`, `retry-after`, `x-should-retry` and `anthropic-ratelimit-unified-*`. The upstream's own request id header is stored as `upstream_request_id` on the call row.
 - **Upstream timeouts:** a `net.Dialer` timeout, `Transport.ResponseHeaderTimeout` for time to headers, and an idle-between-chunks watchdog in the tap (provider setting `idle_timeout`). SSE `ping` events are never stripped: during long thinking pauses they are the only bytes on the stream.
@@ -515,6 +516,7 @@ CREATE TABLE calls (
   prompt_id           text, request_class text,
   compaction          boolean, context_compacted boolean,
   trace_id            text,
+  project             text,                    -- derived name, never a path (ADR 0059); null when none
   family              text NOT NULL,           -- 'anthropic' in v1
   endpoint            text NOT NULL,
   auth_mode           text NOT NULL,           -- mode used for the request: 'proxy_key' | 'client_passthrough'

@@ -146,6 +146,7 @@ function SidePanel({ call }: { call: CallDetail }) {
         rows={[
           ['Key', <Value key="k" value={call.key} />],
           ['Client', <Value key="c" value={call.client} />],
+          ['Project', <Value key="pj" value={call.project} />],
           [
             'Session',
             call.session_key ? (

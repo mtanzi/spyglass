@@ -143,7 +143,7 @@ func writeCallFinished(w io.Writer, c core.CallRecord) error {
 func summaryOf(c core.CallRecord) core.CallSummary {
 	return core.CallSummary{
 		ID: c.ID, TS: c.TS, KeyName: c.KeyName, Client: c.Client, SessionKey: c.SessionKey, AgentID: c.AgentID,
-		PromptID: c.PromptID, Provider: c.Provider, Model: c.Model, Status: c.Status, ErrorClass: c.ErrorClass, StopReason: c.StopReason,
+		PromptID: c.PromptID, Project: c.Project, Provider: c.Provider, Model: c.Model, Status: c.Status, ErrorClass: c.ErrorClass, StopReason: c.StopReason,
 		Streamed: c.Streamed, TTFT: c.TTFT, Duration: c.Duration, Usage: c.Usage, Cost: c.Cost,
 		ToolCount: len(c.ToolUses), ContextCompacted: c.ContextCompacted,
 	}

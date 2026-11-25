@@ -349,6 +349,8 @@ export interface components {
             agent_id: string;
             /** @description Prompt id; empty when not known. */
             prompt_id?: string;
+            /** @description Project of the call: the `x-spyglass-project` header, else the project of the key, else the working directory name Claude Code reports. Empty when none is known. Never a path. */
+            project: string;
             provider: string;
             model: string;
             status: number;
@@ -415,6 +417,8 @@ export interface components {
             agent_type: string;
             prompt_id: string;
             request_class: string;
+            /** @description Project of the call; empty when not known. */
+            project: string;
             compaction: boolean;
             context_compacted: boolean;
             trace_id: string;
@@ -769,6 +773,8 @@ export interface components {
         Prompt: string;
         /** @description Request class. Repeat to match several. */
         RequestClass: string[];
+        /** @description Project of the call (ADR 0059). Repeat to match several. */
+        Project: string[];
         /** @description Calls that made a tool call with this tool name. Repeat to match several. */
         Tool: string[];
         /**
@@ -844,6 +850,8 @@ export interface operations {
                 prompt?: components["parameters"]["Prompt"];
                 /** @description Request class. Repeat to match several. */
                 request_class?: components["parameters"]["RequestClass"];
+                /** @description Project of the call (ADR 0059). Repeat to match several. */
+                project?: components["parameters"]["Project"];
                 /** @description Calls that made a tool call with this tool name. Repeat to match several. */
                 tool?: components["parameters"]["Tool"];
                 /**
@@ -938,6 +946,8 @@ export interface operations {
                 prompt?: components["parameters"]["Prompt"];
                 /** @description Request class. Repeat to match several. */
                 request_class?: components["parameters"]["RequestClass"];
+                /** @description Project of the call (ADR 0059). Repeat to match several. */
+                project?: components["parameters"]["Project"];
                 /** @description Calls that made a tool call with this tool name. Repeat to match several. */
                 tool?: components["parameters"]["Tool"];
                 /**
@@ -1181,6 +1191,8 @@ export interface operations {
                 prompt?: components["parameters"]["Prompt"];
                 /** @description Request class. Repeat to match several. */
                 request_class?: components["parameters"]["RequestClass"];
+                /** @description Project of the call (ADR 0059). Repeat to match several. */
+                project?: components["parameters"]["Project"];
                 /** @description Calls that made a tool call with this tool name. Repeat to match several. */
                 tool?: components["parameters"]["Tool"];
                 /**
@@ -1249,6 +1261,8 @@ export interface operations {
                 prompt?: components["parameters"]["Prompt"];
                 /** @description Request class. Repeat to match several. */
                 request_class?: components["parameters"]["RequestClass"];
+                /** @description Project of the call (ADR 0059). Repeat to match several. */
+                project?: components["parameters"]["Project"];
                 /** @description Calls that made a tool call with this tool name. Repeat to match several. */
                 tool?: components["parameters"]["Tool"];
                 /**
@@ -1320,6 +1334,8 @@ export interface operations {
                 prompt?: components["parameters"]["Prompt"];
                 /** @description Request class. Repeat to match several. */
                 request_class?: components["parameters"]["RequestClass"];
+                /** @description Project of the call (ADR 0059). Repeat to match several. */
+                project?: components["parameters"]["Project"];
                 /** @description Calls that made a tool call with this tool name. Repeat to match several. */
                 tool?: components["parameters"]["Tool"];
                 /**

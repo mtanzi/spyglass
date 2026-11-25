@@ -31,6 +31,7 @@ type callSummaryJSON struct {
 	SessionKey       string         `json:"session_key"`
 	AgentID          string         `json:"agent_id"`
 	PromptID         string         `json:"prompt_id"`
+	Project          string         `json:"project"`
 	Provider         string         `json:"provider"`
 	Model            string         `json:"model"`
 	Status           int            `json:"status"`
@@ -48,7 +49,7 @@ type callSummaryJSON struct {
 func toCallSummary(c core.CallSummary) callSummaryJSON {
 	return callSummaryJSON{
 		ID: c.ID.String(), TS: c.TS.UTC(), Key: c.KeyName, Client: c.Client, SessionKey: c.SessionKey,
-		AgentID: c.AgentID, PromptID: c.PromptID, Provider: c.Provider, Model: c.Model, Status: c.Status, ErrorClass: c.ErrorClass,
+		AgentID: c.AgentID, PromptID: c.PromptID, Project: c.Project, Provider: c.Provider, Model: c.Model, Status: c.Status, ErrorClass: c.ErrorClass,
 		StopReason: c.StopReason, Streamed: c.Streamed, TTFTMs: c.TTFT.Milliseconds(), DurationMs: c.Duration.Milliseconds(),
 		Usage: toUsage(c.Usage), CostMicroUSD: c.Cost, ToolCount: c.ToolCount, ContextCompacted: c.ContextCompacted,
 	}
@@ -88,6 +89,7 @@ type callDetailJSON struct {
 	AgentType         string           `json:"agent_type"`
 	PromptID          string           `json:"prompt_id"`
 	RequestClass      string           `json:"request_class"`
+	Project           string           `json:"project"`
 	Compaction        bool             `json:"compaction"`
 	ContextCompacted  bool             `json:"context_compacted"`
 	TraceID           string           `json:"trace_id"`
@@ -122,7 +124,7 @@ func toCallDetail(d core.CallDetail) callDetailJSON {
 		ID: d.ID.String(), TS: d.TS.UTC(), Key: d.KeyName, Client: d.Client, ClientRaw: d.ClientRaw,
 		ClientRequestID: d.ClientRequestID, SessionKey: d.SessionKey, AgentID: d.AgentID,
 		ParentAgentID: d.ParentAgentID, AgentType: d.AgentType, PromptID: d.PromptID,
-		RequestClass: d.RequestClass, Compaction: d.Compaction, ContextCompacted: d.ContextCompacted,
+		RequestClass: d.RequestClass, Project: d.Project, Compaction: d.Compaction, ContextCompacted: d.ContextCompacted,
 		TraceID: d.TraceID, Family: d.Family, Endpoint: d.Endpoint, AuthMode: d.AuthMode,
 		Provider: d.Provider, Model: d.Model, UpstreamRequestID: d.UpstreamRequestID,
 		Status: d.Status, ErrorClass: d.ErrorClass, ErrorType: d.ErrorType, StopReason: d.StopReason,

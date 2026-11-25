@@ -81,6 +81,31 @@ The name is stable: never reuse it for another task and never rename it, because
 
 `spyglass-report --tasks firstmate:<ledger>` maps the key name to the task by adding the prefix: the ledger task `fix-login` owns the calls of key `fm:fix-login`, made within that task's time window. A call from a key with no matching task is listed as a call with no task. Per-task key injection at launch is deferred (ADR 0041).
 
+## Projects
+
+A call has an optional project: a short name that groups spend per project (ADR 0059). It is stored on the call row and shown on the call detail. It is never a path. A call takes the first of these that gives one:
+
+1. **The `x-spyglass-project` header.** Use it to name a project that detection gets wrong, or to hide a real directory name behind a neutral one. The value is trimmed, at most 128 characters and printable only; an invalid value counts as absent. The proxy removes the header before the request goes to the provider. Set it where the client adds its headers. For Claude Code that is `ANTHROPIC_CUSTOM_HEADERS`, in the shell or in `~/.claude/settings.json`, one `Name: Value` pair per line:
+
+   ```json
+   "ANTHROPIC_CUSTOM_HEADERS": "x-spyglass-key: lp_…\nx-spyglass-project: my-project"
+   ```
+
+2. **The project of the key.** Give a key a `project` in `config.yaml`, then reload with `SIGHUP`:
+
+   ```yaml
+   keys:
+     - name: fm:fix-login
+       sha256: ...
+       project: spyglass
+   ```
+
+   It is for keys that serve one project, such as the per-task keys of [firstmate crewmates](#keys-for-firstmate-crewmates). It ranks above detection, so a crewmate that works in a generated worktree directory is still counted under its real project. The value has the same rules as the header; a reload that finds an invalid `project` is rejected whole, like any other config error. Only calls made after the reload get the new value.
+3. **Detection from the request.** The proxy reads the working directory that Claude Code puts in the environment block of its system prompt (`Primary working directory:`, or the older `Working directory:`) and keeps its final directory name: `/home/ann/code/spyglass` gives `spyglass`. It reads only the first 32 KiB of the system prompt, keeps nothing else of it, and stores no path. It does not read a git remote. A git worktree or a scratch directory gives its own directory name.
+4. Otherwise the call has no project.
+
+Older calls have no project, because the request body is never stored and cannot be read again. Filter the call log and the usage endpoints with `project=<name>` (repeatable).
+
 ## Cost per task and per merged PR
 
 `spyglass-report` joins a task list with the call log and prints the cost per task and the cost per merged PR (ADR 0040). It reads calls from the admin API (`SPYGLASS_ADMIN_URL`, default `http://127.0.0.1:9090`, or `--admin-url`), never from the database. Build it with `go build -o bin/spyglass-report ./cmd/spyglass-report`.

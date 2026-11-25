@@ -26,6 +26,7 @@ import (
 const (
 	headerProxyKey        = "X-Spyglass-Key"
 	headerLegacyProxyKey  = "X-Llm-Proxy-Key" // no longer read; still removed from the upstream request so an old client's key never leaves
+	headerProject         = "X-Spyglass-Project"
 	headerAPIKey          = "X-Api-Key"
 	headerAuthorization   = "Authorization"
 	headerAcceptEncoding  = "Accept-Encoding"
@@ -146,7 +147,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httpmw.WriteError(w, anthropic.InternalError(reqID))
 		return
 	}
-	keyName, errResp, ok := Authenticate(r.Header, keys, provider.AuthMode, reqID)
+	key, errResp, ok := Authenticate(r.Header, keys, provider.AuthMode, reqID)
 	if !ok {
 		httpmw.WriteError(w, errResp)
 		return
@@ -170,7 +171,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rec := core.CallRecord{
 		ID:              id,
 		TS:              start,
-		KeyName:         keyName,
+		KeyName:         key.Name,
 		ClientRequestID: httpmw.ClientRequestID(r.Context()),
 		Family:          "anthropic",
 		Endpoint:        r.URL.Path,
@@ -178,6 +179,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Provider:        provider.Name,
 	}
 	Correlate(r.Header, &rec)
+	if rec.Project == "" {
+		// The key's project ranks above detection, which the extractor runs
+		// only when no project is set (ADR 0059).
+		rec.Project = key.Project
+	}
 
 	f := &flight{h: h, rec: &rec, body: body, start: start, reqID: reqID, snap: snap, arrival: httpmw.Arrival(r.Context())}
 	h.calls.Add(1)
@@ -243,7 +249,8 @@ func pickProvider(snap *config.Snapshot) (config.Provider, bool) {
 // anthropic-version, anthropic-beta and the other anthropic-* headers keep
 // their values. A virtual key never goes upstream: x-spyglass-key and the
 // x-llm-proxy-key of release 0.1.0 are removed in every mode, so a key sent by
-// an old client does not reach the upstream either. In proxy_key mode the
+// an old client does not reach the upstream either. x-spyglass-project is
+// removed too: it is for the proxy and the provider has no use for it. In proxy_key mode the
 // client credential, which is the virtual key, is replaced by the provider key. In client_passthrough mode the client's
 // own Authorization and x-api-key are forwarded as they came, and the proxy
 // holds and injects no credential of its own. Accept-Encoding is set to
@@ -253,6 +260,7 @@ func rewrite(pr *httputil.ProxyRequest, target *url.URL, p config.Provider) {
 	out := pr.Out.Header
 	out.Del(headerProxyKey)
 	out.Del(headerLegacyProxyKey)
+	out.Del(headerProject)
 	// Ask for an uncompressed body so the tap can scan every response
 	// (ADR 0050). The client's Accept-Encoding is not forwarded.
 	out.Set(headerAcceptEncoding, "identity")

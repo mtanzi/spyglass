@@ -69,6 +69,9 @@ func TestGoldenValid(t *testing.T) {
 	if p.AuthMode != AuthProxyKey || p.IdleTimeout.Std() != 90*time.Second || p.Credential.Ref.Secret().Reveal() != "sk-ant-secret" {
 		t.Errorf("provider[0] = %+v", p)
 	}
+	if want := (core.Key{Name: "alice", SHA256: hashA, Project: "spyglass"}); cfg.Keys[0] != want {
+		t.Errorf("keys[0] = %+v; want %+v", cfg.Keys[0], want)
+	}
 	if want := (core.Key{Name: "ci", SHA256: hashB, Disabled: true}); cfg.Keys[1] != want {
 		t.Errorf("keys[1] = %+v; want %+v", cfg.Keys[1], want)
 	}
@@ -186,6 +189,8 @@ func TestRejections(t *testing.T) {
 		{name: "uppercase hash", old: hashB, new: strings.ToUpper(hashB), wantErr: "64 lowercase hex"},
 		{name: "non hex hash", old: hashB, new: strings.Repeat("g", 64), wantErr: "64 lowercase hex"},
 		{name: "empty key name", old: "name: b,", new: "name: '',", wantErr: "name is required"},
+		{name: "key project too long", old: "name: b,", new: "project: " + strings.Repeat("p", 129) + ", name: b,", wantErr: "keys[1]: project must be"},
+		{name: "key project not printable", old: "name: b,", new: `project: "a\tb", name: b,`, wantErr: "keys[1]: project must be"},
 		// providers
 		{name: "unknown kind", old: "kind: anthropic", new: "kind: gemini", wantErr: `unknown kind "gemini"`},
 		{name: "unknown auth_mode", old: "auth_mode: proxy_key", new: "auth_mode: magic", wantErr: `unknown auth_mode "magic"`},

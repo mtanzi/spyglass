@@ -104,8 +104,8 @@ func TestMigrateFromEmptyIsIdempotent(t *testing.T) {
 	if err := conn.QueryRow(ctx, "SELECT count(*) FROM goose_db_version WHERE version_id > 0").Scan(&applied); err != nil {
 		t.Fatal(err)
 	}
-	if applied != 1 {
-		t.Fatalf("applied migrations = %d, want 1", applied)
+	if applied != 2 {
+		t.Fatalf("applied migrations = %d, want 2", applied)
 	}
 
 	types := map[string]string{}
@@ -132,6 +132,7 @@ func TestMigrateFromEmptyIsIdempotent(t *testing.T) {
 		"calls.usage_raw":         "jsonb",
 		"calls.cost_usd":          "numeric(12,6)",
 		"calls.context_compacted": "boolean",
+		"calls.project":           "text",
 		"tool_events.call_id":     "uuid",
 		"tool_events.idx":         "integer",
 	} {
@@ -175,7 +176,8 @@ func fullCall() core.CallRecord {
 		KeyName: "alice", Client: "claude-code", ClientRaw: "claude-cli/2.1.0", ClientRequestID: "creq-1",
 		SessionKey: "sess-1", AgentID: "agent-1", ParentAgentID: "agent-0", AgentType: "subagent",
 		PromptID: "prompt-1", RequestClass: "main", Compaction: true, ContextCompacted: true, TraceID: "trace-1",
-		Family: "anthropic", Endpoint: "/v1/messages", AuthMode: "proxy_key", Provider: "anthropic",
+		Project: "spyglass",
+		Family:  "anthropic", Endpoint: "/v1/messages", AuthMode: "proxy_key", Provider: "anthropic",
 		Model: "claude-opus-5-5", UpstreamRequestID: "req_up",
 		Status: 529, ErrorClass: "upstream_overloaded", ErrorType: "overloaded_error", StopReason: "tool_use",
 		Streamed: true,
@@ -241,7 +243,7 @@ func TestWriteBatchFirstWrite(t *testing.T) {
 	rows, err := conn.Query(ctx, `
 		SELECT id, concat_ws('|', ts, key_name, client, client_raw, client_request_id,
 			session_key, agent_id, parent_agent_id, agent_type, prompt_id, request_class,
-			compaction, context_compacted, trace_id, family, endpoint, auth_mode, provider, model,
+			compaction, context_compacted, trace_id, project, family, endpoint, auth_mode, provider, model,
 			upstream_request_id, status, error_class, error_type, stop_reason, streamed,
 			ttfb_ms, ttft_ms, duration_ms, ended_at, input_uncached, cache_read, cache_write_5m,
 			cache_write_1h, output, reasoning, usage_raw, jsonb_typeof(usage_raw), usage_estimated,
@@ -264,7 +266,7 @@ func TestWriteBatchFirstWrite(t *testing.T) {
 	want := map[core.ID]string{
 		full.ID: "2026-10-27 09:00:00+00|alice|claude-code|claude-cli/2.1.0|creq-1|" +
 			"sess-1|agent-1|agent-0|subagent|prompt-1|main|" +
-			"t|t|trace-1|anthropic|/v1/messages|proxy_key|anthropic|claude-opus-5-5|" +
+			"t|t|trace-1|spyglass|anthropic|/v1/messages|proxy_key|anthropic|claude-opus-5-5|" +
 			"req_up|529|upstream_overloaded|overloaded_error|tool_use|t|" +
 			"120|340|2500|2026-10-27 09:00:02.5+00|10|2000|300|" +
 			`40|500|60|{"input_tokens": 10, "output_tokens": 500}|object|t|` +

@@ -10,6 +10,7 @@ export function call(id: string, over: Partial<CallSummary> = {}): CallSummary {
     client: 'claude-code',
     session_key: '',
     agent_id: 'a',
+    project: '',
     provider: 'anthropic',
     model: 'm',
     status: 200,

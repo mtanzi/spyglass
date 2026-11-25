@@ -34,6 +34,7 @@ paths:
         - $ref: "#/components/parameters/AgentType"
         - $ref: "#/components/parameters/Prompt"
         - $ref: "#/components/parameters/RequestClass"
+        - $ref: "#/components/parameters/Project"
         - $ref: "#/components/parameters/Tool"
         - $ref: "#/components/parameters/ToolError"
         - $ref: "#/components/parameters/LatencyMsGte"
@@ -118,6 +119,7 @@ paths:
         - $ref: "#/components/parameters/AgentType"
         - $ref: "#/components/parameters/Prompt"
         - $ref: "#/components/parameters/RequestClass"
+        - $ref: "#/components/parameters/Project"
         - $ref: "#/components/parameters/Tool"
         - $ref: "#/components/parameters/ToolError"
         - $ref: "#/components/parameters/LatencyMsGte"
@@ -305,6 +307,7 @@ paths:
         - $ref: "#/components/parameters/AgentType"
         - $ref: "#/components/parameters/Prompt"
         - $ref: "#/components/parameters/RequestClass"
+        - $ref: "#/components/parameters/Project"
         - $ref: "#/components/parameters/Tool"
         - $ref: "#/components/parameters/ToolError"
         - $ref: "#/components/parameters/LatencyMsGte"
@@ -349,6 +352,7 @@ paths:
         - $ref: "#/components/parameters/AgentType"
         - $ref: "#/components/parameters/Prompt"
         - $ref: "#/components/parameters/RequestClass"
+        - $ref: "#/components/parameters/Project"
         - $ref: "#/components/parameters/Tool"
         - $ref: "#/components/parameters/ToolError"
         - $ref: "#/components/parameters/LatencyMsGte"
@@ -395,6 +399,7 @@ paths:
         - $ref: "#/components/parameters/AgentType"
         - $ref: "#/components/parameters/Prompt"
         - $ref: "#/components/parameters/RequestClass"
+        - $ref: "#/components/parameters/Project"
         - $ref: "#/components/parameters/Tool"
         - $ref: "#/components/parameters/ToolError"
         - $ref: "#/components/parameters/LatencyMsGte"
@@ -539,6 +544,13 @@ components:
       style: form
       explode: true
       schema: { type: array, items: { type: string } }
+    Project:
+      name: project
+      in: query
+      description: Project of the call (ADR 0059). Repeat to match several.
+      style: form
+      explode: true
+      schema: { type: array, items: { type: string } }
     Tool:
       name: tool
       in: query
@@ -680,6 +692,7 @@ components:
         - client
         - session_key
         - agent_id
+        - project
         - provider
         - model
         - status
@@ -700,6 +713,12 @@ components:
         session_key: { type: string }
         agent_id: { type: string }
         prompt_id: { type: string, description: Prompt id; empty when not known. }
+        project:
+          type: string
+          description: >-
+            Project of the call: the `x-spyglass-project` header, else the
+            project of the key, else the working directory name Claude Code
+            reports. Empty when none is known. Never a path.
         provider: { type: string }
         model: { type: string }
         status: { type: integer }
@@ -774,6 +793,7 @@ components:
         - agent_type
         - prompt_id
         - request_class
+        - project
         - compaction
         - context_compacted
         - trace_id
@@ -814,6 +834,7 @@ components:
         agent_type: { type: string }
         prompt_id: { type: string }
         request_class: { type: string }
+        project: { type: string, description: Project of the call; empty when not known. }
         compaction: { type: boolean }
         context_compacted: { type: boolean }
         trace_id: { type: string }

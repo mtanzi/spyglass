@@ -1,0 +1,21 @@
+{
+ "model": "claude-opus-4-8",
+ "max_tokens": 1024,
+ "stream": true,
+ "system": [
+  {
+   "type": "text",
+   "text": "FAKEPROMPT-system-7c1e: you are a secret agent"
+  },
+  {
+   "type": "text",
+   "text": "# Environment\nYou have been invoked in the following environment:\n - Primary working directory: /home/FAKEPROMPT-parent/code/spyglass-demo\n - Is a git repository: true\n - Additional working directories:\n  - /home/FAKEPROMPT-parent/code/other-dir\n - Platform: linux\n - Shell: bash\n - OS Version: Linux 6.8.0"
+  }
+ ],
+ "messages": [
+  {
+   "role": "user",
+   "content": "FAKEPROMPT-user-1d52: say hello to Zaphod"
+  }
+ ]
+}

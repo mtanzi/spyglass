@@ -40,6 +40,8 @@ func TestBuildWhereEachField(t *testing.T) {
 		{"Keys one", func(f *core.CallFilter) { f.Keys = []string{"alice"} }, "c.key_name = $3", 1},
 		{"Clients", func(f *core.CallFilter) { f.Clients = []string{"claude-code"} }, "c.client = $3", 1},
 		{"Clients unknown", func(f *core.CallFilter) { f.Clients = []string{"", "x"} }, "(c.client = $3 OR c.client IS NULL)", 1},
+		{"Projects", func(f *core.CallFilter) { f.Projects = []string{"spyglass"} }, "c.project = $3", 1},
+		{"Projects unknown", func(f *core.CallFilter) { f.Projects = []string{"", "x"} }, "(c.project = $3 OR c.project IS NULL)", 1},
 		{"Providers", func(f *core.CallFilter) { f.Providers = []string{"anthropic"} }, "c.provider = $3", 1},
 		{"Models", func(f *core.CallFilter) { f.Models = []string{"m"} }, "c.model = $3", 1},
 		{"Endpoints", func(f *core.CallFilter) { f.Endpoints = []string{"/v1/messages"} }, "c.endpoint = $3", 1},
@@ -91,6 +93,7 @@ func TestBuildWhereArgsAreBound(t *testing.T) {
 	evil := "x'; DROP TABLE calls; --"
 	f := base()
 	f.Keys, f.Clients, f.Providers, f.Models, f.Endpoints = []string{evil}, []string{evil}, []string{evil}, []string{evil}, []string{evil}
+	f.Projects = []string{evil}
 	f.ErrorClasses, f.AgentTypes, f.RequestClasses, f.Tools = []string{evil}, []string{evil}, []string{evil}, []string{evil}
 	f.SessionKey, f.AgentID, f.PromptID = evil, evil, evil
 	w := buildWhere(f)

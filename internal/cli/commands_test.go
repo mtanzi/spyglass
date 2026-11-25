@@ -9,7 +9,7 @@ import (
 )
 
 const detailJSON = `{"id":"` + id1 + `","ts":"2026-11-13T14:10:00Z","key":"alice","client":"claude-code","client_raw":"claude-cli/2.1","client_request_id":"r1",
- "session_key":"fm:7f3a","agent_id":"main","parent_agent_id":"","agent_type":"","prompt_id":"p1","request_class":"main","compaction":false,
+ "session_key":"fm:7f3a","agent_id":"main","parent_agent_id":"","agent_type":"","prompt_id":"p1","request_class":"main","project":"spyglass","compaction":false,
  "context_compacted":false,"trace_id":"","family":"anthropic","endpoint":"/v1/messages","auth_mode":"client_passthrough","provider":"claude-max",
  "model":"claude-opus-4-8","upstream_request_id":"req_1","status":200,"error_class":"","error_type":"","stop_reason":"end_turn","streamed":true,
  "ttfb_ms":300,"ttft_ms":420,"duration_ms":3100,"ended_at":"2026-11-13T14:10:03Z",

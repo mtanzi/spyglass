@@ -16,6 +16,9 @@ type Key struct {
 	Name     string
 	SHA256   string
 	Disabled bool
+	// Project names the project every call of this key belongs to (ADR 0059).
+	// It ranks above a project the extractor detects. Empty means none.
+	Project string
 }
 
 var keyHashRE = regexp.MustCompile(`^[0-9a-f]{64}$`)
@@ -27,8 +30,9 @@ func HashKey(plaintext string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// ValidateKeys checks the key rules: a name is required, names are unique, the
-// hash is 64 lowercase hex characters and hashes are unique. It returns one
+// ValidateKeys checks the key rules: a name is required, names are unique, an
+// optional project is a valid project name, the hash is 64 lowercase hex
+// characters and hashes are unique. It returns one
 // error per problem, each prefixed keys[i], and never includes a hash.
 func ValidateKeys(keys []Key) []error {
 	var errs []error
@@ -44,6 +48,11 @@ func ValidateKeys(keys []Key) []error {
 			add(i, "duplicate name %q (also keys[%d])", k.Name, j)
 		} else {
 			names[k.Name] = i
+		}
+		if k.Project != "" {
+			if p, ok := ProjectName(k.Project); !ok || p != k.Project {
+				add(i, "project must be 1 to %d printable characters with no space at either end", MaxProjectLen)
+			}
 		}
 		if !keyHashRE.MatchString(k.SHA256) {
 			add(i, "sha256 must be 64 lowercase hex characters")

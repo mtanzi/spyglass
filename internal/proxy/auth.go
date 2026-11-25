@@ -20,37 +20,38 @@ import (
 // proxy_key provider, or an lp_ value in Authorization or x-api-key on a
 // client_passthrough provider.
 //
-// It returns the key name, which the correlation step stores as key_name. On
+// It returns the key, whose name the correlation step stores as key_name and
+// whose project is the default project of its calls (ADR 0059). On
 // failure it returns a protocol-correct 401 and ok false: a missing, unknown or
 // misplaced key is MissingOrInvalidKeyError, a disabled key is
 // DisabledKeyError. The presented key is hashed at once and never logged,
 // stored or returned. The client's own credential in passthrough mode is only
 // inspected for the lp_ prefix; it is never hashed, kept or logged.
-func Authenticate(h http.Header, keys config.KeyIndex, mode, requestID string) (name string, errResp anthropic.ErrorResponse, ok bool) {
+func Authenticate(h http.Header, keys config.KeyIndex, mode, requestID string) (key core.Key, errResp anthropic.ErrorResponse, ok bool) {
 	var presented string
 	switch mode {
 	case config.AuthClientPassthrough:
 		if misplacedKey(h) {
-			return "", anthropic.MissingOrInvalidKeyError(requestID), false
+			return core.Key{}, anthropic.MissingOrInvalidKeyError(requestID), false
 		}
 		presented = strings.TrimSpace(h.Get(headerProxyKey))
 	default:
 		if len(h.Values(headerProxyKey)) > 0 {
-			return "", anthropic.MissingOrInvalidKeyError(requestID), false
+			return core.Key{}, anthropic.MissingOrInvalidKeyError(requestID), false
 		}
 		presented = presentedKey(h)
 	}
 	if presented == "" {
-		return "", anthropic.MissingOrInvalidKeyError(requestID), false
+		return core.Key{}, anthropic.MissingOrInvalidKeyError(requestID), false
 	}
 	key, found := keys.Lookup(core.HashKey(presented))
 	if !found {
-		return "", anthropic.MissingOrInvalidKeyError(requestID), false
+		return core.Key{}, anthropic.MissingOrInvalidKeyError(requestID), false
 	}
 	if key.Disabled {
-		return "", anthropic.DisabledKeyError(requestID), false
+		return core.Key{}, anthropic.DisabledKeyError(requestID), false
 	}
-	return key.Name, anthropic.ErrorResponse{}, true
+	return key, anthropic.ErrorResponse{}, true
 }
 
 // misplacedKey reports whether Authorization or x-api-key carries a virtual

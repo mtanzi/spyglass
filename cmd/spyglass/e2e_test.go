@@ -391,8 +391,9 @@ func TestE2EHintHeaders(t *testing.T) {
 }
 
 // The no-bodies check: a unique marker sits in the prompt, the response and the
-// tool arguments of two calls, and shows up nowhere the proxy stores, logs,
-// counts or serves.
+// tool arguments of two calls, and in the parent directories of the working
+// directory of a third, and shows up nowhere the proxy stores, logs, counts or
+// serves. Of the working directory only the final name, the project, is kept.
 func TestE2ENoBodiesAnywhere(t *testing.T) {
 	var b [8]byte
 	_, _ = rand.Read(b[:])
@@ -401,10 +402,12 @@ func TestE2ENoBodiesAnywhere(t *testing.T) {
 	e := newE2E(t)
 	uses := withMarker(e2eFixture(t, "parallel_tool_calls"), marker)
 	results := withMarker(e2eFixture(t, "tool_results_next_request"), marker)
-	e.Upstream.Enqueue(fakeupstream.Reply{Fixture: uses, Split: 13}, fakeupstream.Reply{Fixture: results})
+	inDir := withMarker(e2eFixture(t, "claude_code_project"), marker)
+	e.Upstream.Enqueue(fakeupstream.Reply{Fixture: uses, Split: 13}, fakeupstream.Reply{Fixture: results}, fakeupstream.Reply{Fixture: inDir})
 
 	// The marker is in every body: the test would prove nothing otherwise.
-	for name, body := range map[string][]byte{"use request": uses.Request, "use response": uses.Response, "result request": results.Request} {
+	for name, body := range map[string][]byte{"use request": uses.Request, "use response": uses.Response, "result request": results.Request,
+		"working directory request": inDir.Request} {
 		if !bytes.Contains(body, []byte(marker)) {
 			t.Fatalf("%s carries no marker", name)
 		}
@@ -426,12 +429,18 @@ func TestE2ENoBodiesAnywhere(t *testing.T) {
 	if _, err := e.Send(c, results); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := e.Stream(c, inDir); err != nil {
+		t.Fatal(err)
+	}
 	for i, r := range e.Upstream.Requests() {
 		if !bytes.Contains(r.Body, []byte(marker)) {
 			t.Fatalf("upstream request %d lost the marker: the proxy must forward bodies unchanged", i)
 		}
 	}
-	calls := e.WaitCalls(2)
+	calls := e.WaitCalls(3)
+	if got := e.Detail(calls[2].ID).Project; got != "spyglass-demo" {
+		t.Errorf("project of the call from the working directory = %q, want its final directory name", got)
+	}
 
 	// Every admin endpoint, with the call details and the session behind them.
 	var apiBodies []string
@@ -462,7 +471,7 @@ func TestE2ENoBodiesAnywhere(t *testing.T) {
 	}
 	// The pieces the marker stands for are as absent as the marker.
 	for _, v := range e.StoredText() {
-		for _, frag := range []string{"Zaphod", "secret agent", "a.txt", "b.txt"} {
+		for _, frag := range []string{"Zaphod", "secret agent", "a.txt", "b.txt", "-parent", "other-dir"} {
 			if strings.Contains(v, frag) {
 				t.Errorf("a table value holds body text %q: %.300s", frag, v)
 			}

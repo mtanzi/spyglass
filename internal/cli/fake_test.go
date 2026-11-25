@@ -190,7 +190,7 @@ func homeRoute(total string, sessions string) route {
 }
 
 func callJSON(id, ts, model, provider string, status int, errClass string, cost string) string {
-	return fmt.Sprintf(`{"id":%q,"ts":%q,"key":"alice","client":"claude-code","session_key":"fm:7f3a","agent_id":"main",
+	return fmt.Sprintf(`{"id":%q,"ts":%q,"key":"alice","client":"claude-code","session_key":"fm:7f3a","agent_id":"main","project":"spyglass",
  "provider":%q,"model":%q,"status":%d,"error_class":%q,"stop_reason":"end_turn","streamed":true,"ttft_ms":420,"duration_ms":3100,
  "usage":{"input_uncached":10,"cache_read":200,"cache_write_5m":30,"cache_write_1h":4,"output":55,"reasoning":5},
  "cost_micro_usd":%s,"tool_count":2,"context_compacted":false,"future_field":"ignored"}`,

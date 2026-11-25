@@ -300,6 +300,7 @@ type e2eDetail struct {
 	AgentType         string `json:"agent_type"`
 	PromptID          string `json:"prompt_id"`
 	RequestClass      string `json:"request_class"`
+	Project           string `json:"project"`
 	Compaction        bool   `json:"compaction"`
 	ContextCompacted  bool   `json:"context_compacted"`
 	TraceID           string `json:"trace_id"`
