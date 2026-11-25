@@ -2,6 +2,13 @@
 
 Notable changes to Spyglass. Release 0.1.0 and earlier are described in their [GitHub release notes](https://github.com/mtanzi/spyglass/releases).
 
+## [0.15.0](https://github.com/mtanzi/spyglass/compare/v0.14.1...v0.15.0) (2026-11-25)
+
+
+### Features
+
+* **web:** add punchcard, costly sessions and tools to the overview (ADR 0059 phase 11) ([#182](https://github.com/mtanzi/spyglass/issues/182)) ([3b033f6](https://github.com/mtanzi/spyglass/commit/3b033f621ec1020d192a9c8c957ca1bc7e310416))
+
 ## [0.14.1](https://github.com/mtanzi/spyglass/compare/v0.14.0...v0.14.1) (2026-11-25)
 
 
