@@ -104,7 +104,22 @@ A call has an optional project: a short name that groups spend per project (ADR 
 3. **Detection from the request.** The proxy reads the working directory that Claude Code puts in the environment block of its system prompt (`Primary working directory:`, or the older `Working directory:`) and keeps its final directory name: `/home/ann/code/spyglass` gives `spyglass`. It reads only the first 32 KiB of the system prompt, keeps nothing else of it, and stores no path. It does not read a git remote. A git worktree or a scratch directory gives its own directory name.
 4. Otherwise the call has no project.
 
-Older calls have no project, because the request body is never stored and cannot be read again. Filter the call log and the usage endpoints with `project=<name>` (repeatable).
+Older calls have no project, because the request body is never stored and cannot be read again. The backfill below gives some of them one. Filter the call log and the usage endpoints with `project=<name>` (repeatable).
+
+### Backfill the project of older calls
+
+Run this once after the release that records projects is running, and again after you add or change a `keys[].project`. It reads the same config file and database settings as `serve`, so run it where `serve` runs:
+
+```sh
+docker compose exec spyglass spyglass backfill-projects
+```
+
+It runs two updates in one transaction, each only on calls that have no project:
+
+1. A call of a key that has a `project` in the current config gets that project.
+2. A call in a session whose other calls have exactly one project gets that project. A session with no project, or with two or more, stays as it is.
+
+It prints how many calls each step changed. It never overwrites a project that is set, never reads a request body and never detects a new name, so every other call stays "No project". It is safe to run again: with the same config, a second run changes no call. It writes only to the `project` column, so you can run it while the proxy serves traffic. On a large database the first run can take a while; leave it to finish. If it stops early, nothing is changed, because both updates share one transaction.
 
 ## Cost per task and per merged PR
 

@@ -44,6 +44,7 @@ var groups = []group{
 	{"tool_costs", toolCostCases},
 	{"punchcard", punchcardCases},
 	{"project_costs", projectCostCases},
+	{"backfill", backfillCases},
 	{"no_bodies", noBodiesCases},
 }
 
