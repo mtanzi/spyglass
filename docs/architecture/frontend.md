@@ -61,7 +61,7 @@ The wireframes for V1 to V4 are in UI report sections 5.1 to 5.4; the parts that
 - Headline numbers: calls, cost, tokens in and out, error rate, cache hit ratio, p50 and p95 latency. Each has a sparkline and the change against the previous equal period, shown with a glyph, a sign and words. Over several usage buckets, p50 and p95 are a call-weighted mean of the bucket percentiles, marked "≈", because the usage API has no percentile over a whole range.
 - Activity: calls or cost per interval stacked by model, with errors per interval as a line on their own scale.
 - Live feed of the latest finished calls (the shared live hook), recent sessions with an error badge, and problems: errors grouped by error class, each linking to the call log filtered to that class.
-- Breakdowns: cost ranked by model, client and key, and the top 5 sessions by cost, linking to V5, V1 and V2.
+- Breakdowns: cost ranked by model, client and key, linking to V5, V1 and V2. The most costly sessions are in the Cost section (ADR 0059).
 - Unknown cost shows as unknown. Cost through a `client_passthrough` provider (from `GET /admin/config`) carries the "API-equivalent" label.
 
 ### V1 Call log

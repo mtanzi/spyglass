@@ -180,7 +180,6 @@ export function DashboardView() {
   // Breakdowns sum over the range, so the widest grain keeps them small.
   const byClient = useQuery(usage({ grain: 'day', group_by: 'client' }))
   const byKey = useQuery(usage({ grain: 'day', group_by: 'key' }))
-  const bySession = useQuery(usage({ grain: 'day', group_by: 'session' }))
   const byError = useQuery(usage({ grain: 'day', group_by: 'error_class' }))
   const config = useQuery(readQueryOptions('/admin/config'))
   const passthrough = useMemo(() => passthroughProviders(config.data?.providers), [config.data])
@@ -217,8 +216,8 @@ export function DashboardView() {
     void navigate({ search: (p) => ({ ...p, ...patch }) })
   }
   const rangeSearch = { range: search.range }
-  const ranked = (data: { buckets: UsageBucket[] } | undefined, drop = false) => {
-    const rows = groupTotals(data?.buckets ?? []).filter((r) => !drop || r.group !== '')
+  const ranked = (data: { buckets: UsageBucket[] } | undefined) => {
+    const rows = groupTotals(data?.buckets ?? [])
     return { rows: rankByCost(rows, RANK_SIZE), total: knownCost(rows), more: Math.max(0, rows.length - RANK_SIZE) }
   }
 
@@ -438,7 +437,7 @@ export function DashboardView() {
           <h2 id="breakdowns-title">Cost breakdowns</h2>
           {costNote && <small className="dim">Includes API-equivalent cost of client_passthrough providers.</small>}
         </div>
-        <div className="dash-grid dash-grid-4">
+        <div className="dash-grid">
           {(
             [
               ['model', 'By model', byModel],
@@ -469,25 +468,6 @@ export function DashboardView() {
               </QueryState>
             </Panel>
           ))}
-          <Panel id="top-sessions-title" title="Top sessions">
-            <QueryState query={bySession}>
-              {() => {
-                const r = ranked(bySession.data, true)
-                return (
-                  <RankedList
-                    label="Top 5 sessions by cost"
-                    rows={r.rows}
-                    total={r.total}
-                    link={(key) => (
-                      <Link to="/sessions/$key" params={{ key }} search={{}} className="mono">
-                        {key}
-                      </Link>
-                    )}
-                  />
-                )
-              }}
-            </QueryState>
-          </Panel>
         </div>
       </section>
     </section>

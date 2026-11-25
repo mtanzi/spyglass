@@ -1,17 +1,23 @@
 import { expect, test } from 'vitest'
 import {
+  allCostsUnknown,
   averages,
+  cellName,
+  cellsByCost,
   costWindow,
   formatShare,
   knownTotal,
+  markerRadius,
   monthBars,
   monthLabel,
   monthWindow,
+  mostCostlyCell,
   mostCostlyMonth,
   mostCostlyProject,
   runRate,
+  weekdayName,
 } from './costOverviewData'
-import type { MonthRow, ProjectsResponse } from './costOverviewData'
+import type { MonthRow, ProjectsResponse, PunchcardCell } from './costOverviewData'
 
 function month(m: string, over: Partial<MonthRow> = {}): MonthRow {
   const [y, mo] = m.split('-').map(Number)
@@ -164,4 +170,54 @@ test('the window of a month for a link stops at now while the month runs', () =>
   expect(monthWindow(past, now)).toEqual({ from: past.start, to: past.end })
   const running = month('2026-11')
   expect(monthWindow(running, now)).toEqual({ from: running.start, to: now.toISOString() })
+})
+
+function cell(weekday: number, hour: number, cost: number | null, over: Partial<PunchcardCell> = {}): PunchcardCell {
+  return { weekday, hour, calls: 5, cost_micro_usd: cost, unpriced_calls: 0, api_equivalent: false, ...over }
+}
+
+test('a marker has an area proportional to its cost, and unknown is not zero', () => {
+  // Four times the cost, twice the radius; the highest cost gets the full radius.
+  expect(markerRadius(400, 400, 10)).toBe(10)
+  expect(markerRadius(100, 400, 10)).toBe(5)
+  expect(markerRadius(25, 400, 10)).toBe(2.5)
+  expect(markerRadius(0, 400, 10)).toBe(0)
+  expect(markerRadius(null, 400, 10)).toBeNull()
+  // No cost anywhere: nothing to scale against.
+  expect(markerRadius(0, 0, 10)).toBe(0)
+})
+
+test('the most costly hour is the highest known cost, a tie goes to the earlier cell, and unknown never wins', () => {
+  const cells = [cell(1, 9, 100), cell(2, 14, 300), cell(5, 3, 300), cell(6, 22, null, { unpriced_calls: 5 })]
+  expect(mostCostlyCell(cells)).toEqual({ kind: 'known', row: cells[1], share: 300 / 700, partial: false })
+  expect(mostCostlyCell([cell(1, 9, 100, { unpriced_calls: 2 })])).toMatchObject({ kind: 'known', partial: true, share: 1 })
+  expect(mostCostlyCell([cell(6, 22, null), cell(7, 1, null)])).toEqual({ kind: 'unknown' })
+  expect(mostCostlyCell([])).toEqual({ kind: 'none' })
+})
+
+test('the table fallback of the punchcard ranks by known cost, then calls, then the earlier cell, with unknown last', () => {
+  const cells = [
+    cell(7, 0, null, { calls: 99 }),
+    cell(3, 10, 100, { calls: 2 }),
+    cell(2, 10, 100, { calls: 9 }),
+    cell(4, 8, 300),
+    cell(2, 9, 100, { calls: 9 }),
+  ]
+  expect(cellsByCost(cells).map(cellName)).toEqual([
+    'Thursday 08:00–08:59',
+    'Tuesday 09:00–09:59',
+    'Tuesday 10:00–10:59',
+    'Wednesday 10:00–10:59',
+    'Sunday 00:00–00:59',
+  ])
+})
+
+test('weekdays run from Monday as 1 to Sunday as 7', () => {
+  expect([1, 4, 7].map(weekdayName)).toEqual(['Monday', 'Thursday', 'Sunday'])
+})
+
+test('a ranked list is all unknown only when it has rows and none has a cost', () => {
+  expect(allCostsUnknown([])).toBe(false)
+  expect(allCostsUnknown([{ cost_micro_usd: null }, { cost_micro_usd: null }])).toBe(true)
+  expect(allCostsUnknown([{ cost_micro_usd: null }, { cost_micro_usd: 0 }])).toBe(false)
 })
