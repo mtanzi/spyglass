@@ -295,14 +295,19 @@ export function CostSection({
                   </>
                 )
               }
-              if (data.projects.every((p) => p.cost_micro_usd === null)) return allUnknown
+              if (
+                periodCost === null &&
+                (unassigned.calls === 0 || unassigned.cost_micro_usd === null) &&
+                data.projects.every((p) => p.cost_micro_usd === null)
+              )
+                return allUnknown
               const rows = projectRows(data)
               return (
                 <>
                   <RankedList
                     label="Cost per project"
                     rows={rows}
-                    total={periodCost ?? knownTotal(data.projects) ?? 0}
+                    total={periodCost ?? 0}
                     showPartial
                     link={(project) => (
                       <Link to="/calls" search={{ project: [project], ...windowSearch }} className="mono">

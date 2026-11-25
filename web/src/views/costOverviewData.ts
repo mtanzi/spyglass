@@ -1,5 +1,4 @@
 import type { ResponseOf } from '../api/client'
-import { COST_RANGES } from '../search/routes'
 import type { CostRange } from '../search/routes'
 import { compare } from './dashboardData'
 import type { Change, GroupTotal } from './dashboardData'
@@ -15,10 +14,6 @@ const DAY_MS = 24 * 60 * 60 * 1000
 
 /** The number of calendar months of each period, the current month included. */
 export const COST_RANGE_MONTHS: Record<CostRange, number> = { '3m': 3, '6m': 6, '12m': 12 }
-
-export function isCostRange(value: string): value is CostRange {
-  return (COST_RANGES as readonly string[]).includes(value)
-}
 
 /** The IANA zone of the browser, which is the zone the section sends and shows. */
 export function browserZone(): string {
@@ -94,8 +89,8 @@ export function mostCostlyMonth(months: MonthRow[]): Leader<MonthRow> {
 
 /**
  * The first project of the ranking, which the API orders by known cost. The
- * share is of the cost of the whole period when it is known, which includes
- * the projects past the limit and the calls with no project.
+ * share is of the cost of the whole period, which includes the projects past
+ * the limit and the calls with no project; with no period cost there is no share.
  */
 export function mostCostlyProject(
   data: ProjectsResponse,
@@ -107,7 +102,7 @@ export function mostCostlyProject(
   return {
     kind: 'known',
     row: first,
-    share: shareOf(first.cost_micro_usd, periodCost ?? knownTotal(data.projects)),
+    share: shareOf(first.cost_micro_usd, periodCost),
     partial: first.unpriced_calls > 0,
   }
 }

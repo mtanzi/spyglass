@@ -509,7 +509,32 @@ test('with no project recorded the panel explains where a project comes from and
   expect(costTile('Most costly project').textContent).toContain('no project recorded')
 })
 
-test('a month with no calls is a labelled gap, and one month of data still has a most costly month', async () => {
+test('projects with no price still list, with a priced no-project row, when the period cost is known', async () => {
+  stubApi({
+    months: [month('2026-11', { calls: 17, cost_micro_usd: 3_500_000, unpriced_calls: 10, partial: true })],
+    projects: { projects: [projectRow('spyglass', null, { unpriced_calls: 10 })], project_count: 1, unassigned: { calls: 7, cost_micro_usd: 3_500_000, unpriced_calls: 0 } },
+  })
+  await renderAt('/ui/')
+  const list = await screen.findByRole('list', { name: 'Cost per project' })
+  expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['spyglassunknownpartial: 10 unpriced'])
+  expect(screen.getByText(/No project/, { selector: 'span' }).parentElement?.textContent).toBe('No project: $3.50 · 7 calls')
+  expect(screen.queryByText(/Cost is unknown: no price matched the calls in this period/)).toBeNull()
+})
+
+test('without the period cost the project tile and list show no share', async () => {
+  stubApi({ failing: ['months'] })
+  await renderAt('/ui/')
+  const list = await screen.findByRole('list', { name: 'Cost per project' })
+  expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+    'spyglass$5.00',
+    'docs-site$1.50partial: 2 unpriced',
+  ])
+  const projectTile = costTile('Most costly project')
+  expect(projectTile.textContent).toContain('$5.00')
+  expect(projectTile.textContent).not.toContain('of the period')
+})
+
+test('a month with no calls is a labelled gap,and one month of data still has a most costly month', async () => {
   stubApi({ months: [month('2026-09', { calls: 0, cost_micro_usd: 0 }), month('2026-10', { calls: 0, cost_micro_usd: 0 }), month('2026-11', { calls: 4, cost_micro_usd: 2_000_000, partial: true })] })
   await renderAt('/ui/')
   const chart = await screen.findByRole('img', { name: /Cost per month/ })

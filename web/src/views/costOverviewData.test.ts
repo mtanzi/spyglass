@@ -96,8 +96,8 @@ function projects(over: Partial<ProjectsResponse> = {}): ProjectsResponse {
 test('the most costly project is the first of the ranking, as a share of the whole period', () => {
   // The period cost counts projects past the list and calls with no project: 4 of 16.
   expect(mostCostlyProject(projects(), 16_000_000)).toMatchObject({ kind: 'known', row: { project: 'alpha' }, share: 0.25, partial: true })
-  // Without a period cost the share is of the listed projects: 4 of 5.
-  expect(mostCostlyProject(projects(), null)).toMatchObject({ share: 0.8 })
+  // Without a period cost there is no share: the listed projects are not the whole period.
+  expect(mostCostlyProject(projects(), null)).toMatchObject({ kind: 'known', row: { project: 'alpha' }, share: null })
   expect(mostCostlyProject(projects({ projects: [], project_count: 0 }), 5)).toEqual({ kind: 'none' })
   const all = projects()
   all.projects = all.projects.map((p) => ({ ...p, cost_micro_usd: null }))
