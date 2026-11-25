@@ -17,6 +17,9 @@ import (
 //
 // The shares of one call are computed once per tool, not once per use:
 //
+//	e    the tool uses of the selected calls.
+//	r    the earliest result of each tool call id of e, read once over the
+//	     range (see below).
 //	u    one row per (call, tool): the uses k, the errors and result bytes of the
 //	     paired results. A use pairs with its earliest result, as in the tool-call
 //	     list.
@@ -26,6 +29,25 @@ import (
 //	     the first tool by name, what the shares left over (less than the number
 //	     of tools of the call).
 //
+// The results are read once, not once per use. A lookup per use (a lateral
+// subquery on tool_call_id) took 16.6 s over 1.5 million calls and 58 s over
+// 4.5 million (deployment.md, "Sizing"); one pass with DISTINCT ON over the
+// results of the range and a hash join takes 4.8 s and 15 s.
+//
+// When the filter selects few calls (a session, an agent, a prompt or tools),
+// the pass reads only the results of the uses in e, so a one-session filter
+// takes milliseconds. Other filters can keep almost every call (one provider,
+// one client, the only key), and there the restriction keeps every result anyway
+// and makes the planner sort them on disk (22 s instead of 4.8 s), so it is left
+// out. e is not materialized, so the
+// planner estimates its rows: a materialized e is guessed at 200 rows and read
+// with a nested loop.
+//
+// The pass starts at the range start: a result is never earlier than its use,
+// and a use is never earlier than its call, so no result of a selected call is
+// left out. It ends a day after the range end, as the tool-call list does
+// (ToolResultLookahead).
+//
 // A call with no cost has a NULL share, so the sum of a tool whose calls are all
 // unpriced is NULL: unknown, not zero.
 func (s *Store) ToolCosts(ctx context.Context, q core.ToolCostQuery) (core.ToolCosts, error) {
@@ -33,22 +55,31 @@ func (s *Store) ToolCosts(ctx context.Context, q core.ToolCostQuery) (core.ToolC
 		return core.ToolCosts{}, err
 	}
 	w := buildWhere(q.Filter)
+	from := w.arg(q.Filter.From)
 	lookahead := w.arg(q.Filter.To.Add(core.ToolResultLookahead))
 	limit := w.arg(q.Limit)
-	rows, err := s.pool.Query(ctx, `WITH u AS (
-		SELECT c.id AS call_id, coalesce(e.tool_name, '') AS tool, c.cost_usd * 1000000 AS cost, c.auth_mode,
+	selected := ""
+	if f := q.Filter; f.SessionKey != "" || f.AgentID != "" || f.PromptID != "" || len(f.Tools) > 0 {
+		selected = "AND tool_call_id IN (SELECT tool_call_id FROM e)"
+	}
+	rows, err := s.pool.Query(ctx, `WITH e AS NOT MATERIALIZED (
+		SELECT c.id AS call_id, coalesce(e.tool_name, '') AS tool, c.cost_usd * 1000000 AS cost, c.auth_mode, e.tool_call_id
+		FROM calls c
+		JOIN tool_events e ON e.call_id = c.id AND e.kind = 'use'
+		WHERE `+w.sql()+`
+	), r AS (
+		SELECT DISTINCT ON (tool_call_id) tool_call_id, is_error, bytes
+		FROM tool_events
+		WHERE kind = 'result' AND ts >= `+from+` AND ts < `+lookahead+` `+selected+`
+		ORDER BY tool_call_id, ts, call_id, idx
+	), u AS (
+		SELECT e.call_id, e.tool, e.cost, e.auth_mode,
 			count(*) AS k,
 			count(*) FILTER (WHERE r.is_error) AS errors,
 			coalesce(sum(r.bytes), 0) AS result_bytes
-		FROM calls c
-		JOIN tool_events e ON e.call_id = c.id AND e.kind = 'use'
-		LEFT JOIN LATERAL (
-			SELECT re.is_error, re.bytes FROM tool_events re
-			WHERE re.kind = 'result' AND re.tool_call_id = e.tool_call_id AND re.ts < `+lookahead+`
-			ORDER BY re.ts, re.call_id, re.idx LIMIT 1
-		) r ON true
-		WHERE `+w.sql()+`
-		GROUP BY c.id, coalesce(e.tool_name, ''), c.cost_usd, c.auth_mode
+		FROM e
+		LEFT JOIN r ON r.tool_call_id = e.tool_call_id
+		GROUP BY e.call_id, e.tool, e.cost, e.auth_mode
 	), n AS (
 		SELECT u.*, sum(k) OVER (PARTITION BY call_id) AS n,
 			row_number() OVER (PARTITION BY call_id ORDER BY tool COLLATE "C") AS rn
