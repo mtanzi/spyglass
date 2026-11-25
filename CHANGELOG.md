@@ -2,6 +2,13 @@
 
 Notable changes to Spyglass. Release 0.1.0 and earlier are described in their [GitHub release notes](https://github.com/mtanzi/spyglass/releases).
 
+## [0.10.0](https://github.com/mtanzi/spyglass/compare/v0.9.0...v0.10.0) (2026-11-25)
+
+
+### Features
+
+* **api:** add GET /admin/usage/tools with attributed tool cost ([#168](https://github.com/mtanzi/spyglass/issues/168)) ([436ac32](https://github.com/mtanzi/spyglass/commit/436ac3208fdcd269556b9a7186cda8332789741a))
+
 ## [0.9.0](https://github.com/mtanzi/spyglass/compare/v0.8.0...v0.9.0) (2026-11-25)
 
 
