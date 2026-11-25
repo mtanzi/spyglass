@@ -30,6 +30,7 @@ export interface CallFilterSearch {
   agent_type?: string[]
   prompt?: string[]
   request_class?: string[]
+  project?: string[]
   tool?: string[]
   streamed?: boolean
   tool_error?: boolean
@@ -49,6 +50,7 @@ const CALL_TEXT_FILTERS = [
   'agent_type',
   'prompt',
   'request_class',
+  'project',
   'tool',
 ] as const
 
@@ -201,18 +203,25 @@ export const DASHBOARD_RANGES = ['1h', '24h', '7d', '30d'] as const
 export type DashboardRange = (typeof DASHBOARD_RANGES)[number]
 export const ACTIVITY_METRICS = ['calls', 'cost'] as const
 export type ActivityMetric = (typeof ACTIVITY_METRICS)[number]
+/** The period of the cost section (ADR 0059): whole calendar months, the current one included. */
+export const COST_RANGES = ['3m', '6m', '12m'] as const
+export type CostRange = (typeof COST_RANGES)[number]
+export const DEFAULT_COST_RANGE: CostRange = '3m'
 export interface DashboardSearch {
   range?: DashboardRange
   metric?: ActivityMetric
+  cost_range?: CostRange
 }
 export function validateDashboardSearch(search: unknown): DashboardSearch {
   const raw = asRaw(search)
   const range = oneOf(raw.range, DASHBOARD_RANGES)
   const metric = oneOf(raw.metric, ACTIVITY_METRICS)
-  // Defaults stay out of the URL: 24h and calls.
+  const costRange = oneOf(raw.cost_range, COST_RANGES)
+  // Defaults stay out of the URL: 24h, calls and 3m.
   return compact({
     range: range === DEFAULT_RANGE ? undefined : range,
     metric: metric === 'calls' ? undefined : metric,
+    cost_range: costRange === DEFAULT_COST_RANGE ? undefined : costRange,
   })
 }
 

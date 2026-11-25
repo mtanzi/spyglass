@@ -352,6 +352,7 @@ export function CallLogView() {
             <TextListFilter label="Agent type" values={search.agent_type} onChange={(v) => update({ agent_type: v })} />
             <TextFilter label="Prompt" value={search.prompt?.[0]} onChange={(v) => update({ prompt: v ? [v] : undefined })} />
             <TextListFilter label="Request class" values={search.request_class} onChange={(v) => update({ request_class: v })} />
+            <TextListFilter label="Project" values={search.project} onChange={(v) => update({ project: v })} />
             <TextListFilter label="Tool name" values={search.tool} onChange={(v) => update({ tool: v })} />
             <BooleanFilter label="Streamed" value={search.streamed} onChange={(v) => update({ streamed: v })} />
             <BooleanFilter label="Tool error" value={search.tool_error} onChange={(v) => update({ tool_error: v })} />

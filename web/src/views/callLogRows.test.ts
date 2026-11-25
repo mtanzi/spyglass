@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest'
-import { agentLabel, filterQuery, groupBySession, matchesAgentFilter, insertLive, LIVE_ROW_CAP, mergeRows, streamQuery } from './callLogRows'
+import { validateCallsSearch } from '../search/routes'
+import { activeFilterCount, agentLabel, filterQuery, groupBySession, matchesAgentFilter, insertLive, LIVE_ROW_CAP, mergeRows, streamQuery } from './callLogRows'
 import type { CallSummary } from './callLogRows'
 
 export function call(id: string, over: Partial<CallSummary> = {}): CallSummary {
@@ -94,4 +95,11 @@ test('agent filter main matches the label, other values match the stored id', ()
   expect(matchesAgentFilter(undefined, bare)).toBe(true)
   expect(filterQuery({ agent: ['main'] }).agent).toBeUndefined()
   expect(filterQuery({ agent: ['abc'] }).agent).toBe('abc')
+})
+
+test('a project in the URL is a call filter: it reaches the API query and counts in the menu', () => {
+  // The overview links its project rows to the call log with this parameter.
+  const search = validateCallsSearch({ project: ['spyglass', 'docs-site', ''] })
+  expect(filterQuery(search).project).toEqual(['spyglass', 'docs-site'])
+  expect(activeFilterCount(search)).toBe(1)
 })

@@ -165,4 +165,9 @@ test('the dashboard search keeps a preset and the cost metric, defaults stay out
   expect(validateDashboardSearch({ range: '24h', metric: 'calls' })).toEqual({})
   // 15m is a call-log preset, not a dashboard one.
   expect(validateDashboardSearch({ range: '15m', from: '2026-11-01T00:00:00Z', metric: 'x' })).toEqual({})
+  // The cost period is its own parameter; its default and unknown values stay out of the URL.
+  expect(validateDashboardSearch({ cost_range: '12m' })).toEqual({ cost_range: '12m' })
+  expect(validateDashboardSearch({ cost_range: '6m', range: '7d' })).toEqual({ cost_range: '6m', range: '7d' })
+  expect(validateDashboardSearch({ cost_range: '3m' })).toEqual({})
+  expect(validateDashboardSearch({ cost_range: '24m' })).toEqual({})
 })
