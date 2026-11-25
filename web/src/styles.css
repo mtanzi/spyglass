@@ -388,6 +388,7 @@ main:focus { outline: none; }
 .ranked-name a { color: var(--fg); text-decoration: none; }
 .ranked-name a:hover { text-decoration: underline; }
 .ranked-value { font-size: var(--text-sm); white-space: nowrap; }
+.ranked-note { grid-column: 1 / -1; color: var(--muted); font-size: var(--text-xs); }
 .ranked-bar { grid-column: 1 / -1; height: 3px; background: var(--bg-active); border-radius: 2px; overflow: hidden; }
 .ranked-bar > span { display: block; height: 100%; background: var(--accent); }
 .activity-chart { margin: 0; }

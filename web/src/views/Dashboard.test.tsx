@@ -420,7 +420,7 @@ test('projects are ranked, link to the call log, and the calls with none get a r
   const list = await screen.findByRole('list', { name: 'Cost per project' })
   expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
     'spyglass$5.00 · 50%',
-    'docs-site$1.50 · 15% · partial: 2 unpriced',
+    'docs-site$1.50 · 15%partial: 2 unpriced',
   ])
   // Not a project, so not in the ranking, but its calls and cost are not lost.
   expect(screen.getByText(/No project/).parentElement?.textContent).toBe('No project: $3.50 · 7 calls')

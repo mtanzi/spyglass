@@ -3,7 +3,10 @@ import { monthBars, monthLabel } from '../views/costOverviewData'
 import type { MonthRow } from '../views/costOverviewData'
 import { Maybe } from './Maybe'
 
-const W = 600
+/** Width of the drawing per month, and its bounds: a short period is drawn narrow, so its text stays readable when it is scaled to the panel. */
+const PER_MONTH = 100
+const MIN_W = 300
+const MAX_W = 600
 const H = 200
 const TOP = 32
 const BASE = 150
@@ -42,8 +45,9 @@ export function MonthlyCostChart({
   total: number | null
 }) {
   const bars = monthBars(months)
+  const W = Math.min(MAX_W, Math.max(MIN_W, months.length * PER_MONTH))
   const step = W / Math.max(1, months.length)
-  const width = Math.min(48, step * 0.7)
+  const width = Math.min(56, step * 0.7)
   return (
     <figure className="month-chart">
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={monthChartLabel(months, best, total)}>
@@ -68,7 +72,7 @@ export function MonthlyCostChart({
                 />
               )}
               {isBest && (
-                <text className="month-best" x={cx} y={y - 14} textAnchor="middle">
+                <text className="month-best" x={cx} y={y - 17} textAnchor="middle">
                   highest
                 </text>
               )}
