@@ -68,7 +68,7 @@ The wireframes for V1 to V4 are in UI report sections 5.1 to 5.4; the parts that
 
 - Columns: time, session and prompt, agent, client, model, status, latency, tokens in and out, cost, number of tool calls requested.
 - A row click opens V3. A session cell opens V2.
-- The filter menu covers every logged criterion: time, session, prompt, agent, agent type, request class, client, key name, provider, model, endpoint, status, error class, streamed, latency, cost, tool name, tool error. TTFT, tokens and cache hit are columns and chart values, not filters.
+- The filter menu covers every logged criterion: time, session, prompt, agent, agent type, request class, project, client, key name, provider, model, endpoint, status, error class, streamed, latency, cost, tool name, tool error. TTFT, tokens and cache hit are columns and chart values, not filters.
 - "Group by session" folds consecutive calls of a session into one row with "N turns" (Bifrost pattern), kept in the URL.
 - Counts are exact up to 10,000 and show "10,000+" above that (UI report 6.3). A 24-hour window holds at most about 50,000 rows.
 - A **Live** toggle prepends new calls from the SSE stream. See [Live tail](#live-tail).
