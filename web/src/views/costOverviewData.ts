@@ -42,12 +42,16 @@ export function formatShare(value: number | null): string {
   return `${Math.round(pct)}%`
 }
 
-/** The known cost of the rows, null when no row has one. */
-export function knownTotal(rows: { cost_micro_usd: number | null }[]): number | null {
+/**
+ * The known cost of the rows, null when no row has one. A row with no calls
+ * is skipped: the API pads a month with no calls with a cost of 0, and that
+ * zero must not make the cost of unpriced calls in the other months known.
+ */
+export function knownTotal(rows: { cost_micro_usd: number | null; calls?: number }[]): number | null {
   let known = false
   let sum = 0
   for (const r of rows) {
-    if (r.cost_micro_usd === null) continue
+    if (r.cost_micro_usd === null || r.calls === 0) continue
     known = true
     sum += r.cost_micro_usd
   }

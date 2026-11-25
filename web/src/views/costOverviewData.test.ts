@@ -3,6 +3,7 @@ import {
   averages,
   costWindow,
   formatShare,
+  knownTotal,
   monthBars,
   monthLabel,
   monthWindow,
@@ -150,6 +151,11 @@ test('averages divide the known cost by the sessions and by the priced calls', (
   expect(averages(months, 0).perSession).toBeNull()
   const unknown = [month('2026-11', { calls: 5, cost_micro_usd: null, unpriced_calls: 5 })]
   expect(averages(unknown, 2)).toEqual({ perSession: null, perCall: null, unpriced: 5 })
+  // The API pads a month with no calls with a cost of 0 (GET /admin/usage/months).
+  // That zero is not a known cost of the unpriced calls: the averages stay unknown.
+  const padded = [month('2026-10', { calls: 0, cost_micro_usd: 0 }), ...unknown]
+  expect(averages(padded, 2)).toEqual({ perSession: null, perCall: null, unpriced: 5 })
+  expect(knownTotal(padded)).toBeNull()
 })
 
 test('the window of a month for a link stops at now while the month runs', () => {

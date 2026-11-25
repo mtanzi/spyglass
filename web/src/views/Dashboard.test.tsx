@@ -499,6 +499,24 @@ test('when no call has a price the cost is unknown, not zero, and the config pag
   expect(screen.queryByRole('img', { name: /Cost per month/ })).toBeNull()
 })
 
+test('a month with no calls, padded with a cost of 0 by the API, does not make unpriced calls cost zero', async () => {
+  // GET /admin/usage/months returns every month of the window; a month with no
+  // calls has cost_micro_usd 0. Only the month with calls is unpriced.
+  stubApi({
+    months: [
+      month('2026-09', { calls: 0, cost_micro_usd: 0 }),
+      month('2026-10', { calls: 0, cost_micro_usd: 0 }),
+      month('2026-11', { calls: 5, cost_micro_usd: null, unpriced_calls: 5, partial: true }),
+    ],
+    projects: { projects: [projectRow('spyglass', null, { unpriced_calls: 3 })], project_count: 1, unassigned: { calls: 2, cost_micro_usd: null, unpriced_calls: 2 } },
+    sessionCount: 2,
+  })
+  await renderAt('/ui/')
+  await waitFor(() => expect(screen.getAllByText(/Cost is unknown: no price matched the calls in this period/)).toHaveLength(2))
+  expect(costTile('Average cost per session').textContent).not.toContain('$0.00')
+  expect(costTile('Average cost per session').textContent).toContain('unknown')
+})
+
 test('with no project recorded the panel explains where a project comes from and keeps the unassigned row', async () => {
   stubApi({ projects: { projects: [], project_count: 0, unassigned: { calls: 7, cost_micro_usd: 3_500_000, unpriced_calls: 0 } } })
   await renderAt('/ui/')
