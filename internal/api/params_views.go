@@ -143,6 +143,29 @@ func parseSessionCostParams(q url.Values, now time.Time) (core.SessionCostQuery,
 	return sq, nil
 }
 
+// The tool-cost query takes the call-log filter and a limit, and no cursor and
+// no tz: a tool does not depend on the calendar.
+var knownToolCostParams = knownSessionCostParams
+
+// parseToolCostParams maps a query string onto a core.ToolCostQuery. limit is
+// optional, from 1 to core.MaxRanked, and defaults to core.DefaultRanked.
+func parseToolCostParams(q url.Values, now time.Time) (core.ToolCostQuery, *apiError) {
+	var tq core.ToolCostQuery
+	var err *apiError
+	if tq.Filter, err = parseCallFilter(q, now, knownToolCostParams); err != nil {
+		return tq, err
+	}
+	limit, err := intParam(q, "limit", 1, core.MaxRanked)
+	if err != nil {
+		return tq, err
+	}
+	tq.Limit = int(limit)
+	if _, set := q["limit"]; !set {
+		tq.Limit = core.DefaultRanked
+	}
+	return tq, nil
+}
+
 // parsePromptCostParams maps a query string onto a core.PromptCostQuery. limit
 // is optional, from 1 to MaxLimit, and defaults to DefaultLimit.
 func parsePromptCostParams(q url.Values, now time.Time) (core.PromptCostQuery, *apiError) {

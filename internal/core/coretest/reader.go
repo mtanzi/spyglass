@@ -22,6 +22,7 @@ type Reader struct {
 	Prompts    core.PromptCosts
 	Months     []core.MonthCost
 	SessionCst core.SessionCosts
+	Tools      core.ToolCosts
 	Next       *core.Cursor
 	Err        error
 }
@@ -84,4 +85,8 @@ func (r *Reader) MonthlyCosts(context.Context, core.MonthlyCostQuery) ([]core.Mo
 
 func (r *Reader) SessionCosts(context.Context, core.SessionCostQuery) (core.SessionCosts, error) {
 	return r.SessionCst, r.Err
+}
+
+func (r *Reader) ToolCosts(context.Context, core.ToolCostQuery) (core.ToolCosts, error) {
+	return r.Tools, r.Err
 }

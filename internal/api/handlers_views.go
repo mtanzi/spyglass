@@ -244,3 +244,31 @@ func (h *handlers) getSessionCosts(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, out)
 }
+
+// getToolCosts serves GET /admin/usage/tools.
+func (h *handlers) getToolCosts(w http.ResponseWriter, r *http.Request) {
+	if h.calls == nil {
+		notWired(w)
+		return
+	}
+	q, perr := parseToolCostParams(r.URL.Query(), h.now())
+	if perr != nil {
+		writeError(w, perr)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), aggregateTimeout)
+	defer cancel()
+	res, err := h.calls.ToolCosts(ctx, q)
+	if err != nil {
+		readError(w, r, err, "usage")
+		return
+	}
+	out := toolCostsJSON{Tools: make([]toolCostJSON, 0, len(res.Tools)), ToolCount: res.ToolCount}
+	for _, t := range res.Tools {
+		out.Tools = append(out.Tools, toolCostJSON{
+			Tool: t.Tool, Uses: t.Uses, Errors: t.Errors, ResultBytes: t.ResultBytes,
+			costFieldsJSON: toCostFields(t.CostTotals),
+		})
+	}
+	writeJSON(w, http.StatusOK, out)
+}

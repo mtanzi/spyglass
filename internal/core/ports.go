@@ -41,4 +41,7 @@ type CallReader interface {
 	MonthlyCosts(ctx context.Context, q MonthlyCostQuery) ([]MonthCost, error)
 	// SessionCosts ranks the sessions of the matching calls by cost (ADR 0059).
 	SessionCosts(ctx context.Context, q SessionCostQuery) (SessionCosts, error)
+	// ToolCosts ranks the tools of the matching calls by the cost of the calls
+	// that requested them, split equally among a call's tool uses (ADR 0059).
+	ToolCosts(ctx context.Context, q ToolCostQuery) (ToolCosts, error)
 }
