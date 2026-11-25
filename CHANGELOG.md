@@ -2,6 +2,13 @@
 
 Notable changes to Spyglass. Release 0.1.0 and earlier are described in their [GitHub release notes](https://github.com/mtanzi/spyglass/releases).
 
+## [0.14.0](https://github.com/mtanzi/spyglass/compare/v0.13.0...v0.14.0) (2026-11-25)
+
+
+### Features
+
+* **web:** add the cost section to the overview dashboard (ADR 0059 phase 10) ([#178](https://github.com/mtanzi/spyglass/issues/178)) ([f7c848d](https://github.com/mtanzi/spyglass/commit/f7c848dbcb40d02886e0f46ee02a9bbf4baf3c13))
+
 ## [0.13.0](https://github.com/mtanzi/spyglass/compare/v0.12.0...v0.13.0) (2026-11-25)
 
 
