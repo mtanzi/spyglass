@@ -162,6 +162,31 @@ var sessionCostCases = []testCase{
 			t.Errorf("mixed = %+v, want the one call of model-a at cost 100", s)
 		}
 	}},
+	{"session_costs_count_tool_time_over_the_matching_calls_only", func(t *testing.T, e *env) {
+		g := e.gen
+		at := func(sec int, opts ...CallOpt) core.CallRecord {
+			return g.Call(append([]CallOpt{g.At(Base.Add(time.Duration(sec) * time.Second)), WithSession("mixed")}, opts...)...)
+		}
+		e.write(t,
+			at(0, WithModel("model-b"), g.WithUse("toolu_b", "Bash")), at(6, WithModel("model-b"), g.WithResult("toolu_b", false)),
+			at(5, WithModel("model-a"), g.WithUse("toolu_a", "Bash")), at(9, WithModel("model-a"), g.WithResult("toolu_a", false)),
+		)
+		f := sessionCostWin
+		f.Models = []string{"model-a"}
+		got, err := e.SessionCosts(context.Background(), core.SessionCostQuery{Filter: f, Limit: 10})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got.Sessions) != 1 {
+			t.Fatalf("sessions %v, want only mixed", sessionKeys(got))
+		}
+		// Each call lasts 1.5 s and a tool use is at the end of its call. Only
+		// the tool call of model-a counts: use at 6.5 s, result at 9 s, 2.5 s.
+		// The 4.5 s of model-b (use at 1.5 s, result at 6 s) do not.
+		if s := got.Sessions[0]; s.ToolCallCount != 1 || s.ToolTime != 2500*time.Millisecond || !s.ToolTimeEstimated {
+			t.Errorf("mixed = %+v, want 1 tool call and an estimated tool time of 2.5s", s)
+		}
+	}},
 	{"session_costs_reject_a_bad_query", func(t *testing.T, e *env) {
 		for _, q := range []core.SessionCostQuery{
 			{Filter: core.CallFilter{}, Limit: 10},

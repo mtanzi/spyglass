@@ -128,7 +128,7 @@ func (s *Store) ListSessions(ctx context.Context, f core.SessionFilter, p core.P
 		out[i] = g.SessionSummary
 		keys[i] = g.SessionKey
 	}
-	if err := fillToolTime(ctx, s.pool, out, keys, f.From, f.To); err != nil {
+	if err := fillToolTime(ctx, s.pool, out, keys, nil, f.From, f.To); err != nil {
 		return nil, nil, fmt.Errorf("postgres: list sessions: %w", err)
 	}
 	return out, next, nil
@@ -142,13 +142,14 @@ type queryer interface {
 // fillToolTime sets ToolTime and ToolTimeEstimated of the sessions, in one
 // query over the paired tool calls of all of them (the pairing of the tool
 // explorer, so header and estimated durations agree with it). A tool call
-// with no known duration adds nothing. It runs on the selected sessions only.
-func fillToolTime(ctx context.Context, q queryer, sessions []core.SessionSummary, keys []string, from, to time.Time) error {
+// with no known duration adds nothing. It runs on the selected sessions only,
+// and on the tool calls of callIDs only when callIDs is not empty.
+func fillToolTime(ctx context.Context, q queryer, sessions []core.SessionSummary, keys []string, callIDs []core.ID, from, to time.Time) error {
 	if len(sessions) == 0 {
 		return nil
 	}
 	w := &where{}
-	union := toolCallsSQL(w, core.ToolCallFilter{From: from, To: to, SessionKeys: keys}, time.Now(), nil, 0)
+	union := toolCallsSQL(w, core.ToolCallFilter{From: from, To: to, SessionKeys: keys, CallIDs: callIDs}, time.Now(), nil, 0)
 	rows, err := q.Query(ctx, `SELECT t.session_key, coalesce(sum(t.dur_ms), 0)::bigint,
 		coalesce(bool_or(t.dur_src = 'estimated'), false)
 		FROM (`+union+`) t WHERE t.session_key IS NOT NULL GROUP BY t.session_key`, w.args...)
@@ -257,7 +258,7 @@ func (s *Store) GetSession(ctx context.Context, key string) (core.SessionDetail,
 	// Every call of the session is in the summary, so the tool window covers
 	// them all: a tool use is timed at the end of its response.
 	tt := []core.SessionSummary{d.SessionSummary}
-	if err := fillToolTime(ctx, tx, tt, []string{key}, d.FirstTS, d.EndedAt.Add(time.Hour)); err != nil {
+	if err := fillToolTime(ctx, tx, tt, []string{key}, nil, d.FirstTS, d.EndedAt.Add(time.Hour)); err != nil {
 		return fail(err)
 	}
 	d.SessionSummary = tt[0]

@@ -418,9 +418,10 @@ paths:
         Sessions, which are groups of calls with the same session key, ranked by
         cost over the calls that match the call-log filters. Each row has the
         fields of the session list and the session view, counted over the
-        matching calls of `[from, to)`, so the cost, `unpriced_calls` and
-        `errors` of a session are the numbers those views show for the same
-        range. Calls without a session header belong to no session. At most
+        matching calls of `[from, to)`. With no call filter set, the cost,
+        `unpriced_calls` and `errors` of a session are the numbers those views
+        show for the same range; with one, only the matching calls count, while
+        those views count every call of a listed session. Calls without a session header belong to no session. At most
         `limit` sessions are returned, known cost first, highest first, then
         unknown cost; ties go to the session with more calls, then to the lower
         session key. `session_count` is the number of sessions there are, so a

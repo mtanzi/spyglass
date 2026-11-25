@@ -233,6 +233,7 @@ func toolCallsSQL(w *where, f core.ToolCallFilter, now time.Time, after *core.Cu
 	useConds = append(useConds, w.collect(func(t *where) {
 		t.textEq("u.session_key", f.SessionKey)
 		t.textIn("u.session_key", false, f.SessionKeys)
+		t.uuidIn("u.call_id", f.CallIDs)
 		t.textEq("u.agent_id", f.AgentID)
 		t.textIn("u.tool_name", true, f.Tools)
 		t.textIn("u.source", false, sources)
@@ -244,6 +245,7 @@ func toolCallsSQL(w *where, f core.ToolCallFilter, now time.Time, after *core.Cu
 	resConds = append(resConds, w.collect(func(t *where) {
 		t.textEq("r.session_key", f.SessionKey)
 		t.textIn("r.session_key", false, f.SessionKeys)
+		t.uuidIn("r.call_id", f.CallIDs)
 		t.textEq("r.agent_id", f.AgentID)
 		t.textIn("r.source", false, sources)
 	})...)

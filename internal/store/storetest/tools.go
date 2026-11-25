@@ -300,7 +300,7 @@ var toolCases = []testCase{
 		for _, c := range toolFilterCases {
 			t.Run(c.name, func(t *testing.T) {
 				f := toolWin
-				c.set(&f)
+				c.set(&f, calls)
 				for field, val := range reflect.ValueOf(f).Fields() {
 					if name := field.Name; name != "From" && name != "To" && !val.IsZero() {
 						touched[name] = true
@@ -405,24 +405,33 @@ func toolDataset(g *Gen) []core.CallRecord {
 
 var toolFilterCases = []struct {
 	name string
-	set  func(*core.ToolCallFilter)
+	set  func(*core.ToolCallFilter, []core.CallRecord)
 }{
-	{"session_key", func(f *core.ToolCallFilter) { f.SessionKey = "s2" }},
-	{"session_keys", func(f *core.ToolCallFilter) { f.SessionKeys = []string{"s1", "s2"} }},
-	{"agent_id", func(f *core.ToolCallFilter) { f.AgentID = "a1" }},
-	{"tools", func(f *core.ToolCallFilter) { f.Tools = []string{"Bash", "Edit"} }},
-	{"tools_unknown_name", func(f *core.ToolCallFilter) { f.Tools = []string{""} }},
-	{"sources", func(f *core.ToolCallFilter) { f.Sources = []core.ToolSource{core.ToolSourceServer} }},
-	{"statuses_use_only", func(f *core.ToolCallFilter) { f.Statuses = []core.ToolCallStatus{core.ToolCallUseOnly} }},
-	{"statuses_result_only", func(f *core.ToolCallFilter) { f.Statuses = []core.ToolCallStatus{core.ToolCallResultOnly} }},
-	{"statuses_unmatched", func(f *core.ToolCallFilter) {
+	{"session_key", func(f *core.ToolCallFilter, _ []core.CallRecord) { f.SessionKey = "s2" }},
+	{"session_keys", func(f *core.ToolCallFilter, _ []core.CallRecord) { f.SessionKeys = []string{"s1", "s2"} }},
+	{"call_ids", func(f *core.ToolCallFilter, calls []core.CallRecord) {
+		f.CallIDs = []core.ID{calls[1].ID, calls[2].ID, calls[5].ID}
+	}},
+	{"agent_id", func(f *core.ToolCallFilter, _ []core.CallRecord) { f.AgentID = "a1" }},
+	{"tools", func(f *core.ToolCallFilter, _ []core.CallRecord) { f.Tools = []string{"Bash", "Edit"} }},
+	{"tools_unknown_name", func(f *core.ToolCallFilter, _ []core.CallRecord) { f.Tools = []string{""} }},
+	{"sources", func(f *core.ToolCallFilter, _ []core.CallRecord) {
+		f.Sources = []core.ToolSource{core.ToolSourceServer}
+	}},
+	{"statuses_use_only", func(f *core.ToolCallFilter, _ []core.CallRecord) {
+		f.Statuses = []core.ToolCallStatus{core.ToolCallUseOnly}
+	}},
+	{"statuses_result_only", func(f *core.ToolCallFilter, _ []core.CallRecord) {
+		f.Statuses = []core.ToolCallStatus{core.ToolCallResultOnly}
+	}},
+	{"statuses_unmatched", func(f *core.ToolCallFilter, _ []core.CallRecord) {
 		f.Statuses = []core.ToolCallStatus{core.ToolCallUseOnly, core.ToolCallResultOnly}
 	}},
-	{"is_error_true", func(f *core.ToolCallFilter) { f.IsError = &yes }},
-	{"is_error_false", func(f *core.ToolCallFilter) { f.IsError = &no }},
-	{"min_duration", func(f *core.ToolCallFilter) { f.MinDuration = 4 * time.Second }},
-	{"min_arg_bytes", func(f *core.ToolCallFilter) { f.MinArgBytes = 100 }},
-	{"min_result_bytes", func(f *core.ToolCallFilter) { f.MinResultBytes = 300 }},
+	{"is_error_true", func(f *core.ToolCallFilter, _ []core.CallRecord) { f.IsError = &yes }},
+	{"is_error_false", func(f *core.ToolCallFilter, _ []core.CallRecord) { f.IsError = &no }},
+	{"min_duration", func(f *core.ToolCallFilter, _ []core.CallRecord) { f.MinDuration = 4 * time.Second }},
+	{"min_arg_bytes", func(f *core.ToolCallFilter, _ []core.CallRecord) { f.MinArgBytes = 100 }},
+	{"min_result_bytes", func(f *core.ToolCallFilter, _ []core.CallRecord) { f.MinResultBytes = 300 }},
 }
 
 // wantTools fails the case unless the filter selects exactly these tool calls.
