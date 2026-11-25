@@ -17,6 +17,8 @@ const usage = `usage: spyglass [command] [flags]
 commands:
   serve    run the proxy
   keygen   generate a virtual key and its config entry
+  backfill-projects
+           give older calls a project from their key or session
   version  print the build version
 
 Run spyglass --help for the admin client commands.
@@ -36,6 +38,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return cli.Run(args, stdout, stderr, os.Getenv)
 	case "keygen":
 		return runKeygen(args[1:], stdout, stderr)
+	case "backfill-projects":
+		return runBackfillProjects(args[1:], stdout, stderr)
 	case "version":
 		_, _ = fmt.Fprintln(stdout, version)
 		return 0

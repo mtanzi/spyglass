@@ -10,6 +10,7 @@ One Go module, one static binary, `spyglass`, with these subcommands:
 |---|---|
 | `serve` | Applies the embedded migrations, then runs the data plane, the admin plane, the recorder and the retention job |
 | `keygen --name <name>` | Generates a virtual key, prints the plaintext once and the config entry with its SHA-256. Touches no config file and no database; see [Auth](#auth-virtual-keys) |
+| `backfill-projects` | One-off: reads the same config file and database as `serve` and gives older calls with no project the project of their key (`keys[].project`), then the one project of their session. Writes only null `project` values; safe to run again ([ADR 0059](../adrs/0059-cost-views-on-the-overview-dashboard.md), [runbook](../runbook.md#backfill-the-project-of-older-calls)) |
 | `version` | Prints the build version |
 | `describe`, `config`, `sessions list\|show`, `calls list\|show`, and no argument (the home view) | The agent-facing CLI ([ADR 0055](../adrs/0055-agent-facing-cli-axi-toon-output.md), [cli.md](cli.md)). Read-only `GET` clients of the admin API, `SPYGLASS_ADMIN_URL` (default `http://127.0.0.1:9090`), TOON output on stdout. They do not read the config file and never touch the database |
 
