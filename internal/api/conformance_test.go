@@ -173,6 +173,10 @@ func TestResponsesConformToOpenAPI(t *testing.T) {
 		{Tool: "Bash", Uses: 4, Errors: 1, ResultBytes: 2048, CostTotals: core.CostTotals{Cost: &cost, UnpricedCalls: 1, APIEquivalent: true}},
 		{Tool: "Read", Uses: 2, CostTotals: core.CostTotals{UnpricedCalls: 2}},
 	}}
+	rd.Cells = []core.PunchcardCell{
+		{Weekday: 1, Hour: 0, Calls: 3, CostTotals: core.CostTotals{Cost: &cost, UnpricedCalls: 1, APIEquivalent: true}},
+		{Weekday: 7, Hour: 23, Calls: 2, CostTotals: core.CostTotals{UnpricedCalls: 2}},
+	}
 	h := newTestMux(t, rd, view)
 
 	samples := []struct {
@@ -219,6 +223,10 @@ func TestResponsesConformToOpenAPI(t *testing.T) {
 		{"/admin/usage/tools?limit=100&from=2026-08-01T00:00:00Z&to=2026-10-20T00:00:00Z&model=a&status=529&session=s&tool=Bash", "/admin/usage/tools", 200},
 		{"/admin/usage/tools?limit=101", "/admin/usage/tools", 400},
 		{"/admin/usage/tools?tz=UTC", "/admin/usage/tools", 400},
+		{"/admin/usage/punchcard", "/admin/usage/punchcard", 200},
+		{"/admin/usage/punchcard?tz=Asia/Kolkata&model=a&status=529&session=s", "/admin/usage/punchcard", 200},
+		{"/admin/usage/punchcard?tz=Nowhere/Land", "/admin/usage/punchcard", 400},
+		{"/admin/usage/punchcard?limit=5", "/admin/usage/punchcard", 400},
 		{"/admin/calls?nope=1", "/admin/calls", 400},
 		{"/admin/calls?cursor=zzz", "/admin/calls", 400},
 		{"/admin/calls/not-an-id", "/admin/calls/{id}", 400},
@@ -247,6 +255,7 @@ func TestResponsesConformToOpenAPI(t *testing.T) {
 		{"/admin/usage/months", "/admin/usage/months"},
 		{"/admin/usage/sessions", "/admin/usage/sessions"},
 		{"/admin/usage/tools", "/admin/usage/tools"},
+		{"/admin/usage/punchcard", "/admin/usage/punchcard"},
 	} {
 		rr := httptest.NewRecorder()
 		failing.ServeHTTP(rr, httptest.NewRequest("GET", sm.target, nil))
@@ -270,6 +279,7 @@ func TestSpecQueryParametersMatchParser(t *testing.T) {
 		"/admin/usage/months":       knownMonthlyCostParams,
 		"/admin/usage/sessions":     knownSessionCostParams,
 		"/admin/usage/tools":        knownToolCostParams,
+		"/admin/usage/punchcard":    knownPunchcardParams,
 		"/admin/stream":             knownStreamParams,
 	} {
 		op := s.doc["paths"].(map[string]any)[path].(map[string]any)["get"].(map[string]any)
@@ -344,6 +354,7 @@ func TestSpecRoutesMatchMux(t *testing.T) {
 		"/admin/calls", "/admin/calls/{id}", "/admin/config", "/admin/openapi.json", "/admin/sessions",
 		"/admin/sessions/{key}", "/admin/stream", "/admin/tool-calls", "/admin/tool-calls/summary", "/admin/usage",
 		"/admin/usage/prompts", "/admin/usage/months", "/admin/usage/sessions", "/admin/usage/tools",
+		"/admin/usage/punchcard",
 	}
 	for _, p := range want {
 		if _, ok := paths[p]; !ok {

@@ -84,6 +84,23 @@ var knownMonthlyCostParams = func() map[string]bool {
 	return m
 }()
 
+// zoneParam reads the optional tz parameter: an IANA zone name that defaults to
+// DefaultZone.
+func zoneParam(q url.Values) (string, *time.Location, *apiError) {
+	tz, set, err := single(q, "tz")
+	if err != nil {
+		return "", nil, err
+	}
+	if !set {
+		tz = DefaultZone
+	}
+	loc, lerr := core.LoadZone(tz)
+	if lerr != nil {
+		return "", nil, badParam("tz", fmt.Sprintf("%q is not an IANA time zone name", tz))
+	}
+	return tz, loc, nil
+}
+
 // parseMonthlyCostParams maps a query string onto a core.MonthlyCostQuery. tz
 // is an IANA zone name and defaults to DefaultZone. The range may cover at most
 // core.MaxMonths calendar months in that zone.
@@ -93,16 +110,9 @@ func parseMonthlyCostParams(q url.Values, now time.Time) (core.MonthlyCostQuery,
 	if mq.Filter, err = parseCallFilter(q, now, knownMonthlyCostParams); err != nil {
 		return mq, err
 	}
-	tz, set, err := single(q, "tz")
+	tz, loc, err := zoneParam(q)
 	if err != nil {
 		return mq, err
-	}
-	if !set {
-		tz = DefaultZone
-	}
-	loc, lerr := core.LoadZone(tz)
-	if lerr != nil {
-		return mq, badParam("tz", fmt.Sprintf("%q is not an IANA time zone name", tz))
 	}
 	mq.TZ = tz
 	if len(core.MonthsOf(mq.Filter.From, mq.Filter.To, loc, core.MaxMonths+1)) > core.MaxMonths {
@@ -164,6 +174,21 @@ func parseToolCostParams(q url.Values, now time.Time) (core.ToolCostQuery, *apiE
 		tq.Limit = core.DefaultRanked
 	}
 	return tq, nil
+}
+
+// The punchcard query takes the same parameters as the monthly-cost query.
+var knownPunchcardParams = knownMonthlyCostParams
+
+// parsePunchcardParams maps a query string onto a core.PunchcardQuery. tz is an
+// IANA zone name and defaults to DefaultZone.
+func parsePunchcardParams(q url.Values, now time.Time) (core.PunchcardQuery, *apiError) {
+	var pq core.PunchcardQuery
+	var err *apiError
+	if pq.Filter, err = parseCallFilter(q, now, knownPunchcardParams); err != nil {
+		return pq, err
+	}
+	pq.TZ, _, err = zoneParam(q)
+	return pq, err
 }
 
 // parsePromptCostParams maps a query string onto a core.PromptCostQuery. limit

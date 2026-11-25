@@ -262,6 +262,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/usage/punchcard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cost by weekday and hour of day
+         * @description Cost of the calls that match the call-log filters, grouped by weekday and
+         *     hour of day on the wall clock of the time zone `tz`. A cell is a local
+         *     clock reading, such as "Tuesday, 14:00 to 14:59": on a DST change the
+         *     repeated hour adds into one cell and the skipped hour adds nothing. Only
+         *     non-empty cells are returned, at most 168, ordered by weekday (1 is
+         *     Monday, 7 is Sunday) and then hour. Cost follows the usage rules: unknown
+         *     is not zero. A long range can take several seconds.
+         */
+        get: operations["getPunchcard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/usage/sessions": {
         parameters: {
             query?: never;
@@ -802,6 +828,20 @@ export interface components {
             tools: components["schemas"]["ToolCost"][];
             /** @description Every tool of the matching calls, including those past `limit`. */
             tool_count: number;
+        };
+        /** @description The calls that fall in one weekday and hour of day in the requested time zone. */
+        PunchcardCell: components["schemas"]["CostFields"] & {
+            /** @description 1 is Monday, 7 is Sunday. */
+            weekday: number;
+            /** @description Hour of day on the wall clock of the zone. */
+            hour: number;
+            calls: number;
+        };
+        Punchcard: {
+            /** @description The time zone the weekday and hour are read in. */
+            tz: string;
+            /** @description One row per non-empty cell, ordered by weekday and then hour. At most 168. */
+            cells: components["schemas"]["PunchcardCell"][];
         };
         ConfigView: {
             providers: components["schemas"]["ProviderView"][];
@@ -1475,6 +1515,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MonthlyCosts"];
+                };
+            };
+            400: components["responses"]["Error"];
+            500: components["responses"]["Error"];
+        };
+    };
+    getPunchcard: {
+        parameters: {
+            query?: {
+                /** @description Start of the time range, inclusive, RFC 3339. Default is 24 hours before `to`. */
+                from?: components["parameters"]["From"];
+                /** @description End of the time range, exclusive, RFC 3339. Default is now. */
+                to?: components["parameters"]["To"];
+                /**
+                 * @description IANA time zone name, such as `Europe/Rome`, that months are cut in.
+                 *     Default `UTC`. An unknown name is a `400`.
+                 */
+                tz?: components["parameters"]["Tz"];
+                /** @description Virtual key name. Repeat to match several. */
+                key?: components["parameters"]["Key"];
+                /** @description Client name. Repeat to match several. */
+                client?: components["parameters"]["Client"];
+                /** @description Provider name. Repeat to match several. */
+                provider?: components["parameters"]["Provider"];
+                /** @description Model as the client asked for it. Repeat to match several. */
+                model?: components["parameters"]["Model"];
+                /** @description Request path, for example /v1/messages. Repeat to match several. */
+                endpoint?: components["parameters"]["Endpoint"];
+                /** @description Only streamed (true) or only non-streamed (false) calls. */
+                streamed?: components["parameters"]["Streamed"];
+                /** @description HTTP status returned to the client. Repeat to match several. */
+                status?: components["parameters"]["Status"];
+                /** @description Error class. Repeat to match several. */
+                error_class?: components["parameters"]["ErrorClass"];
+                /** @description Session key. */
+                session?: components["parameters"]["Session"];
+                /** @description Agent id. */
+                agent?: components["parameters"]["Agent"];
+                /** @description Agent type. Repeat to match several. */
+                agent_type?: components["parameters"]["AgentType"];
+                /** @description Prompt id. */
+                prompt?: components["parameters"]["Prompt"];
+                /** @description Request class. Repeat to match several. */
+                request_class?: components["parameters"]["RequestClass"];
+                /** @description Project of the call (ADR 0059). Repeat to match several. */
+                project?: components["parameters"]["Project"];
+                /** @description Calls that made a tool call with this tool name. Repeat to match several. */
+                tool?: components["parameters"]["Tool"];
+                /**
+                 * @description Calls that made a tool call whose paired result has this is_error value.
+                 *     Combined with `tool`, both must hold on the same tool call.
+                 */
+                tool_error?: components["parameters"]["ToolError"];
+                /** @description Calls whose total duration is at least this many milliseconds. */
+                latency_ms_gte?: components["parameters"]["LatencyMsGte"];
+                /** @description Calls with a known cost of at least this many micro-USD. */
+                cost_micro_usd_gte?: components["parameters"]["CostMicroUsdGte"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The cells. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Punchcard"];
                 };
             };
             400: components["responses"]["Error"];

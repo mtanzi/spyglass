@@ -23,6 +23,7 @@ type Reader struct {
 	Months     []core.MonthCost
 	SessionCst core.SessionCosts
 	Tools      core.ToolCosts
+	Cells      []core.PunchcardCell
 	Next       *core.Cursor
 	Err        error
 }
@@ -89,4 +90,8 @@ func (r *Reader) SessionCosts(context.Context, core.SessionCostQuery) (core.Sess
 
 func (r *Reader) ToolCosts(context.Context, core.ToolCostQuery) (core.ToolCosts, error) {
 	return r.Tools, r.Err
+}
+
+func (r *Reader) Punchcard(context.Context, core.PunchcardQuery) ([]core.PunchcardCell, error) {
+	return r.Cells, r.Err
 }
