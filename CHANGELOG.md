@@ -2,6 +2,13 @@
 
 Notable changes to Spyglass. Release 0.1.0 and earlier are described in their [GitHub release notes](https://github.com/mtanzi/spyglass/releases).
 
+## [0.13.0](https://github.com/mtanzi/spyglass/compare/v0.12.0...v0.13.0) (2026-11-25)
+
+
+### Features
+
+* **cli:** add backfill-projects command (ADR 0059 phase 3) ([#173](https://github.com/mtanzi/spyglass/issues/173)) ([a058403](https://github.com/mtanzi/spyglass/commit/a058403cc682fc491f76681e25a3a5e4f2dcbfff))
+
 ## [0.12.0](https://github.com/mtanzi/spyglass/compare/v0.11.0...v0.12.0) (2026-11-25)
 
 
