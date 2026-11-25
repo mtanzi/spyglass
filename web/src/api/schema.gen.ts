@@ -293,6 +293,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/usage/tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Estimated cost per tool
+         * @description The tools of the calls that match the call-log filters, ranked by an
+         *     estimated cost. A tool has no cost of its own, because it runs in the
+         *     client and the proxy sees only model calls. The rule is: the cost of a
+         *     model call is split equally among the tool uses that call requested, and
+         *     a tool's cost is the sum of its shares. A call with no tool use adds to no
+         *     tool. A call's cost is a whole number of micro-USD; the share of a tool
+         *     with `k` of the `n` uses of the call is `floor(cost * k / n)`, and the
+         *     remainder of the call goes to the tool of that call that is first by
+         *     name. So over one range the tool costs plus the cost of the calls with no
+         *     tool use equal the total cost of the same calls exactly.
+         *
+         *     The range and the other filters select calls by their own time. A use
+         *     counts when the call that requested it matches, whatever the time of the
+         *     use itself; this differs from `/admin/tool-calls`, which selects uses by
+         *     their own time. `errors` and `result_bytes` come from the result paired
+         *     with each use, as in the tool-call list. An unpriced call adds its uses to
+         *     `uses` and nothing to the cost; `unpriced_calls` counts the distinct
+         *     unpriced calls that requested the tool, and the cost is null when every
+         *     such call is unpriced. At most `limit` tools are returned, known cost
+         *     first, highest first, then unknown cost; ties go to more uses, then lower
+         *     name. `tool_count` is the number of tools there are.
+         *
+         *     The cost is an estimate. It ranks tools by the spend of the model calls
+         *     that asked for them. It is not the cost the result of a tool adds to later
+         *     calls. A long range can take several seconds.
+         */
+        get: operations["getToolCosts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/config": {
         parameters: {
             query?: never;
@@ -735,6 +779,29 @@ export interface components {
             sessions: components["schemas"]["SessionCost"][];
             /** @description Every session of the matching calls, including those past `limit`. */
             session_count: number;
+        };
+        /**
+         * @description The estimated cost of the calls that requested one tool: each call's cost
+         *     split equally among its tool uses.
+         */
+        ToolCost: components["schemas"]["CostFields"] & {
+            /** @description Tool name. Empty when a use carries none. */
+            tool: string;
+            /** @description Uses of the tool in the matching calls, priced or not. */
+            uses: number;
+            /** @description Uses whose paired result is an error. */
+            errors: number;
+            /**
+             * Format: int64
+             * @description Size of the results paired with the uses.
+             */
+            result_bytes: number;
+        };
+        ToolCosts: {
+            /** @description The most costly tools, known cost first, highest first, then unknown cost. */
+            tools: components["schemas"]["ToolCost"][];
+            /** @description Every tool of the matching calls, including those past `limit`. */
+            tool_count: number;
         };
         ConfigView: {
             providers: components["schemas"]["ProviderView"][];
@@ -1447,6 +1514,8 @@ export interface operations {
                 prompt?: components["parameters"]["Prompt"];
                 /** @description Request class. Repeat to match several. */
                 request_class?: components["parameters"]["RequestClass"];
+                /** @description Project of the call (ADR 0059). Repeat to match several. */
+                project?: components["parameters"]["Project"];
                 /** @description Calls that made a tool call with this tool name. Repeat to match several. */
                 tool?: components["parameters"]["Tool"];
                 /**
@@ -1474,6 +1543,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionCosts"];
+                };
+            };
+            400: components["responses"]["Error"];
+            500: components["responses"]["Error"];
+        };
+    };
+    getToolCosts: {
+        parameters: {
+            query?: {
+                /** @description Start of the time range, inclusive, RFC 3339. Default is 24 hours before `to`. */
+                from?: components["parameters"]["From"];
+                /** @description End of the time range, exclusive, RFC 3339. Default is now. */
+                to?: components["parameters"]["To"];
+                /** @description Virtual key name. Repeat to match several. */
+                key?: components["parameters"]["Key"];
+                /** @description Client name. Repeat to match several. */
+                client?: components["parameters"]["Client"];
+                /** @description Provider name. Repeat to match several. */
+                provider?: components["parameters"]["Provider"];
+                /** @description Model as the client asked for it. Repeat to match several. */
+                model?: components["parameters"]["Model"];
+                /** @description Request path, for example /v1/messages. Repeat to match several. */
+                endpoint?: components["parameters"]["Endpoint"];
+                /** @description Only streamed (true) or only non-streamed (false) calls. */
+                streamed?: components["parameters"]["Streamed"];
+                /** @description HTTP status returned to the client. Repeat to match several. */
+                status?: components["parameters"]["Status"];
+                /** @description Error class. Repeat to match several. */
+                error_class?: components["parameters"]["ErrorClass"];
+                /** @description Session key. */
+                session?: components["parameters"]["Session"];
+                /** @description Agent id. */
+                agent?: components["parameters"]["Agent"];
+                /** @description Agent type. Repeat to match several. */
+                agent_type?: components["parameters"]["AgentType"];
+                /** @description Prompt id. */
+                prompt?: components["parameters"]["Prompt"];
+                /** @description Request class. Repeat to match several. */
+                request_class?: components["parameters"]["RequestClass"];
+                /** @description Project of the call (ADR 0059). Repeat to match several. */
+                project?: components["parameters"]["Project"];
+                /** @description Calls that made a tool call with this tool name. Repeat to match several. */
+                tool?: components["parameters"]["Tool"];
+                /**
+                 * @description Calls that made a tool call whose paired result has this is_error value.
+                 *     Combined with `tool`, both must hold on the same tool call.
+                 */
+                tool_error?: components["parameters"]["ToolError"];
+                /** @description Calls whose total duration is at least this many milliseconds. */
+                latency_ms_gte?: components["parameters"]["LatencyMsGte"];
+                /** @description Calls with a known cost of at least this many micro-USD. */
+                cost_micro_usd_gte?: components["parameters"]["CostMicroUsdGte"];
+                /** @description Number of rows of a ranked list. Default 10, maximum 100. */
+                limit?: components["parameters"]["RankedLimit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The tools. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolCosts"];
                 };
             };
             400: components["responses"]["Error"];

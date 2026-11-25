@@ -448,6 +448,7 @@ paths:
         - $ref: "#/components/parameters/AgentType"
         - $ref: "#/components/parameters/Prompt"
         - $ref: "#/components/parameters/RequestClass"
+        - $ref: "#/components/parameters/Project"
         - $ref: "#/components/parameters/Tool"
         - $ref: "#/components/parameters/ToolError"
         - $ref: "#/components/parameters/LatencyMsGte"
@@ -460,6 +461,69 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SessionCosts"
+        "400":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+  /admin/usage/tools:
+    get:
+      operationId: getToolCosts
+      summary: Estimated cost per tool
+      description: |
+        The tools of the calls that match the call-log filters, ranked by an
+        estimated cost. A tool has no cost of its own, because it runs in the
+        client and the proxy sees only model calls. The rule is: the cost of a
+        model call is split equally among the tool uses that call requested, and
+        a tool's cost is the sum of its shares. A call with no tool use adds to no
+        tool. A call's cost is a whole number of micro-USD; the share of a tool
+        with `k` of the `n` uses of the call is `floor(cost * k / n)`, and the
+        remainder of the call goes to the tool of that call that is first by
+        name. So over one range the tool costs plus the cost of the calls with no
+        tool use equal the total cost of the same calls exactly.
+
+        The range and the other filters select calls by their own time. A use
+        counts when the call that requested it matches, whatever the time of the
+        use itself; this differs from `/admin/tool-calls`, which selects uses by
+        their own time. `errors` and `result_bytes` come from the result paired
+        with each use, as in the tool-call list. An unpriced call adds its uses to
+        `uses` and nothing to the cost; `unpriced_calls` counts the distinct
+        unpriced calls that requested the tool, and the cost is null when every
+        such call is unpriced. At most `limit` tools are returned, known cost
+        first, highest first, then unknown cost; ties go to more uses, then lower
+        name. `tool_count` is the number of tools there are.
+
+        The cost is an estimate. It ranks tools by the spend of the model calls
+        that asked for them. It is not the cost the result of a tool adds to later
+        calls. A long range can take several seconds.
+      parameters:
+        - $ref: "#/components/parameters/From"
+        - $ref: "#/components/parameters/To"
+        - $ref: "#/components/parameters/Key"
+        - $ref: "#/components/parameters/Client"
+        - $ref: "#/components/parameters/Provider"
+        - $ref: "#/components/parameters/Model"
+        - $ref: "#/components/parameters/Endpoint"
+        - $ref: "#/components/parameters/Streamed"
+        - $ref: "#/components/parameters/Status"
+        - $ref: "#/components/parameters/ErrorClass"
+        - $ref: "#/components/parameters/Session"
+        - $ref: "#/components/parameters/Agent"
+        - $ref: "#/components/parameters/AgentType"
+        - $ref: "#/components/parameters/Prompt"
+        - $ref: "#/components/parameters/RequestClass"
+        - $ref: "#/components/parameters/Project"
+        - $ref: "#/components/parameters/Tool"
+        - $ref: "#/components/parameters/ToolError"
+        - $ref: "#/components/parameters/LatencyMsGte"
+        - $ref: "#/components/parameters/CostMicroUsdGte"
+        - $ref: "#/components/parameters/RankedLimit"
+      responses:
+        "200":
+          description: The tools.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolCosts"
         "400":
           $ref: "#/components/responses/Error"
         "500":
@@ -1227,6 +1291,28 @@ components:
           description: At most `limit` sessions. Known cost first, highest first, then unknown cost; ties by calls, then session key.
           items: { $ref: "#/components/schemas/SessionCost" }
         session_count: { type: integer, description: "Every session of the matching calls, including those past `limit`." }
+    ToolCost:
+      description: |
+        The estimated cost of the calls that requested one tool: each call's cost
+        split equally among its tool uses.
+      allOf:
+        - $ref: "#/components/schemas/CostFields"
+        - type: object
+          required: [tool, uses, errors, result_bytes]
+          properties:
+            tool: { type: string, description: "Tool name. Empty when a use carries none." }
+            uses: { type: integer, description: "Uses of the tool in the matching calls, priced or not." }
+            errors: { type: integer, description: "Uses whose paired result is an error." }
+            result_bytes: { type: integer, format: int64, description: "Size of the results paired with the uses." }
+    ToolCosts:
+      type: object
+      required: [tools, tool_count]
+      properties:
+        tools:
+          type: array
+          description: The most costly tools, known cost first, highest first, then unknown cost.
+          items: { $ref: "#/components/schemas/ToolCost" }
+        tool_count: { type: integer, description: "Every tool of the matching calls, including those past `limit`." }
     ConfigView:
       type: object
       required: [providers, pricing, keys]

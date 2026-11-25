@@ -381,6 +381,19 @@ type monthlyCostsJSON struct {
 	Months []monthCostJSON `json:"months"`
 }
 
+type toolCostJSON struct {
+	Tool        string `json:"tool"`
+	Uses        int    `json:"uses"`
+	Errors      int    `json:"errors"`
+	ResultBytes int64  `json:"result_bytes"`
+	costFieldsJSON
+}
+
+type toolCostsJSON struct {
+	Tools     []toolCostJSON `json:"tools"`
+	ToolCount int            `json:"tool_count"`
+}
+
 type usageSeriesJSON struct {
 	GroupBy *core.UsageGroup  `json:"group_by"`
 	Grain   core.Grain        `json:"grain"`
