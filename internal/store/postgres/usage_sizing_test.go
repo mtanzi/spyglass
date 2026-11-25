@@ -161,4 +161,11 @@ func TestUsageSizing(t *testing.T) {
 		got, err := s.ToolCosts(ctx, core.ToolCostQuery{Filter: one, Limit: 10})
 		return len(got.Tools), err
 	})
+	// Every seeded call has this provider: a filter that keeps every call.
+	all := f
+	all.Providers = []string{"anthropic"}
+	measure("tools limit=10 provider", func() (int, error) {
+		got, err := s.ToolCosts(ctx, core.ToolCostQuery{Filter: all, Limit: 10})
+		return len(got.Tools), err
+	})
 }

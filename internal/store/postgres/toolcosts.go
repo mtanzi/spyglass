@@ -34,10 +34,12 @@ import (
 // 4.5 million (deployment.md, "Sizing"); one pass with DISTINCT ON over the
 // results of the range and a hash join takes 4.8 s and 15 s.
 //
-// When the filter has more than the time range, the pass reads only the results
-// of the uses in e, so a one-session filter takes milliseconds. Without one,
-// that restriction keeps every result anyway and makes the planner sort them on
-// disk (22 s instead of 4.8 s), so it is left out. e is not materialized, so the
+// When the filter selects few calls (a session, an agent, a prompt or tools),
+// the pass reads only the results of the uses in e, so a one-session filter
+// takes milliseconds. Other filters can keep almost every call (one provider,
+// one client, the only key), and there the restriction keeps every result anyway
+// and makes the planner sort them on disk (22 s instead of 4.8 s), so it is left
+// out. e is not materialized, so the
 // planner estimates its rows: a materialized e is guessed at 200 rows and read
 // with a nested loop.
 //
@@ -57,7 +59,7 @@ func (s *Store) ToolCosts(ctx context.Context, q core.ToolCostQuery) (core.ToolC
 	lookahead := w.arg(q.Filter.To.Add(core.ToolResultLookahead))
 	limit := w.arg(q.Limit)
 	selected := ""
-	if len(w.conds) > 2 {
+	if f := q.Filter; f.SessionKey != "" || f.AgentID != "" || f.PromptID != "" || len(f.Tools) > 0 {
 		selected = "AND tool_call_id IN (SELECT tool_call_id FROM e)"
 	}
 	rows, err := s.pool.Query(ctx, `WITH e AS NOT MATERIALIZED (

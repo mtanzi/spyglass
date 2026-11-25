@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -223,6 +224,25 @@ var toolCostCases = []testCase{
 		checkTools(t, got.Tools, []wantTool{{"T3", 2, 300, 0}, {"T2", 1, 300, 0}, {"T1", 1, 100, 0}})
 		if got.ToolCount != 5 {
 			t.Errorf("tool count = %d, want 5, which includes the tools past the limit", got.ToolCount)
+		}
+	}},
+	{"tool_costs_of_a_filter_that_keeps_every_call_equal_the_unfiltered", func(t *testing.T, e *env) {
+		g := e.gen
+		e.write(t,
+			g.Call(g.At(Base), WithProvider("p1"), WithSession("s1"), WithCost(30), g.WithUse("f1", "Bash"), g.WithUse("f2", "Read"), g.WithUse("f3", "Bash")),
+			g.Call(g.At(Base.Add(time.Minute)), WithProvider("p1"), WithSession("s1"), WithCost(12), g.WithResult("f1", true), g.WithResult("f2", false), g.WithUse("f4", "Edit")),
+			g.Call(g.At(Base.Add(2*time.Hour)), WithProvider("p1"), WithSession("s1"), g.WithResult("f3", false), g.WithResult("f4", true)),
+		)
+		want := e.toolCosts(t, core.ToolCostQuery{Filter: toolCostWin})
+		checkTools(t, want.Tools, []wantTool{{"Bash", 2, 20, 0}, {"Edit", 1, 12, 0}, {"Read", 1, 10, 0}})
+		for _, f := range []core.CallFilter{
+			{From: toolCostWin.From, To: toolCostWin.To, Providers: []string{"p1"}},
+			{From: toolCostWin.From, To: toolCostWin.To, SessionKey: "s1"},
+		} {
+			got := e.toolCosts(t, core.ToolCostQuery{Filter: f})
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("filter %+v: %+v, want the unfiltered %+v", f, got, want)
+			}
 		}
 	}},
 	{"tool_costs_reject_an_invalid_query", func(t *testing.T, e *env) {
