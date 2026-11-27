@@ -2,6 +2,13 @@
 
 Notable changes to Spyglass. Release 0.1.0 and earlier are described in their [GitHub release notes](https://github.com/mtanzi/spyglass/releases).
 
+## [0.16.0](https://github.com/mtanzi/spyglass/compare/v0.15.0...v0.16.0) (2026-11-27)
+
+
+### Features
+
+* **web:** give the overview Cost section its final design and its own framed band ([#188](https://github.com/mtanzi/spyglass/issues/188)) ([c6ad181](https://github.com/mtanzi/spyglass/commit/c6ad181171846a62f34e1ca317edc946d382dcb2))
+
 ## [0.15.0](https://github.com/mtanzi/spyglass/compare/v0.14.1...v0.15.0) (2026-11-25)
 
 
