@@ -4,12 +4,20 @@ import type { MonthRow } from '../views/costOverviewData'
 import { Maybe } from './Maybe'
 
 /** Width of the drawing per month, and its bounds: a short period is drawn narrow, so its text stays readable when it is scaled to the panel. */
-const PER_MONTH = 100
-const MIN_W = 300
-const MAX_W = 600
-const H = 200
-const TOP = 32
-const BASE = 150
+const PER_MONTH = 120
+const MIN_W = 420
+const MAX_W = 720
+const H = 210
+const TOP = 34
+const BASE = 160
+// The data end of a bar is rounded, its base is square on the baseline.
+const CORNER = 4
+
+/** A bar of width w and height h on the baseline at y0, rounded at the top only. */
+function barPath(x: number, y0: number, w: number, h: number): string {
+  const r = Math.min(CORNER, w / 2, h)
+  return `M${x},${y0}V${y0 - h + r}Q${x},${y0 - h} ${x + r},${y0 - h}H${x + w - r}Q${x + w},${y0 - h} ${x + w},${y0 - h + r}V${y0}Z`
+}
 
 /** What a reader gets from the chart in words, for the label of the figure. */
 export function monthChartLabel(months: MonthRow[], best: MonthRow | undefined, total: number | null): string {
@@ -47,7 +55,7 @@ export function MonthlyCostChart({
   const bars = monthBars(months)
   const W = Math.min(MAX_W, Math.max(MIN_W, months.length * PER_MONTH))
   const step = W / Math.max(1, months.length)
-  const width = Math.min(56, step * 0.7)
+  const width = Math.min(64, step * 0.6)
   return (
     <figure className="month-chart">
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={monthChartLabel(months, best, total)}>
@@ -63,12 +71,9 @@ export function MonthlyCostChart({
             <g key={m.month} className="month-group">
               <title>{barTitle(m)}</title>
               {bar.height !== null && (
-                <rect
+                <path
                   className={['month-bar', m.partial ? 'month-bar-partial' : '', isBest ? 'month-bar-best' : ''].filter(Boolean).join(' ')}
-                  x={cx - width / 2}
-                  y={y}
-                  width={width}
-                  height={h}
+                  d={barPath(cx - width / 2, BASE, width, h)}
                 />
               )}
               {isBest && (
@@ -79,12 +84,12 @@ export function MonthlyCostChart({
               <text className="month-value" x={cx} y={bar.height === null ? BASE - 6 : y - 4} textAnchor="middle">
                 {m.calls === 0 ? 'no calls' : m.cost_micro_usd === null ? 'unknown' : formatCostMicroUsd(m.cost_micro_usd)}
               </text>
-              <text className="month-axis" x={cx} y={BASE + 14} textAnchor="middle">
+              <text className="month-axis" x={cx} y={BASE + 16} textAnchor="middle">
                 {monthLabel(m.month)}
               </text>
               {notes.map((n, k) =>
                 n ? (
-                  <text key={n} className="month-note" x={cx} y={BASE + 26 + k * 11} textAnchor="middle">
+                  <text key={n} className="month-note" x={cx} y={BASE + 29 + k * 12} textAnchor="middle">
                     {n}
                   </text>
                 ) : null,

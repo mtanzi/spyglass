@@ -412,6 +412,19 @@ test('the default period is three calendar months up to now, cut in the browser 
   expect(urls.some((u) => u.includes('group_by=session'))).toBe(false)
 })
 
+test('the cost section is its own region with its own period control, and says the overview range does not apply', async () => {
+  stubApi()
+  await renderAt('/ui/')
+  await screen.findByRole('list', { name: 'Cost per project' })
+  const section = screen.getByRole('region', { name: 'Cost' })
+  expect(within(section).getByRole('group', { name: 'Cost period' })).toBeTruthy()
+  expect(within(section).getByText(/overview time range above does not apply/)).toBeTruthy()
+  // The overview picker (1h to 30d) is outside the section; the section holds only its own control.
+  const overviewPicker = screen.getByRole('button', { name: '7d' })
+  expect(section.contains(overviewPicker)).toBe(false)
+  expect(within(section).queryByRole('button', { name: '7d' })).toBeNull()
+})
+
 test('the period is in the URL, is announced, and leaves the dashboard range alone', async () => {
   const urls = stubApi()
   const { router } = await renderAt('/ui/')

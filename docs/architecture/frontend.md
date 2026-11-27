@@ -43,7 +43,7 @@ session → prompt (user turn) → agent (main or sub-agent) → LLM call → to
 
 | View | Route | Purpose | Main API calls |
 |---|---|---|---|
-| Overview (home) | `/ui` | Headline numbers against the previous equal period, activity by model, live feed, recent sessions, problems and cost breakdowns | `GET /admin/usage`, `GET /admin/sessions`, `GET /admin/calls`, `GET /admin/stream`, `GET /admin/config` |
+| Overview (home) | `/ui` | Headline numbers against the previous equal period, activity by model, live feed, recent sessions, problems, cost breakdowns, and a Cost section with its own period | `GET /admin/usage`, `GET /admin/usage/months`, `GET /admin/usage/projects`, `GET /admin/usage/punchcard`, `GET /admin/usage/sessions`, `GET /admin/usage/tools`, `GET /admin/sessions`, `GET /admin/calls`, `GET /admin/stream`, `GET /admin/config` |
 | V1 Call log | `/ui/calls` | Paginated, filterable list of every LLM call, with a volume chart and a summary strip | `GET /admin/calls`, `GET /admin/usage`, `GET /admin/stream` |
 | V2 Session list | `/ui/sessions` | One row per session: start, duration, model / tool time, client, key, prompts, calls, tool calls, tools per call, cost, cache hit, errors, labelled by key, client and start time (no prompt text is stored) | `GET /admin/sessions` |
 | V2 Session view | `/ui/sessions/:key` | Tree and waterfall of prompts, agents, calls and tool calls | `GET /admin/sessions/{key}`, `GET /admin/tool-calls?session=` |
@@ -62,6 +62,7 @@ The wireframes for V1 to V4 are in UI report sections 5.1 to 5.4; the parts that
 - Activity: calls or cost per interval stacked by model, with errors per interval as a line on their own scale.
 - Live feed of the latest finished calls (the shared live hook), recent sessions with an error badge, and problems: errors grouped by error class, each linking to the call log filtered to that class.
 - Breakdowns: cost ranked by model, client and key, linking to V5, V1 and V2. The most costly sessions are in the Cost section (ADR 0059).
+- Cost section ([ADR 0059](../adrs/0059-cost-views-on-the-overview-dashboard.md)): a framed band of its own, with its own heading, a label that the overview time range does not apply to it, and its own period control (`cost_range`: 3, 6 or 12 whole calendar months in the browser's zone). It holds the most costly month and project, spend per month, spend per project, a punchcard of cost by hour of the week, and the most costly sessions and tools. Each panel loads, fails and shows empty on its own.
 - Unknown cost shows as unknown. Cost through a `client_passthrough` provider (from `GET /admin/config`) carries the "API-equivalent" label.
 
 ### V1 Call log

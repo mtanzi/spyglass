@@ -167,18 +167,27 @@ export function CostSection({
 
   return (
     <section className="cost-section" aria-labelledby="cost-title">
-      <div className="panel-head">
-        <h2 id="cost-title">Cost</h2>
-        <small className="dim">{`Months and hours in ${tz}`}</small>
-        <div className="segmented" role="group" aria-label="Cost period">
-          {COST_RANGES.map((r) => (
-            <button key={r} type="button" aria-pressed={range === r} onClick={() => onRangeChange(r)}>
-              {PERIOD_LABEL[r]}
-            </button>
-          ))}
+      <header className="cost-head">
+        <div className="cost-heading">
+          <h2 id="cost-title">Cost</h2>
+          <p className="cost-scope">
+            <span className="cost-scope-mark">Own period</span>
+            The overview time range above does not apply to this section.
+          </p>
+          <small className="dim">{`Months and hours in ${tz}`}</small>
         </div>
-        {range !== '3m' && <small className="dim">A longer period can take longer to load.</small>}
-      </div>
+        <div className="cost-period">
+          <span className="cost-period-label" aria-hidden="true">Period</span>
+          <div className="segmented" role="group" aria-label="Cost period">
+            {COST_RANGES.map((r) => (
+              <button key={r} type="button" aria-pressed={range === r} onClick={() => onRangeChange(r)}>
+                {PERIOD_LABEL[r]}
+              </button>
+            ))}
+          </div>
+          {range !== '3m' && <small className="dim">A longer period can take longer to load.</small>}
+        </div>
+      </header>
       <p className="sr-only" role="status">{`Showing the last ${period}`}</p>
       {apiEquivalent && <p className="notice cost-note">Includes API-equivalent cost of client_passthrough providers. {PASSTHROUGH_NOTE}.</p>}
 

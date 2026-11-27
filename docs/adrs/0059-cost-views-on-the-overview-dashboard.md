@@ -1,6 +1,6 @@
 # ADR 0059: Cost views on the overview dashboard
 
-Status: Proposed
+Status: Completed
 
 Date: 2026-11-24
 
