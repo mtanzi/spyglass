@@ -246,7 +246,7 @@ Phases are small, separate pull requests, in this order. Phases 5 to 8 can run i
 10. **UI, first version (functional styling).** The `cost_range` search parameter and its validator, `costOverviewData.ts` with its tests, the "Cost" section with the two tiles, the month chart (with the table fallback), the project list, the run-rate and average-per-session tiles, and the per-panel states. `RankedList` moves to `components/`.
 11. **UI, punchcard, sessions and tools.** The punchcard component with its table fallback, the sessions and tools tables, the removal of the top-5 sessions breakdown and its `group_by=session` request, and the axe checks in both themes.
 12. **Design pass with Claude design.** The final look of the cost section, within the limits of decision 10. Contrast checked in a browser in both themes.
-13. **Follow-ups, each decided when reached:** cache savings, agent-type and request-class grouping, the hourly rollup if phase 9 says it is due.
+13. **Follow-ups, each decided when reached:** cache savings, agent-type and request-class grouping, the hourly rollup if phase 9 says it is due. These stay optional and undecided; none is needed to close this ADR. Phase 9 found the rollup due only near 50,000 calls a day (deployment.md, "Sizing").
 14. **Docs.** frontend.md, "Views" (the Overview row and the overview section), architecture/backend.md (the endpoint table) and deployment.md. Mark this ADR Completed in the change that lands the last of phases 2 to 12.
 
 ## Depends on
