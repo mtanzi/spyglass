@@ -60,6 +60,9 @@ export function Punchcard({ cells, tz }: { cells: PunchcardCell[]; tz: string })
               </text>
             ) : null,
           )}
+          {WEEKDAYS.map((day, i) =>
+            i >= 5 ? <rect key={day} className="punch-band" x={LEFT - 4} y={TOP + i * STEP} width={W - LEFT + 4} height={STEP} rx="3" /> : null,
+          )}
           {WEEKDAYS.map((day, i) => (
             <line key={day} className="punch-row" x1={LEFT} x2={W} y1={TOP + i * STEP + STEP / 2} y2={TOP + i * STEP + STEP / 2} />
           ))}
@@ -96,6 +99,14 @@ export function Punchcard({ cells, tz }: { cells: PunchcardCell[]; tz: string })
           <>Cost is unknown: the markers show the hours that have calls.</>
         )}
         <span className="dim">{` · Larger circle, higher cost · ${tz}`}</span>
+        <span className="punch-legend" aria-hidden="true">
+          <i className="punch-key punch-key-s" />
+          <i className="punch-key punch-key-m" />
+          <i className="punch-key punch-key-l" />
+          <span>lower to higher cost</span>
+          <i className="punch-key punch-key-unknown" />
+          <span>no known cost</span>
+        </span>
       </figcaption>
       <details className="chart-table">
         <summary>Show as table</summary>
