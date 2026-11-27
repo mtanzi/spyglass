@@ -43,7 +43,7 @@ session → prompt (user turn) → agent (main or sub-agent) → LLM call → to
 
 | View | Route | Purpose | Main API calls |
 |---|---|---|---|
-| Overview (home) | `/ui` | Headline numbers against the previous equal period, activity by model, live feed, recent sessions, problems and cost breakdowns | `GET /admin/usage`, `GET /admin/sessions`, `GET /admin/calls`, `GET /admin/stream`, `GET /admin/config` |
+| Overview (home) | `/ui` | Headline numbers against the previous equal period, activity by model, live feed, recent sessions, problems, cost breakdowns, and a Cost section with its own period | `GET /admin/usage`, `GET /admin/usage/months`, `GET /admin/usage/projects`, `GET /admin/usage/punchcard`, `GET /admin/usage/sessions`, `GET /admin/usage/tools`, `GET /admin/sessions`, `GET /admin/calls`, `GET /admin/stream`, `GET /admin/config` |
 | V1 Call log | `/ui/calls` | Paginated, filterable list of every LLM call, with a volume chart and a summary strip | `GET /admin/calls`, `GET /admin/usage`, `GET /admin/stream` |
 | V2 Session list | `/ui/sessions` | One row per session: start, duration, model / tool time, client, key, prompts, calls, tool calls, tools per call, cost, cache hit, errors, labelled by key, client and start time (no prompt text is stored) | `GET /admin/sessions` |
 | V2 Session view | `/ui/sessions/:key` | Tree and waterfall of prompts, agents, calls and tool calls | `GET /admin/sessions/{key}`, `GET /admin/tool-calls?session=` |
